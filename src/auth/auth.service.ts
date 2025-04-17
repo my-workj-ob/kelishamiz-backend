@@ -56,7 +56,14 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async sendOtp(phone: string): Promise<{ otp: string }> {
+  async sendOtp(phone: string): Promise<{ otp?: string; message?: string }> {
+    const existingUser = await this.findByPhone(phone);
+    if (existingUser) {
+      return {
+        message: 'Bu telefon raqam allaqachon ro‘yxatdan o‘tgan.',
+      };
+    }
+
     const otpCode = await this.otpService.sendOtp(phone);
     const expiresAt = new Date(Date.now() + this.otpExpiryTimeMs);
     this.temporaryOtps[phone] = { code: otpCode, expiresAt, isVerified: false }; // isVerified ni false qilib saqlaymiz
