@@ -15,9 +15,9 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CreateProfileDto } from 'src/profile/dto/create-profile.dto';
-import { ProfileService } from 'src/profile/profile.service';
 import { Repository } from 'typeorm';
+import { CreateProfileDto } from './../profile/dto/create-profile.dto';
+import { ProfileService } from './../profile/profile.service';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';

@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CreatePropertyDto } from 'src/category/dto/create-property.dto';
+import { CreatePropertyDto } from './../category/dto/create-property.dto';
 import { PropertyService } from './property.service';
 
 @ApiTags('Property')
