@@ -22,6 +22,8 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { User } from './../auth/entities/user.entity';
+import { SearchService } from './../search-filter/search-filter.service';
 import { ProductDto } from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
 import { Product } from './entities/product.entity';
@@ -31,7 +33,10 @@ import { ProductService } from './product.service';
 @ApiBearerAuth()
 @Controller('products')
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(
+    private readonly productService: ProductService,
+    private readonly searchService: SearchService,
+  ) {}
 
   // 🔹 GET: All products
   @Get()
@@ -105,6 +110,13 @@ export class ProductController {
     @Req() req: any,
   ): Promise<Product[]> {
     const userId = filters.ownProduct ? req?.user?.userId : undefined;
+
+    if (req?.user?.userId && filters.title && filters.title.trim() !== '') {
+      // Qo'shimcha tekshiruv
+      const user = req.user as User;
+      await this.searchService.saveSearch(user, filters.title.trim());
+    }
+
     return this.productService.filter(filters, userId);
   }
 

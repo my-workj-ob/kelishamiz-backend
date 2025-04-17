@@ -17,6 +17,9 @@ import { ProductModule } from './product/product.module';
 import { ProfileModule } from './profile/profile.module';
 import { PropertyController } from './property/property.controller';
 import { PropertyModule } from './property/property.module';
+import { UserSearch } from './search-filter/entities/user-search.entity';
+import { SearchFilterController } from './search-filter/search-filter.controller';
+import { SearchModule } from './search-filter/search-filter.module';
 
 @Module({
   imports: [
@@ -24,7 +27,7 @@ import { PropertyModule } from './property/property.module';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       autoLoadEntities: true,
-      entities: [Category, Product, User, FileEntity, Comment],
+      entities: [Category, Product, User, FileEntity, Comment, UserSearch],
       synchronize: true,
     }),
     AuthModule,
@@ -35,9 +38,15 @@ import { PropertyModule } from './property/property.module';
     ProfileModule,
     CommentsModule,
     LocationModule,
+    SearchModule,
   ],
 
-  controllers: [PropertyController, CategoryController, FileController],
+  controllers: [
+    PropertyController,
+    CategoryController,
+    FileController,
+    SearchFilterController,
+  ],
   providers: [AppService],
 })
 export class AppModule {}

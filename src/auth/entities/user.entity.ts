@@ -10,6 +10,7 @@ import { Comment } from './../../comments/entities/comments.entity';
 import { Like } from './../../like/entities/like.entity';
 import { Product } from './../../product/entities/product.entity';
 import { Profile } from './../../profile/enities/profile.entity';
+import { UserSearch } from './../../search-filter/entities/user-search.entity';
 
 @Entity()
 export class User {
@@ -35,4 +36,7 @@ export class User {
 
   @OneToMany(() => Like, (like) => like.user, { cascade: true })
   likes: Like[];
+
+  @OneToMany(() => UserSearch, (search) => search.user)
+  searches: UserSearch[];
 }
