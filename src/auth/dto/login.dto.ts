@@ -5,13 +5,9 @@ export class LoginDto {
   @ApiProperty({ example: '+998901234567' })
   @IsPhoneNumber('UZ')
   @IsNotEmpty()
-  phone: string;
-
-  @ApiProperty({ example: 'admin' })
-  @IsOptional()
-  username?: string;
+  readonly phone: string;
 
   @ApiProperty({ example: '1' })
   @IsOptional()
-  password?: string;
+  readonly password?: string;
 }

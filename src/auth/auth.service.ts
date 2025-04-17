@@ -1,9 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
-import { OtpService } from './fake-otp.service'; // Import your OTP service
+import { OtpService } from './fake-otp.service';
 
 interface VerificationResult {
   success: boolean;
@@ -17,15 +25,16 @@ interface VerificationResult {
 export class AuthService {
   private readonly temporaryOtps: Record<
     string,
-    { code: string; expiresAt: Date }
-  > = {}; // In-memory storage for OTPs (replace with a database in production)
-  private readonly otpExpiryTimeMs = 5 * 60 * 1000; // 5 minutes
+    { code: string; expiresAt: Date; isVerified: boolean } // isVerified holatini qo'shdik
+  > = {};
+  private readonly otpExpiryTimeMs = 5 * 60 * 1000;
+  private readonly saltRounds = 10;
 
   constructor(
     @InjectRepository(User)
     private userRepo: Repository<User>,
     private jwtService: JwtService,
-    private readonly otpService: OtpService, // Inject your OTP service
+    private readonly otpService: OtpService,
   ) {}
 
   async findByPhone(phone: string): Promise<User | null> {
@@ -48,10 +57,9 @@ export class AuthService {
   }
 
   async sendOtp(phone: string): Promise<void> {
-    const otpCode = await this.otpService.sendOtp(phone); // Assuming this returns a Promise with the generated OTP
+    const otpCode = await this.otpService.sendOtp(phone);
     const expiresAt = new Date(Date.now() + this.otpExpiryTimeMs);
-    this.temporaryOtps[phone] = { code: otpCode, expiresAt };
-    // In a real application, you would also send the SMS here
+    this.temporaryOtps[phone] = { code: otpCode, expiresAt, isVerified: false }; // isVerified ni false qilib saqlaymiz
     console.log(`Simulated OTP sent to ${phone}: ${otpCode}`);
   }
 
@@ -72,43 +80,90 @@ export class AuthService {
       };
     }
 
+    this.temporaryOtps[phone].isVerified = true; // OTP muvaffaqiyatli tekshirildi
+
     const existingUser = await this.findByPhone(phone);
-    if (existingUser) {
+    if (existingUser && existingUser.password) {
       return {
         success: false,
-        message: 'Bu raqam allaqachon ro‘yxatdan o‘tgan.',
+        message:
+          'Bu raqam allaqachon ro‘yxatdan o‘tgan va parol o‘rnatilgan. Iltimos, login qiling.',
+      };
+    } else if (existingUser) {
+      return {
+        success: true,
+        message: 'OTP tasdiqlandi. Parol o‘rnatishingiz mumkin.',
+        user: existingUser, // Parol o'rnatish uchun user ni qaytaramiz
       };
     }
 
     const newUser = this.userRepo.create({ phone });
     const savedUser = await this.userRepo.save(newUser);
-    const tokens = await this.generateTokens(savedUser);
-
-    delete this.temporaryOtps[phone]; // Remove the used OTP
 
     return {
       success: true,
-      user: savedUser,
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
+      message: 'OTP tasdiqlandi. Parol o‘rnatishingiz mumkin.',
+      user: savedUser, // Parol o'rnatish uchun user ni qaytaramiz
     };
   }
 
-  async register(phone: string) {
-    let user = await this.userRepo.findOne({ where: { phone } });
-    if (!user) {
-      user = this.userRepo.create({ phone });
-      await this.userRepo.save(user);
+  async createPassword(
+    phone: string,
+    password: string,
+    confirmPassword: string,
+  ): Promise<{ user: User; accessToken: string; refreshToken: string }> {
+    const storedOtp = this.temporaryOtps[phone];
+
+    if (
+      !storedOtp ||
+      !storedOtp.isVerified ||
+      storedOtp.expiresAt < new Date()
+    ) {
+      throw new BadRequestException(
+        'Avval telefon raqamingizni tasdiqlang yoki OTP muddati tugagan.',
+      );
     }
+
+    if (password !== confirmPassword) {
+      throw new BadRequestException('Parollar mos kelishi kerak.');
+    }
+
+    const user = await this.findByPhone(phone);
+    if (!user) {
+      throw new NotFoundException('Foydalanuvchi topilmadi.');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, this.saltRounds);
+    user.password = hashedPassword;
+    await this.userRepo.save(user);
+
     const tokens = await this.generateTokens(user);
+
+    delete this.temporaryOtps[phone]; // Parol o'rnatilgandan keyin OTP ni o'chiramiz
+
     return { user, ...tokens };
   }
 
-  async loginWithPhone(phone: string) {
-    const user = await this.userRepo.findOne({ where: { phone } });
+  async loginWithPhoneAndPassword(
+    phone: string,
+    password: string,
+  ): Promise<{ user: User; accessToken: string; refreshToken: string }> {
+    const user = await this.findByPhone(phone);
     if (!user) {
-      throw new NotFoundException('Foydalanuvchi topilmadi');
+      throw new NotFoundException('Foydalanuvchi topilmadi.');
     }
+
+    if (!user.password) {
+      throw new BadRequestException(
+        'Parol o‘rnatilmagan. Ro‘yxatdan o‘tish yoki parolni tiklash uchun OTP dan foydalaning.',
+      );
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new BadRequestException('Noto‘g‘ri parol.');
+    }
+
     const tokens = await this.generateTokens(user);
     return { user, ...tokens };
   }
