@@ -56,11 +56,11 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async sendOtp(phone: string): Promise<void> {
+  async sendOtp(phone: string): Promise<{ otp: string }> {
     const otpCode = await this.otpService.sendOtp(phone);
     const expiresAt = new Date(Date.now() + this.otpExpiryTimeMs);
     this.temporaryOtps[phone] = { code: otpCode, expiresAt, isVerified: false }; // isVerified ni false qilib saqlaymiz
-    console.log(`Simulated OTP sent to ${phone}: ${otpCode}`);
+    return { otp: otpCode }; // OTP ni qaytaramiz
   }
 
   async verifyOtpAndRegister(

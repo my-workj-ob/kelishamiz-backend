@@ -110,15 +110,17 @@ export class AuthController {
     examples: {
       'application/json': {
         summary: 'SMS kod yuborildi',
-        value: { message: 'SMS kod yuborildi' },
+        value: { message: 'SMS kod yuborildi', code: 'XXXXXX' }, // Haqiqiy kod o'rniga 'XXXXXX' ko'rsatiladi
       },
     },
   })
   @ApiResponse({ status: 400, description: 'Noto‘g‘ri so‘rov' })
   @ApiBody({ type: SendOtpDto })
   async sendOtp(@Body() body: SendOtpDto) {
-    await this.authService.sendOtp(body.phone);
-    return { message: 'SMS kod yuborildi' };
+    const otpCode = await this.authService.sendOtp(body.phone);
+    console.log('otpCode: ', otpCode);
+
+    return { message: 'SMS kod yuborildi', code: otpCode };
   }
 
   @Post('verify-otp')

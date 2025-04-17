@@ -8,6 +8,6 @@ export class VerifyOtpDto {
 
   @ApiProperty({ example: '8888' })
   @IsNotEmpty()
-  @Length(4, 4)
+  @Length(6, 6)
   code: string;
 }
