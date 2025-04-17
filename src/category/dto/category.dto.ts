@@ -8,7 +8,6 @@ export class CreateCategoryDto {
   @ApiProperty({ example: 'img url' })
   @IsString()
   imageUrl: string;
-  // fix
   @ApiProperty({
     example: '1',
     description: 'Parent category ID',
