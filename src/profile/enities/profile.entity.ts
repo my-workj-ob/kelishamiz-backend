@@ -40,13 +40,13 @@ export class Profile {
   products?: Product[];
 
   @OneToMany(() => Comment, (comment) => comment.profile, { cascade: true })
-  comments: Comment[];
+  comments?: Comment[];
 
   @ManyToMany(() => Product, (product) => product.likes)
-  likedProducts: Product[];
+  likedProducts?: Product[];
 
   @OneToMany(() => Like, (like) => like.user, { cascade: true })
-  likes: Like[];
+  likes?: Like[];
 
   // Boshqa profilga oid maydonlar (rasm, bio va hokazo)
 }

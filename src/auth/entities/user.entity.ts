@@ -35,5 +35,4 @@ export class User {
 
   @OneToMany(() => Like, (like) => like.user, { cascade: true })
   likes: Like[];
-  // ... boshqa fieldlar
 }

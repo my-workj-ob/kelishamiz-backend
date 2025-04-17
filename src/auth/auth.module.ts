@@ -21,5 +21,6 @@ import { OtpService } from './fake-otp.service';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, OtpService, ProfileService],
+  exports: [AuthService],
 })
 export class AuthModule {}

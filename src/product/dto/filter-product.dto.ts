@@ -1,4 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsNumber,
@@ -110,4 +111,16 @@ export class GetProductsDto {
   @IsOptional()
   @IsBoolean()
   negotiable?: boolean;
+
+  @ApiPropertyOptional({ example: 8, description: 'Viloyat IDsi' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  regionId?: number;
+
+  @ApiPropertyOptional({ example: 27, description: 'Tuman IDsi' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  districtId?: number;
 }

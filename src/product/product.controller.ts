@@ -19,6 +19,7 @@ import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
 import { ProductDto } from './dto/create-product.dto';
@@ -31,65 +32,104 @@ import { ProductService } from './product.service';
 @Controller('products')
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
+
+  // 🔹 GET: All products
   @Get()
-  async findAll() {
+  @ApiOkResponse({
+    description: "Barcha mahsulotlar ro'yxati",
+    type: [Product],
+  })
+  @ApiOperation({ summary: 'barcha productlarni get qilish' })
+  async findAll(): Promise<Product[]> {
     return this.productService.findAll();
   }
 
   @UseGuards(AuthGuard('jwt'))
-  @ApiBearerAuth()
+  @Get('liked/:userId')
+  @ApiOperation({ summary: 'foydalnavchi yoqtirgan mahsulotlar' })
+  async getLikedProducts(@Param('userId') userId: number) {
+    return this.productService.getLikedProducts(userId);
+  }
+  // 🔹 GET: One product by ID
+  @Get(':id')
+  @ApiOkResponse({ description: "Mahsulot ma'lumotlari", type: Product })
+  @ApiBadRequestResponse({ description: 'Mahsulot topilmadi' })
+  @ApiOperation({ summary: 'id orqali get qilish' })
+  async findOne(@Param('id') id: string) {
+    return await this.productService.findOne(Number(id));
+  }
+
+  // 🔹 GET: Product like status
+  @Get(':id/like/status')
+  @ApiOkResponse({
+    description: 'Mahsulotning layk statusini olish',
+  })
+  @ApiOperation({ summary: 'user like status ' })
+  async getLikeStatus(
+    @Param('id') projectId: number,
+    @Query('userId') userId: number,
+  ): Promise<{ liked: boolean }> {
+    const liked = await this.productService.checkLikeStatus(projectId, userId);
+    return { liked };
+  }
+
+  // 🔸 POST: Create product
+  @UseGuards(AuthGuard('jwt'))
   @Post()
   @ApiCreatedResponse({
     description: 'Mahsulot muvaffaqiyatli yaratildi',
     type: Product,
   })
   @ApiBadRequestResponse({ description: "Yaroqsiz ma'lumotlar kiritildi" })
+  @ApiOperation({ summary: "mahsulot qo'shish" })
   @UsePipes(new ValidationPipe())
   async create(
     @Body() createProductDto: ProductDto,
-    @Req() req,
+    @Req() req: any,
   ): Promise<Product> {
     return this.productService.create(createProductDto, req?.user?.userId);
   }
 
-  @Post('filter')
-  @ApiBearerAuth()
+  // 🔸 POST: Filter products
   @UseGuards(AuthGuard('jwt'))
+  @Post('filter')
   @ApiOkResponse({
     description: "Filtrlangan mahsulotlar ro'yxati",
     type: [Product],
   })
   @ApiBadRequestResponse({ description: "Yaroqsiz filtrlash ma'lumotlari" })
+  @ApiOperation({ summary: 'filterlash' })
   @UsePipes(new ValidationPipe())
   async getProducts(
     @Body() filters: GetProductsDto,
     @Req() req: any,
   ): Promise<Product[]> {
     const userId = filters.ownProduct ? req?.user?.userId : undefined;
-
     return this.productService.filter(filters, userId);
   }
 
+  // 🔸 POST: Toggle like
   @UseGuards(AuthGuard('jwt'))
   @Post(':id/like')
-  async toggleLike(@Param('id') id: number, @Req() req) {
-    const userId = req.user.userId;
+  @ApiOkResponse({
+    description: "Mahsulotga layk qo'shish/olib tashlash natijasi",
+  })
+  @ApiBadRequestResponse({ description: 'Mahsulot topilmadi' })
+  @ApiOperation({
+    summary: "Mahsulotga layk qo'shish/olib tashlash  ya'ni toggle",
+  })
+  async toggleLike(
+    @Param('id') id: number,
+    @Req() req: any,
+  ): Promise<{ liked: boolean; likesCount: number }> {
+    const userId = req?.user?.userId;
     const isLiked = await this.productService.toggleLike(Number(id), userId);
 
     const project = await this.productService.findOne(Number(id));
     if (!project) {
-      throw new NotFoundException('Product not found'); // ✅ Xatolikni oldini olish
+      throw new NotFoundException('Product not found');
     }
 
     return { liked: isLiked, likesCount: project.likesCount };
-  }
-
-  @Get(':id/like/status')
-  async getLikeStatus(
-    @Param('id') projectId: number,
-    @Query('userId') userId: number,
-  ) {
-    const liked = await this.productService.checkLikeStatus(projectId, userId);
-    return { liked };
   }
 }

@@ -7,12 +7,16 @@ import {
   JoinTable,
   ManyToMany,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from './../../auth/entities/user.entity';
 import { Category } from './../../category/entities/category.entity';
 import { Property } from './../../category/entities/property.entity';
+import { Comment } from './../../comments/entities/comments.entity';
+import { District } from './../../location/entities/district.entity';
+import { Region } from './../../location/entities/region.entity';
 import { Profile } from './../../profile/enities/profile.entity';
 
 @Entity()
@@ -25,6 +29,8 @@ export class Product {
   @Column()
   title: string;
 
+  @OneToMany(() => Comment, (comment) => comment.profile, { cascade: true })
+  comments?: Comment[];
   @ApiProperty({
     example: "Eng so'nggi iPhone modeli...",
     description: 'Mahsulotning batafsil tavsifi',
@@ -121,6 +127,19 @@ export class Product {
   @JoinTable()
   likes: User[];
 
+  @ManyToOne(() => Region, (region) => region.products, { eager: true })
+  @JoinColumn({ name: 'regionId' })
+  region: Region;
+
+  @Column({ nullable: true })
+  regionId: number;
+
+  @ManyToOne(() => District, (district) => district.products, { eager: true })
+  @JoinColumn({ name: 'districtId' })
+  district: District;
+
+  @Column({ nullable: true })
+  districtId: number;
   @UpdateDateColumn({
     type: 'timestamp with time zone',
     default: () => 'CURRENT_TIMESTAMP',

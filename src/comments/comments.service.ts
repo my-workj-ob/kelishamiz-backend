@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { User } from './../auth/entities/user.entity';
 import { Like } from './../like/entities/like.entity';
+import { Product } from './../product/entities/product.entity';
 import { Comment } from './entities/comments.entity';
 
 @Injectable()
@@ -21,6 +22,9 @@ export class CommentService {
     private likeRepository: Repository<Like>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+
+    @InjectRepository(Product)
+    private productRepository: Repository<Product>,
   ) {}
 
   async getComments(
@@ -102,7 +106,7 @@ export class CommentService {
           throw new NotFoundException('Parent comment not found');
       }
 
-      const commentId = this.commentRepository.create({
+      const comment = this.commentRepository.create({
         user,
         entityId,
         entityType,
@@ -111,7 +115,18 @@ export class CommentService {
         parentComment: parentComment || undefined,
       });
 
-      return await this.commentRepository.save(commentId);
+      const savedComment = await this.commentRepository.save(comment);
+
+      // 👉 Agar entityType "product" bo'lsa, commentsCount ni oshiramiz
+      if (entityType === 'product') {
+        await this.productRepository.increment(
+          { id: entityId },
+          'commentsCount',
+          1,
+        );
+      }
+
+      return savedComment;
     } catch (error) {
       throw new InternalServerErrorException(
         `Error occurred while creating comment: ${error.message}`,

@@ -22,7 +22,20 @@ import { Category } from './entities/category.entity';
 @Controller('category')
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Yangi kategoriya yaratish' })
+  @ApiOkResponse({ description: 'Kategoriya yaratildi', type: Category })
+  @ApiBadRequestResponse({ description: "Yaroqsiz so'rov ma'lumotlari" })
+  create(@Body() createCategoryDto: CreateCategoryDto): Promise<Category> {
+    return this.categoryService.create(createCategoryDto);
+  }
+
   @Get()
+  @ApiOperation({
+    summary:
+      "Barcha kategoriyalarni olish yoki ota kategoriya bo'yicha filtrlash",
+  })
   @ApiOkResponse({ description: "Kategoriyalar ro'yxati", type: [Category] })
   @ApiBadRequestResponse({ description: "Yaroqsiz so'rov" })
   @ApiQuery({
@@ -36,18 +49,14 @@ export class CategoryController {
     return this.categoryService.findAll(parentId);
   }
 
-  @Post()
-  @ApiOperation({ summary: 'Kategoriya yaratish' })
-  create(@Body() createCategoryDto: CreateCategoryDto) {
-    return this.categoryService.create(createCategoryDto);
-  }
-
   @Get(':id')
   @ApiOperation({ summary: 'Kategoriya ID orqali olish' })
-  async findOne(@Param('id') id: string) {
+  @ApiOkResponse({ description: "Kategoriya ma'lumotlari", type: Category })
+  @ApiBadRequestResponse({ description: 'Kategoriya topilmadi' })
+  async findOne(@Param('id') id: string): Promise<Category> {
     const existCategory = await this.categoryService.findOne(Number(id));
-    if (existCategory === null || undefined) {
-      throw new NotFoundException('error');
+    if (!existCategory) {
+      throw new NotFoundException(`Kategoriya ${id} bilan topilmadi`);
     }
     return existCategory;
   }

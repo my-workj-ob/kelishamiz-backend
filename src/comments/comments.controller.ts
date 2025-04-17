@@ -50,8 +50,6 @@ export class CommentController {
     description: 'Xato: Ma’lumotlar noto‘g‘ri yuborilgan.',
   })
   createComment(@Req() req: RequestWithUser, @Body() body: CreateCommentDto) {
-    console.log('user create :', req.user);
-
     return this.commentService.createComment(
       req.user,
       body.entityId,
@@ -69,7 +67,7 @@ export class CommentController {
 
   @UseGuards(AuthGuard('jwt'))
   @Post(':id/like')
-  //
+  @ApiOperation({ summary: "commentga like qo'shish" })
   likeComment(@Param('id') id: number, @Req() req) {
     const userId = req.user.userId;
     return this.commentService.likeComment(id, userId);

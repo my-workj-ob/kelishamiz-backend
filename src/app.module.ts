@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { User } from './auth/entities/user.entity';
@@ -12,6 +11,7 @@ import { Comment } from './comments/entities/comments.entity';
 import { FileEntity } from './file/entities/file.entity';
 import { FileController } from './file/file.controller';
 import { FileModule } from './file/file.module';
+import { LocationModule } from './location/location.module';
 import { Product } from './product/entities/product.entity';
 import { ProductModule } from './product/product.module';
 import { ProfileModule } from './profile/profile.module';
@@ -34,14 +34,10 @@ import { PropertyModule } from './property/property.module';
     FileModule,
     ProfileModule,
     CommentsModule,
+    LocationModule,
   ],
 
-  controllers: [
-    AppController,
-    PropertyController,
-    CategoryController,
-    FileController,
-  ],
+  controllers: [PropertyController, CategoryController, FileController],
   providers: [AppService],
 })
 export class AppModule {}

@@ -43,7 +43,27 @@ export class ProductService {
   async findOne(id: number): Promise<Product | null> {
     return this.productRepository.findOne({
       where: { id },
+      relations: ['profile'],
     });
+  }
+  async getLikedProducts(userId: number): Promise<Product[]> {
+    // Foydalanuvchi mavjudligini tekshirib ko‘ramiz
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Foydalanuvchining like bosgan mahsulotlarini olish
+    const likedProducts = await this.productRepository.find({
+      where: {
+        likes: {
+          id: userId, // Foydalanuvchiga like bosgan mahsulotlar
+        },
+      },
+      relations: ['likes'], // 'likes' orqali aloqani olish
+    });
+
+    return likedProducts;
   }
 
   async toggleLike(projectId: number, userId: number): Promise<boolean> {
@@ -84,6 +104,7 @@ export class ProductService {
       where: { id: projectId },
       relations: ['likes'],
     });
+    console.log(project);
 
     console.log(project?.likes);
 
@@ -171,6 +192,29 @@ export class ProductService {
     // Kelishish mumkinligi bo'yicha filtrlash
     if (filters.negotiable !== undefined) {
       where.negotiable = filters.negotiable;
+    }
+    // Tuman bo‘yicha filter
+    if (filters.districtId) {
+      where['district'] = { id: filters.districtId };
+    }
+
+    // Viloyat bo‘yicha filter
+    if (filters.regionId) {
+      where['district'] = {
+        region: { id: filters.regionId },
+      };
+    }
+    if (filters.regionId && filters.districtId) {
+      where['district'] = {
+        id: filters.districtId,
+        region: { id: filters.regionId },
+      };
+    } else if (filters.regionId) {
+      where['district'] = {
+        region: { id: filters.regionId },
+      };
+    } else if (filters.districtId) {
+      where['district'] = { id: filters.districtId };
     }
 
     // Tartiblash (Sorting)
