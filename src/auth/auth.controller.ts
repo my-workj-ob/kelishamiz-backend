@@ -17,12 +17,12 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateProfileDto } from './../profile/dto/create-profile.dto';
+import { Profile } from './../profile/enities/profile.entity';
 import { ProfileService } from './../profile/profile.service';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
-import { User } from './entities/user.entity';
 import { OtpService } from './fake-otp.service';
 
 @ApiTags('Auth')
@@ -32,8 +32,8 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly otpService: OtpService,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    @InjectRepository(Profile)
+    private readonly profileRepo: Repository<Profile>,
     private readonly profileService: ProfileService,
   ) {}
   // Faqat OTP yuborish (register oldidan)
@@ -42,11 +42,11 @@ export class AuthController {
   async getMe(@Request() req: any) {
     const existUser = req.user;
 
-    const profile = await this.userRepo.findOne({
-      where: { id: req.sub },
-      relations: ['profile', 'comments', 'likes'],
+    const profile = await this.profileRepo.findOne({
+      where: {
+        userId: req.user.userId,
+      },
     });
-    console.log(profile);
 
     if (!existUser) {
       throw new NotFoundException('user');

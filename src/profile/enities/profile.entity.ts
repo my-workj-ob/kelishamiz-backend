@@ -35,6 +35,8 @@ export class Profile {
   @OneToOne(() => User, (user) => user.profile, { onDelete: 'CASCADE' })
   @JoinColumn()
   user?: User;
+  @Column({ nullable: true })
+  userId: number;
 
   @OneToMany(() => Product, (product) => product.profile)
   products?: Product[];
