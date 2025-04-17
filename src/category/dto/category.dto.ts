@@ -5,6 +5,9 @@ export class CreateCategoryDto {
   @ApiProperty({ example: 'Electronics' })
   @IsString()
   name: string;
+  @ApiProperty({ example: 'img url' })
+  @IsString()
+  imageUrl: string;
 
   @ApiProperty({
     example: '1',
