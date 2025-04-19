@@ -39,4 +39,6 @@ export class User {
 
   @OneToMany(() => UserSearch, (search) => search.user)
   searches: UserSearch[];
+  @Column({ nullable: true })
+  location: string; // Mana bu qatorni qo'shing
 }

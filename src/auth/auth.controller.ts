@@ -3,7 +3,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
-  BadRequestException,
   Body,
   ConflictException,
   Controller,
@@ -30,20 +29,11 @@ import { Repository } from 'typeorm';
 import { Profile } from '../profile/enities/profile.entity';
 import { ProfileService } from '../profile/profile.service';
 import { AuthService } from './auth.service';
-import { CreatePasswordDto } from './dto/create-password.dto';
-import { LoginWithPhoneAndPasswordDto } from './dto/login-with-phone-and-password.dto';
+
+import { CreateAccountDto } from './dto/create-account.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
-import { User } from './entities/user.entity';
 import { OtpService } from './fake-otp.service';
-
-interface VerificationResult {
-  success: boolean;
-  message?: string;
-  user?: User;
-  accessToken?: string;
-  refreshToken?: string;
-}
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -79,6 +69,7 @@ export class AuthController {
         id: { type: 'number', example: 1 },
         phone: { type: 'string', example: '+998901234567' },
         username: { type: 'string', example: 'user123' },
+        location: { type: 'string', example: 'Toshkent' },
         // ... other user properties
       },
     },
@@ -86,20 +77,21 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Avtorizatsiya talab qilinadi' })
   @ApiResponse({ status: 404, description: 'Foydalanuvchi topilmadi' })
   async getMe(@Request() req: any) {
-    const existUser = req.user;
+    const existUser = await this.authService.findById(req.user.sub);
 
     const profile = await this.profileRepo.findOne({
       where: {
-        userId: req.user.userId,
+        userId: req.user.sub,
       },
     });
 
     if (!existUser) {
-      throw new NotFoundException('user');
+      throw new NotFoundException('Foydalanuvchi topilmadi');
     }
+    const { profile: existingProfile, ...restOfUser } = existUser;
     return {
       profile,
-      ...existUser,
+      ...restOfUser,
     };
   }
   @UseInterceptors()
@@ -130,7 +122,7 @@ export class AuthController {
   @ApiOperation({ summary: 'OTP ni tekshirish' })
   @ApiResponse({
     status: 200,
-    description: 'OTP tekshirildi, parol o‘rnatishingiz mumkin',
+    description: 'OTP tekshirildi',
     schema: {
       type: 'object',
       properties: {
@@ -138,27 +130,13 @@ export class AuthController {
         message: {
           type: 'string',
           nullable: true,
-          example: 'OTP tasdiqlandi. Parol o‘rnatishingiz mumkin.',
-        },
-        user: { $ref: '#/components/schemas/User', nullable: true },
-        accessToken: {
-          type: 'string',
-          nullable: true,
-          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-        },
-        refreshToken: {
-          type: 'string',
-          nullable: true,
-          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          example: 'OTP tasdiqlandi.',
         },
       },
     },
     example: {
       success: true,
-      message: 'OTP tasdiqlandi. Parol o‘rnatishingiz mumkin.',
-      user: { id: 1, phone: '+998901234567', username: null },
-      accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-      refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+      message: 'OTP tasdiqlandi.',
     },
   })
   @ApiResponse({ status: 400, description: 'Noto‘g‘ri so‘rov' })
@@ -175,38 +153,25 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({
-    status: 409,
-    description: 'Bu raqam allaqachon ro‘yxatdan o‘tgan va parol o‘rnatilgan',
-    examples: {
-      'application/json': {
-        summary: 'Bu raqam allaqachon ro‘yxatdan o‘tgan',
-        value: {
-          success: false,
-          message:
-            'Bu raqam allaqachon ro‘yxatdan o‘tgan va parol o‘rnatilgan. Iltimos, login qiling.',
-        },
-      },
-    },
-  })
-  async verifyOtp(@Body() body: VerifyOtpDto): Promise<VerificationResult> {
-    return await this.authService.verifyOtpAndRegister(body.phone, body.code);
+  async verifyOtp(
+    @Body() body: VerifyOtpDto,
+  ): Promise<{ success: boolean; message?: string }> {
+    return await this.authService.verifyOtp(body.phone, body.code);
   }
 
-  @Post('create-password')
+  @Post('create-account')
   @ApiOperation({
-    summary:
-      'Yangi parol yaratish va profil yaratish (faqat OTP tasdiqlangandan keyin)',
+    summary: 'Yangi akkaunt yaratish (faqat OTP tasdiqlangandan keyin)',
   })
   @ApiResponse({
     status: 201,
-    description: 'Parol muvaffaqiyatli o‘rnatildi!',
+    description: 'Akkaunt muvaffaqiyatli yaratildi!',
     schema: {
       type: 'object',
       properties: {
         message: {
           type: 'string',
-          example: 'Parol muvaffaqiyatli o‘rnatildi!',
+          example: 'Akkaunt muvaffaqiyatli yaratildi!',
         },
         user: { $ref: '#/components/schemas/User' },
         accessToken: {
@@ -220,12 +185,12 @@ export class AuthController {
       },
     },
     example: {
-      message: 'Parol muvaffaqiyatli o‘rnatildi!',
+      message: 'Akkaunt muvaffaqiyatli yaratildi!',
       user: {
         id: 1,
         phone: '+998901234567',
-        username: null,
-        password: 'hashedPassword',
+        username: 'newuser',
+        location: 'Toshkent',
       },
       accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
       refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
@@ -233,14 +198,9 @@ export class AuthController {
   })
   @ApiResponse({
     status: 400,
-    description:
-      'Noto‘g‘ri so‘rov, parollar mos kelmadi yoki OTP tasdiqlanmagan',
+    description: 'Noto‘g‘ri so‘rov yoki OTP tasdiqlanmagan',
     examples: {
       'application/json': {
-        summary: 'Parollar mos kelishi kerak',
-        value: { message: 'Parollar mos kelishi kerak.' },
-      },
-      'application/json_2': {
         summary: 'OTP tasdiqlanmagan yoki muddati tugagan',
         value: {
           message:
@@ -249,26 +209,24 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 404, description: 'Foydalanuvchi topilmadi' })
-  @ApiBody({ type: CreatePasswordDto })
-  async createPassword(@Body() body: CreatePasswordDto, @Request() req: any) {
+  @ApiResponse({
+    status: 409,
+    description: 'Bu telefon raqam allaqachon ro‘yxatdan o‘tgan',
+  })
+  @ApiBody({ type: CreateAccountDto })
+  async createAccount(@Body() body: CreateAccountDto, @Request() req: any) {
     const { user, accessToken, refreshToken } =
-      await this.authService.createPassword(
+      await this.authService.createAccount(
         body.phone,
-        body.password,
-        body.confirmPassword,
+        body.username,
+        body.location,
       );
 
-    const existingProfile = await this.profileRepo.findOne({
-      where: { userId: user.id },
-    });
-    if (!existingProfile) {
-      const createProfileDto = { phoneNumber: user.phone };
-      await this.profileService.create(createProfileDto, user);
-    }
+    const createProfileDto = { phoneNumber: user.phone };
+    await this.profileService.create(createProfileDto, user);
 
     return {
-      message: 'Parol muvaffaqiyatli o‘rnatildi!',
+      message: 'Akkaunt muvaffaqiyatli yaratildi!',
       user,
       accessToken,
       refreshToken,
@@ -277,13 +235,15 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  @ApiOperation({ summary: 'Telefon raqami va parol orqali tizimga kirish' })
+  @ApiOperation({ summary: 'Telefon raqami orqali tizimga kirish (OTP bilan)' })
   @ApiResponse({
     status: 200,
     description: 'Muvaffaqiyatli login',
     schema: {
       type: 'object',
       properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Muvaffaqiyatli login!' },
         user: { $ref: '#/components/schemas/User' },
         accessToken: {
           type: 'string',
@@ -296,11 +256,13 @@ export class AuthController {
       },
     },
     example: {
+      success: true,
+      message: 'Muvaffaqiyatli login!',
       user: {
         id: 1,
         phone: '+998901234567',
-        username: 'user123',
-        password: 'hashedPassword',
+        username: 'existinguser',
+        location: 'Samarqand',
       },
       accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
       refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
@@ -308,41 +270,97 @@ export class AuthController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Noto‘g‘ri so‘rov, parol noto‘g‘ri yoki parol o‘rnatilmagan',
+    description: 'Noto‘g‘ri so‘rov yoki OTP tasdiqlanmagan',
     examples: {
       'application/json': {
-        summary: 'Noto‘g‘ri parol',
-        value: { message: 'Noto‘g‘ri parol.' },
-      },
-      'application/json_2': {
-        summary: 'Parol o‘rnatilmagan',
+        summary: 'OTP tasdiqlanmagan yoki muddati tugagan',
         value: {
-          message:
-            'Parol o‘rnatilmagan. Ro‘yxatdan o‘tish yoki parolni tiklash uchun OTP dan foydalaning.',
+          success: false,
+          message: 'SMS kod noto‘g‘ri yoki muddati tugagan.',
         },
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'Telefon raqami topilmadi' })
-  @ApiBody({ type: LoginWithPhoneAndPasswordDto })
-  async login(@Body() body: LoginWithPhoneAndPasswordDto) {
-    try {
-      const { user, accessToken, refreshToken } =
-        await this.authService.loginWithPhoneAndPassword(
-          body.phone,
-          body.password,
-        );
-      return { user, accessToken, refreshToken };
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw new UnauthorizedException('Telefon raqami topilmadi.');
-      } else if (
-        error instanceof UnauthorizedException ||
-        error instanceof BadRequestException
-      ) {
-        throw error;
-      }
-      throw error;
+  @ApiResponse({ status: 404, description: 'Foydalanuvchi topilmadi' })
+  @ApiBody({ type: SendOtpDto }) // Login uchun ham OTP so'rash
+  async login(@Body() body: SendOtpDto) {
+    const existingUser = await this.authService.findByPhone(body.phone);
+    if (!existingUser) {
+      throw new NotFoundException('Foydalanuvchi topilmadi.');
     }
+
+    // Login uchun OTP yuboramiz
+    const { otp } = await this.authService.sendOtp(body.phone);
+    return { success: true, message: 'SMS kod yuborildi.', otp };
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('login/verify-otp')
+  @ApiOperation({ summary: 'Login uchun OTP ni tekshirish va token olish' })
+  @ApiResponse({
+    status: 200,
+    description: 'Muvaffaqiyatli login',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Muvaffaqiyatli login!' },
+        user: { $ref: '#/components/schemas/User' },
+        accessToken: {
+          type: 'string',
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        },
+        refreshToken: {
+          type: 'string',
+          example: 'eyJhbGciOiJIUzI1NiIsInRtycCI6IkpXVCJ9...',
+        },
+      },
+    },
+    example: {
+      success: true,
+      message: 'Muvaffaqiyatli login!',
+      user: {
+        id: 1,
+        phone: '+998901234567',
+        username: 'existinguser',
+        location: 'Samarqand',
+      },
+      accessToken: 'eyJhbGciOiJIUzI1NiIsInRtycCI6IkpXVCJ9...',
+      refreshToken: 'eyJhbGciOiJIUzI1NiIsInRtycCI6IkpXVCJ9...',
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Noto‘g‘ri so‘rov yoki OTP tasdiqlanmagan',
+    examples: {
+      'application/json': {
+        summary: 'OTP tasdiqlanmagan yoki muddati tugagan',
+        value: {
+          success: false,
+          message: 'SMS kod noto‘g‘ri yoki muddati tugagan.',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Foydalanuvchi topilmadi' })
+  @ApiBody({ type: VerifyOtpDto })
+  async loginVerifyOtp(@Body() body: VerifyOtpDto) {
+    const result = await this.authService.verifyOtp(body.phone, body.code);
+    if (!result.success) {
+      throw new UnauthorizedException(result.message);
+    }
+
+    const loginResult = await this.authService.loginWithOtp(body.phone);
+    if (!loginResult.success) {
+      throw new NotFoundException(loginResult.message);
+    }
+
+    return {
+      success: true,
+      message: 'Muvaffaqiyatli login!',
+      user: loginResult.user,
+      accessToken: loginResult.accessToken,
+      refreshToken: loginResult.refreshToken,
+    };
   }
 }
