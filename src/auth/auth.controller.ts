@@ -5,6 +5,7 @@
 import {
   BadRequestException,
   Body,
+  ConflictException,
   Controller,
   Get,
   HttpCode,
@@ -14,6 +15,7 @@ import {
   Request,
   UnauthorizedException,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import {
@@ -100,29 +102,30 @@ export class AuthController {
       ...existUser,
     };
   }
-
+  @UseInterceptors()
   @HttpCode(HttpStatus.OK)
   @Post('send-otp')
   @ApiOperation({ summary: 'Telefon raqamga OTP jo‘natish' })
   @ApiResponse({
     status: 200,
     description: 'SMS kod yuborildi',
-    examples: {
-      'application/json': {
-        summary: 'SMS kod yuborildi',
-        value: { message: 'SMS kod yuborildi', code: 'XXXXXX' }, // Haqiqiy kod o'rniga 'XXXXXX' ko'rsatiladi
-      },
-    },
   })
-  @ApiResponse({ status: 400, description: 'Noto‘g‘ri so‘rov' })
+  @ApiResponse({
+    status: 409,
+    description: 'Telefon raqam allaqachon ro‘yxatdan o‘tgan',
+  })
   @ApiBody({ type: SendOtpDto })
   async sendOtp(@Body() body: SendOtpDto) {
+    const existingUser = await this.authService.findByPhone(body.phone);
+    if (existingUser) {
+      throw new ConflictException(
+        'Bu telefon raqam allaqachon ro‘yxatdan o‘tgan.',
+      );
+    }
+
     const code = await this.authService.sendOtp(body.phone);
-    console.log('otpCode: ', code);
-
-    return { message: 'SMS kod yuborildi', ...code };
+    return { success: true, message: 'SMS kod yuborildi', code: code.otp };
   }
-
   @Post('verify-otp')
   @ApiOperation({ summary: 'OTP ni tekshirish' })
   @ApiResponse({
