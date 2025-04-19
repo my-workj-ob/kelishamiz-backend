@@ -66,8 +66,8 @@ export class AuthService {
 
     const otpCode = await this.otpService.sendOtp(phone);
     const expiresAt = new Date(Date.now() + this.otpExpiryTimeMs);
-    this.temporaryOtps[phone] = { code: otpCode, expiresAt, isVerified: false }; // isVerified ni false qilib saqlaymiz
-    return { otp: otpCode }; // OTP ni qaytaramiz
+    this.temporaryOtps[phone] = { code: otpCode, expiresAt, isVerified: false };
+    return { otp: otpCode };
   }
 
   async verifyOtpAndRegister(

@@ -117,10 +117,10 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Noto‘g‘ri so‘rov' })
   @ApiBody({ type: SendOtpDto })
   async sendOtp(@Body() body: SendOtpDto) {
-    const otpCode = await this.authService.sendOtp(body.phone);
-    console.log('otpCode: ', otpCode);
+    const code = await this.authService.sendOtp(body.phone);
+    console.log('otpCode: ', code);
 
-    return { message: 'SMS kod yuborildi', code: otpCode };
+    return { message: 'SMS kod yuborildi', ...code };
   }
 
   @Post('verify-otp')
