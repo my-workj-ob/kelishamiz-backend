@@ -13,11 +13,13 @@ import {
 } from 'typeorm';
 import { User } from './../../auth/entities/user.entity';
 import { Category } from './../../category/entities/category.entity';
-import { Property } from './../../category/entities/property.entity';
 import { Comment } from './../../comments/entities/comments.entity';
 import { District } from './../../location/entities/district.entity';
 import { Region } from './../../location/entities/region.entity';
 import { Profile } from './../../profile/enities/profile.entity';
+import { ProductProperty } from './product-property-entity';
+
+// ...
 
 @Entity()
 export class Product {
@@ -31,6 +33,7 @@ export class Product {
 
   @OneToMany(() => Comment, (comment) => comment.profile, { cascade: true })
   comments?: Comment[];
+
   @ApiProperty({
     example: "Eng so'nggi iPhone modeli...",
     description: 'Mahsulotning batafsil tavsifi',
@@ -41,6 +44,21 @@ export class Product {
   @ApiProperty({ example: 1299.99, description: 'Mahsulot narxi' })
   @Column('decimal', { precision: 10, scale: 2 })
   price: number;
+
+  // ✅ Yangi maydonlar: minPrice va maxPrice
+  @ApiProperty({
+    example: 1200.0,
+    description: 'Minimal narx (agar mavjud bo‘lsa)',
+  })
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  minPrice: number;
+
+  @ApiProperty({
+    example: 1400.0,
+    description: 'Maksimal narx (agar mavjud bo‘lsa)',
+  })
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  maxPrice: number;
 
   @ManyToOne(() => Profile, (profile) => profile.products, {
     onDelete: 'CASCADE',
@@ -87,26 +105,12 @@ export class Product {
   @Column()
   location: string;
 
-  @ApiProperty({
-    type: () => [Property],
-    description: 'Mahsulotning xususiyatlari',
-    required: false,
-  })
-  @ManyToMany(() => Property)
-  @JoinTable({
-    name: 'product_properties',
-    joinColumn: { name: 'productId', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'propertyId', referencedColumnName: 'id' },
-  })
-  properties: Property[];
-
-  @ApiProperty({
-    example: { Color: 'Qora', Memory: '256 GB' },
-    description: 'Mahsulot xususiyatlarining qiymatlari',
-    required: false,
-  })
-  @Column('jsonb', { nullable: true })
-  propertyValues: Record<string, any>;
+  @OneToMany(
+    () => ProductProperty,
+    (productProperty) => productProperty.product,
+    { cascade: true },
+  )
+  productProperties: ProductProperty[];
 
   @Column()
   paymentType: string;
@@ -140,11 +144,14 @@ export class Product {
 
   @Column({ nullable: true })
   districtId: number;
+  @Column({ default: false })
+  ownProduct: boolean;
+
   @UpdateDateColumn({
     type: 'timestamp with time zone',
     default: () => 'CURRENT_TIMESTAMP',
     onUpdate: 'CURRENT_TIMESTAMP',
-  }) // Avtomatik ravishda yangilanish vaqtini qo'yadi
+  })
   updatedAt: Date;
 
   @ApiProperty({

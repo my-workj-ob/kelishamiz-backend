@@ -6,6 +6,7 @@ import { Property } from './../category/entities/property.entity';
 import { Profile } from './../profile/enities/profile.entity';
 import { UserSearch } from './../search-filter/entities/user-search.entity';
 import { SearchService } from './../search-filter/search-filter.service';
+import { ProductProperty } from './entities/product-property-entity';
 import { Product } from './entities/product.entity';
 import { ProductController } from './product.controller';
 import { ProductService } from './product.service';
@@ -19,6 +20,7 @@ import { ProductService } from './product.service';
       Category,
       Property,
       UserSearch,
+      ProductProperty,
     ]),
   ],
   exports: [ProductService],

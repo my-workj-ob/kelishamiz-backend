@@ -23,6 +23,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { User } from './../auth/entities/user.entity';
+import { JwtOptionalAuthGuard } from './../common/jwt/guards/jwt-optional-auth.guard';
 import { SearchService } from './../search-filter/search-filter.service';
 import { ProductDto } from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
@@ -49,7 +50,7 @@ export class ProductController {
     return this.productService.findAll();
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(JwtOptionalAuthGuard)
   @Get('liked/:userId')
   @ApiOperation({ summary: 'foydalnavchi yoqtirgan mahsulotlar' })
   async getLikedProducts(@Param('userId') userId: number) {
@@ -96,7 +97,7 @@ export class ProductController {
   }
 
   // 🔸 POST: Filter products
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(JwtOptionalAuthGuard)
   @Post('filter')
   @ApiOkResponse({
     description: "Filtrlangan mahsulotlar ro'yxati",
@@ -109,17 +110,16 @@ export class ProductController {
     @Body() filters: GetProductsDto,
     @Req() req: any,
   ): Promise<Product[]> {
-    const userId = filters.ownProduct ? req?.user?.userId : undefined;
+    const userId =
+      filters.ownProduct && req?.user?.userId ? req.user.userId : undefined;
 
     if (req?.user?.userId && filters.title && filters.title.trim() !== '') {
-      // Qo'shimcha tekshiruv
       const user = req.user as User;
       await this.searchService.saveSearch(user, filters.title.trim());
     }
 
     return this.productService.filter(filters, userId);
   }
-
   // 🔸 POST: Toggle like
   @UseGuards(AuthGuard('jwt'))
   @Post(':id/like')

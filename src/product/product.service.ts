@@ -1,23 +1,19 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import {
-  Between,
-  FindManyOptions,
-  ILike,
-  In,
-  LessThanOrEqual,
-  MoreThanOrEqual,
-  Repository,
-} from 'typeorm';
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { EntityNotFoundError, Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
 import { Category } from '../category/entities/category.entity';
 import { Property } from './../category/entities/property.entity';
 import { Profile } from './../profile/enities/profile.entity';
 import { ProductDto } from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
+import { ProductProperty } from './entities/product-property-entity';
 import { Product } from './entities/product.entity';
 @Injectable()
 export class ProductService {
@@ -33,6 +29,8 @@ export class ProductService {
 
     @InjectRepository(Property)
     private propertyRepository: Repository<Property>,
+    @InjectRepository(ProductProperty)
+    private productPropertyRepository: Repository<ProductProperty>,
 
     @InjectRepository(User)
     private userRepository: Repository<User>,
@@ -126,117 +124,128 @@ export class ProductService {
   }
 
   async filter(filters: GetProductsDto, userId?: number): Promise<Product[]> {
-    const where: FindManyOptions<Product>['where'] = {};
+    const {
+      properties,
+      page,
+      limit,
+      skip: rawSkip,
+      take: rawTake,
+      sortBy,
+      sortOrder,
+      ...otherFilters
+    } = filters;
+
+    const queryBuilder = this.productRepository.createQueryBuilder('product');
     const order = {};
-    const relations = ['category', 'profile']; // 'profile' qo'shilgan
+    const relations = ['category', 'profile', 'district', 'district.region'];
 
-    // Kategoriya bo'yicha filtrlash
+    queryBuilder.leftJoinAndSelect('product.category', 'category');
+    queryBuilder.leftJoinAndSelect('product.profile', 'profile');
+    queryBuilder.leftJoinAndSelect('product.district', 'district');
+    queryBuilder.leftJoinAndSelect('district.region', 'region');
+
     if (filters.categoryId && filters.categoryId !== 0) {
-      where.categoryId = filters.categoryId;
+      queryBuilder.andWhere('product.categoryId = :categoryId', {
+        categoryId: filters.categoryId,
+      });
     }
 
-    // Narx bo'yicha filtrlash
     if (filters.minPrice !== undefined && filters.maxPrice !== undefined) {
-      where.price = Between(filters.minPrice, filters.maxPrice);
+      queryBuilder.andWhere('product.price BETWEEN :minPrice AND :maxPrice', {
+        minPrice: filters.minPrice,
+        maxPrice: filters.maxPrice,
+      });
     } else if (filters.minPrice !== undefined) {
-      where.price = MoreThanOrEqual(filters.minPrice);
+      queryBuilder.andWhere('product.price >= :minPrice', {
+        minPrice: filters.minPrice,
+      });
     } else if (filters.maxPrice !== undefined) {
-      where.price = LessThanOrEqual(filters.maxPrice);
+      queryBuilder.andWhere('product.price <= :maxPrice', {
+        maxPrice: filters.maxPrice,
+      });
     }
 
-    // Sarlavha bo'yicha qidiruv
     if (filters.title) {
-      where.title = ILike(`%${filters.title}%`);
+      queryBuilder.andWhere('product.title ILIKE :title', {
+        title: `%${filters.title}%`,
+      });
     }
 
-    // Faqat o'z mahsulotlarini ko'rish
     if (filters.ownProduct && userId) {
-      where['profile'] = { id: userId }; // 'profile' orqali filtrlash
+      queryBuilder.andWhere('product.profileId = :userId', { userId });
     }
 
-    // Xususiyatlar bo'yicha murakkab filtrlash (agar kerak bo'lsa)
-    if (filters.properties && Object.keys(filters.properties).length > 0) {
-      where.propertyValues = {};
-      for (const key in filters.properties) {
-        const value = filters.properties[key];
-        if (Array.isArray(value)) {
-          where.propertyValues[key] = In(value);
-        } else if (
-          typeof value === 'object' &&
-          (value.gte !== undefined || value.lte !== undefined)
+    if (properties && Object.keys(properties).length > 0) {
+      // Xususiyatlar bo'yicha filtrlash logikasi
+      for (const key in properties) {
+        const value = properties[key];
+
+        // Agar value null yoki noto'g'ri formatda bo'lsa, bu filterni o'tkazib yuborish
+        if (
+          value !== null &&
+          (typeof value === 'object' || Array.isArray(value))
         ) {
-          const conditions = {};
-          if (value.gte !== undefined) {
-            conditions['gte'] = value.gte;
-          }
-          if (value.lte !== undefined) {
-            conditions['lte'] = value.lte;
-          }
-          where.propertyValues[key] = conditions;
-        } else if (value !== undefined) {
-          where.propertyValues[key] = value;
+          queryBuilder.andWhere(`product.propertyValues @> :prop`, {
+            prop: JSON.stringify({ [key]: value }),
+          });
+        } else {
+          // Xato qiymatni tekshirish va xatolikni chiqarish
+          console.error(`Invalid property value for ${key}: ${value}`);
         }
       }
     }
 
-    // To'lov turi bo'yicha filtrlash
+    // Boshqa filtrlar
     if (filters.paymentType) {
-      where.paymentType = filters.paymentType;
+      queryBuilder.andWhere('product.paymentType = :paymentType', {
+        paymentType: filters.paymentType,
+      });
     }
 
-    // Valyuta turi bo'yicha filtrlash
     if (filters.currencyType) {
-      where.currencyType = filters.currencyType;
+      queryBuilder.andWhere('product.currencyType = :currencyType', {
+        currencyType: filters.currencyType,
+      });
     }
 
-    // Kelishish mumkinligi bo'yicha filtrlash
     if (filters.negotiable !== undefined) {
-      where.negotiable = filters.negotiable;
-    }
-    // Tuman bo‘yicha filter
-    if (filters.districtId) {
-      where['district'] = { id: filters.districtId };
+      queryBuilder.andWhere('product.negotiable = :negotiable', {
+        negotiable: filters.negotiable,
+      });
     }
 
-    // Viloyat bo‘yicha filter
-    if (filters.regionId) {
-      where['district'] = {
-        region: { id: filters.regionId },
-      };
-    }
     if (filters.regionId && filters.districtId) {
-      where['district'] = {
-        id: filters.districtId,
-        region: { id: filters.regionId },
-      };
+      queryBuilder.andWhere(
+        'district.id = :districtId AND region.id = :regionId',
+        {
+          districtId: filters.districtId,
+          regionId: filters.regionId,
+        },
+      );
     } else if (filters.regionId) {
-      where['district'] = {
-        region: { id: filters.regionId },
-      };
+      queryBuilder.andWhere('region.id = :regionId', {
+        regionId: filters.regionId,
+      });
     } else if (filters.districtId) {
-      where['district'] = { id: filters.districtId };
+      queryBuilder.andWhere('district.id = :districtId', {
+        districtId: filters.districtId,
+      });
     }
 
-    // Tartiblash (Sorting)
-    if (filters.sortBy) {
-      order[filters.sortBy] = filters.sortOrder || 'ASC';
+    if (sortBy) {
+      order[`product.${sortBy}`] = sortOrder || 'ASC'; // Tartiblash uchun 'product.' prefiksini qo'shamiz
+      queryBuilder.orderBy(order);
     }
 
-    const skip = filters.skip || 0;
-    const take = filters.take || 10;
-
-    return this.productRepository.find({
-      where,
-      relations,
-      skip,
-      take,
-      order,
-    });
+    const take = rawTake || limit || 10; // Agar `rawTake` yoki `limit` bo'lmasa, 10 ni default qilib olish
+    const validLimit = take >= 1 ? take : 10; // Agar `take` 1 dan kichik bo'lsa, uni 10 ga o'zgartiradi
+    const skip = rawSkip && rawSkip >= 0 ? rawSkip : 0; // Ensure skip is a valid number
+    queryBuilder.skip(skip).take(validLimit); // `take` ni validLimit bilan o'zgartirish
+    return queryBuilder.getMany();
   }
 
   async create(createProductDto: ProductDto, userId: number): Promise<Product> {
-    const { categoryId, properties, propertyValues, ...productData } =
-      createProductDto;
+    const { categoryId, properties, ...productData } = createProductDto;
     console.log(userId);
 
     const category = await this.categoryRepository.findOne({
@@ -255,17 +264,29 @@ export class ProductService {
     const product = this.productRepository.create({
       ...productData,
       category,
-      propertyValues,
-      profileId: user.id,
+      profile: user,
+      productProperties: properties?.map((propDto) =>
+        this.productPropertyRepository.create({
+          propertyId: propDto.propertyId,
+          value: propDto.value,
+        }),
+      ),
     });
 
-    if (properties?.length) {
-      const propertyEntities = await this.propertyRepository.findByIds(
-        properties.map((p) => p.id),
-      );
-      product.properties = propertyEntities;
-    }
+    await this.productRepository.save(product);
 
-    return this.productRepository.save(product);
+    try {
+      return await this.productRepository.findOneOrFail({
+        where: { id: product.id },
+        relations: ['category', 'productProperties.property'],
+      });
+    } catch (error) {
+      if (error instanceof EntityNotFoundError) {
+        throw new InternalServerErrorException(
+          `Mahsulotni qayta yuklashda xatolik yuz berdi (ID: ${product.id})`,
+        );
+      }
+      throw error;
+    }
   }
 }

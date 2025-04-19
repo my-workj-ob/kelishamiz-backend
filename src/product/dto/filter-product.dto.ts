@@ -6,6 +6,8 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  Min,
+  ValidateNested,
 } from 'class-validator';
 
 export class GetProductsDto {
@@ -53,7 +55,8 @@ export class GetProductsDto {
   })
   @IsOptional()
   @IsObject()
-  properties?: Record<string, any>;
+  @ValidateNested()
+  properties?: Record<string, object | object[]>; // to'g'ri strukturaga keltirish
 
   @ApiProperty({
     required: false,
@@ -76,6 +79,12 @@ export class GetProductsDto {
   @IsOptional()
   @IsString()
   sortBy?: string;
+
+  @ApiProperty({ required: false, description: 'Sahifadagi elementlar soni' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  page?: number;
 
   @ApiProperty({
     required: false,
@@ -123,4 +132,13 @@ export class GetProductsDto {
   @IsNumber()
   @Type(() => Number)
   districtId?: number;
+
+  @ApiProperty({
+    required: false,
+    description: "Sahifalashda ko'rsatiladigan elementlar soni",
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  limit?: number; // limitni qayta qo'shdim
 }

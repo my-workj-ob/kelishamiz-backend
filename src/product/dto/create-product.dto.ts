@@ -1,5 +1,45 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+
+export class ProductPropertyValueDto {
+  @ApiProperty({ example: 'Rangi', description: 'Xususiyat nomi' })
+  @IsNotEmpty()
+  @IsString()
+  key: string;
+
+  @ApiProperty({ example: 'Qizil', description: 'Xususiyat qiymati' })
+  @IsNotEmpty()
+  @IsString()
+  value: string;
+}
+
+export class ProductPropertyDto {
+  @ApiProperty({ example: 1, description: 'Xususiyat IDsi' })
+  @IsNotEmpty()
+  @IsNumber()
+  propertyId: number;
+
+  @ApiProperty({ example: 'STRING', description: 'Xususiyat turi' })
+  @IsNotEmpty()
+  @IsString()
+  type: string;
+
+  @ApiProperty({
+    type: ProductPropertyValueDto,
+    description: 'Xususiyatning nomi va qiymati',
+  })
+  @ValidateNested()
+  @Type(() => ProductPropertyValueDto)
+  value: Record<string, string>;
+}
 
 export class ProductDto {
   @ApiProperty()
@@ -23,11 +63,10 @@ export class ProductDto {
   @ApiProperty({ required: false })
   images?: string[];
 
-  @ApiProperty({ type: [Number], required: false })
-  properties?: { id: number }[];
-
-  @ApiProperty({ type: [String], required: false })
-  propertyValues?: string[];
+  @ApiProperty({ type: [ProductPropertyDto], required: false })
+  @ValidateNested({ each: true })
+  @Type(() => ProductPropertyDto)
+  properties?: ProductPropertyDto[];
 
   @ApiProperty({ example: 'Pullik', description: "To'lov turi" })
   @IsNotEmpty()
