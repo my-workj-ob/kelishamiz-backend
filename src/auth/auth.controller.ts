@@ -214,7 +214,11 @@ export class AuthController {
         body.location,
       );
 
-    const createProfileDto = { phoneNumber: user.phone };
+    const createProfileDto = {
+      phoneNumber: user.phone,
+      location: body.location,
+      username: body.username,
+    };
     await this.profileService.create(createProfileDto, user);
 
     return {
