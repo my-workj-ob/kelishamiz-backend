@@ -25,7 +25,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
         return {
           success: true,
           message: 'Request successful',
-          content: data,
+          ...data,
         };
       }),
     );

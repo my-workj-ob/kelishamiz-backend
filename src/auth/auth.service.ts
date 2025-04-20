@@ -59,14 +59,19 @@ export class AuthService {
     return { otp: otpCode, message: 'SMS kod yuborildi.' };
   }
 
-  async login(phone: string): Promise<{ exists: boolean; message: string }> {
+  async login(phone: string): Promise<{
+    success: boolean;
+    message: string;
+    exists: boolean;
+  }> {
     const user = await this.findByPhone(phone);
-    await this.sendOtp(phone); // Har doim OTP yuboramiz
+    await this.sendOtp(phone);
     return {
-      exists: !!user,
+      success: true,
       message: user
         ? 'SMS kod yuborildi.'
         : "Telefon raqami topilmadi. Ro'yxatdan o'tish uchun davom eting.",
+      exists: !!user,
     };
   }
 

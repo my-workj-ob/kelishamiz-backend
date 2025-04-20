@@ -353,7 +353,6 @@ export class AuthController {
     return {
       success: true,
       message: 'Muvaffaqiyatli login!',
-
       accessToken: loginResult.content?.accessToken,
       refreshToken: loginResult.content?.refreshToken,
     };
