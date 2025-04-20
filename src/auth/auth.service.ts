@@ -86,10 +86,7 @@ export class AuthService {
       storedOtp.code !== code ||
       storedOtp.expiresAt < new Date()
     ) {
-      return Promise.resolve({
-        success: false,
-        message: 'SMS kod noto‘g‘ri yoki muddati tugagan.',
-      });
+      throw new BadRequestException('SMS kod noto‘g‘ri yoki muddati tugagan.');
     }
 
     this.temporaryOtps[phone].isVerified = true;
