@@ -4,7 +4,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Body,
-  ConflictException,
   Controller,
   Get,
   HttpCode,
@@ -108,13 +107,6 @@ export class AuthController {
   })
   @ApiBody({ type: SendOtpDto })
   async sendOtp(@Body() body: SendOtpDto) {
-    const existingUser = await this.authService.findByPhone(body.phone);
-    if (existingUser) {
-      throw new ConflictException(
-        'Bu telefon raqam allaqachon ro‘yxatdan o‘tgan.',
-      );
-    }
-
     const code = await this.authService.sendOtp(body.phone);
     return { success: true, message: 'SMS kod yuborildi', code: code.otp };
   }
@@ -350,7 +342,10 @@ export class AuthController {
       throw new UnauthorizedException(result.message);
     }
 
-    const loginResult = await this.authService.loginWithOtp(body.phone);
+    const loginResult = await this.authService.loginWithOtp(
+      body.phone,
+      body.code,
+    );
     if (!loginResult.success) {
       throw new NotFoundException(loginResult.message);
     }
@@ -358,9 +353,13 @@ export class AuthController {
     return {
       success: true,
       message: 'Muvaffaqiyatli login!',
-      user: loginResult.user,
-      accessToken: loginResult.accessToken,
-      refreshToken: loginResult.refreshToken,
+
+      accessToken: loginResult.content?.accessToken,
+      refreshToken: loginResult.content?.refreshToken,
     };
+  }
+  @Post('check-phone')
+  async checkPhone(@Body('phone') phone: string) {
+    return this.authService.checkPhone(phone);
   }
 }

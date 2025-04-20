@@ -5,6 +5,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -55,7 +56,18 @@ export class AuthService {
     const otpCode = await this.otpService.sendOtp(phone);
     const expiresAt = new Date(Date.now() + this.otpExpiryTimeMs);
     this.temporaryOtps[phone] = { code: otpCode, expiresAt, isVerified: false };
-    return { otp: otpCode };
+    return { otp: otpCode, message: 'SMS kod yuborildi.' };
+  }
+
+  async login(phone: string): Promise<{ exists: boolean; message: string }> {
+    const user = await this.findByPhone(phone);
+    await this.sendOtp(phone); // Har doim OTP yuboramiz
+    return {
+      exists: !!user,
+      message: user
+        ? 'SMS kod yuborildi.'
+        : "Telefon raqami topilmadi. Ro'yxatdan o'tish uchun davom eting.",
+    };
   }
 
   verifyOtp(
@@ -113,33 +125,35 @@ export class AuthService {
     return { user: savedUser, ...tokens };
   }
 
-  async loginWithOtp(phone: string): Promise<{
-    [x: string]: any;
+  async loginWithOtp(
+    phone: string,
+    code: string,
+  ): Promise<{
     success: boolean;
     message?: string;
-    user?: User;
+    content?: { accessToken: string; refreshToken: string };
   }> {
-    const storedOtp = this.temporaryOtps[phone];
-
-    if (
-      !storedOtp ||
-      !storedOtp.isVerified ||
-      storedOtp.expiresAt < new Date()
-    ) {
-      return {
-        success: false,
-        message: 'SMS kod noto‘g‘ri yoki muddati tugagan.',
-      };
+    const verificationResult = await this.verifyOtp(phone, code);
+    if (!verificationResult.success) {
+      return verificationResult;
     }
 
     const existingUser = await this.findByPhone(phone);
     if (!existingUser) {
-      return { success: false, message: 'Foydalanuvchi topilmadi.' };
+      throw new NotFoundException('Foydalanuvchi topilmadi.');
     }
 
     const tokens = await this.generateTokens(existingUser);
     delete this.temporaryOtps[phone]; // Logindan keyin OTP ni o'chiramiz
 
-    return { success: true, user: existingUser, ...tokens };
+    return {
+      success: true,
+      content: tokens,
+      message: 'Tizimga muvaffaqiyatli kirildi.',
+    };
+  }
+  async checkPhone(phone: string): Promise<{ exists: boolean }> {
+    const user = await this.findByPhone(phone);
+    return { exists: !!user };
   }
 }
