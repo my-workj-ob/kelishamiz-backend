@@ -59,6 +59,23 @@ export class AuthService {
     return { otp: otpCode, message: 'SMS kod yuborildi.' };
   }
 
+  async refreshTokens(
+    refreshToken: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    try {
+      const payload = await this.jwtService.verifyAsync(refreshToken);
+
+      const user = await this.findById(payload.sub);
+      if (!user) {
+        throw new NotFoundException('Foydalanuvchi topilmadi.');
+      }
+
+      return this.generateTokens(user);
+    } catch (error: any) {
+      throw new BadRequestException('Yaroqsiz yoki eskirgan refresh token.');
+    }
+  }
+
   async login(phone: string): Promise<{
     success: boolean;
     message: string;
@@ -154,6 +171,7 @@ export class AuthService {
       message: 'Tizimga muvaffaqiyatli kirildi.',
     };
   }
+
   async checkPhone(phone: string): Promise<{ exists: boolean }> {
     const user = await this.findByPhone(phone);
     return { exists: !!user };

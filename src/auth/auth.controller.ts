@@ -10,10 +10,12 @@ import {
   HttpStatus,
   NotFoundException,
   Post,
+  Req,
   Request,
   UnauthorizedException,
   UseGuards,
   UseInterceptors,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import {
@@ -93,6 +95,24 @@ export class AuthController {
       ...restOfUser,
     };
   }
+
+  @Get('refresh-token')
+  async refreshToken(@Req() req: Request) {
+    const authHeader = req.headers['authorization'];
+
+    if (typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
+      throw new BadRequestException('Refresh token yuborilmadi.');
+    }
+    const refreshToken = authHeader.split(' ')[1];
+    const tokens = await this.authService.refreshTokens(refreshToken);
+
+    return {
+      success: true,
+      message: 'Tokenlar yangilandi',
+      ...tokens,
+    };
+  }
+
   @UseInterceptors()
   @HttpCode(HttpStatus.OK)
   @Post('send-otp')
@@ -110,6 +130,7 @@ export class AuthController {
     const code = await this.authService.sendOtp(body.phone);
     return { success: true, message: 'SMS kod yuborildi', code: code.otp };
   }
+
   @Post('verify-otp')
   @ApiOperation({ summary: 'OTP ni tekshirish' })
   @ApiResponse({
@@ -361,6 +382,7 @@ export class AuthController {
       refreshToken: loginResult.content?.refreshToken,
     };
   }
+
   @Post('check-phone')
   async checkPhone(@Body('phone') phone: string) {
     return this.authService.checkPhone(phone);
