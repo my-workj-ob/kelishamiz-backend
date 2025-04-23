@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreatePropertyDto } from './../category/dto/create-property.dto';
 import { Category } from './../category/entities/category.entity';
-import { Property } from './../category/entities/property.entity';
+import { Property, PropertyType } from './../category/entities/property.entity';
 
 @Injectable()
 export class PropertyService {
@@ -15,7 +15,7 @@ export class PropertyService {
   ) {}
 
   async create(createPropertyDto: CreatePropertyDto): Promise<Property> {
-    const { categoryId, ...propertyData } = createPropertyDto;
+    const { categoryId, options, ...propertyData } = createPropertyDto;
 
     const category = await this.categoryRepository.findOne({
       where: { id: categoryId },
@@ -27,6 +27,7 @@ export class PropertyService {
     const property = this.propertyRepository.create({
       ...propertyData,
       category,
+      options: propertyData.type === PropertyType.SELECT ? options : undefined,
     });
     return await this.propertyRepository.save(property);
   }

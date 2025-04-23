@@ -15,43 +15,41 @@ import { ProductDto } from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
 import { ProductProperty } from './entities/product-property-entity';
 import { Product } from './entities/product.entity';
+
 @Injectable()
 export class ProductService {
   constructor(
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
-
     @InjectRepository(Category)
     private categoryRepository: Repository<Category>,
-
     @InjectRepository(Profile)
     private profileRepository: Repository<Profile>,
-
     @InjectRepository(Property)
     private propertyRepository: Repository<Property>,
     @InjectRepository(ProductProperty)
     private productPropertyRepository: Repository<ProductProperty>,
-
     @InjectRepository(User)
     private userRepository: Repository<User>,
   ) {}
+
   async findAll() {
     return this.productRepository.find();
   }
+
   async findOne(id: number): Promise<Product | null> {
     return this.productRepository.findOne({
       where: { id },
-      relations: ['profile'],
+      relations: ['profile', 'productProperties', 'productProperties.property'],
     });
   }
+
   async getLikedProducts(userId: number): Promise<Product[]> {
-    // Foydalanuvchi mavjudligini tekshirib ko‘ramiz
+
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
-
-    // Foydalanuvchining like bosgan mahsulotlarini olish
     const likedProducts = await this.productRepository.find({
       where: {
         likes: {
