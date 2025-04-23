@@ -41,6 +41,7 @@ export class CategoryService {
     }
     return existCategoryById;
   }
+
   async findAll(parentId: string | null | undefined): Promise<Category[]> {
     const whereClause: any = {};
     let relations: string[] = [];
@@ -58,5 +59,22 @@ export class CategoryService {
       where: whereClause,
       relations: relations,
     });
+  }
+
+  async findAllOnlyChildCategories(parentId: number): Promise<Category[]> {
+    const parent = await this.categoryRepository.findOne({
+      where: { id: parentId },
+    });
+    if (!parent) {
+      throw new NotFoundException('category topilmadi');
+    }
+
+    const children = await this.categoryRepository.find({
+      where: {
+        parent: { id: parent.id },
+      },
+    });
+
+    return children;
   }
 }

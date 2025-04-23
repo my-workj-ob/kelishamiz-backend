@@ -60,4 +60,18 @@ export class CategoryController {
     }
     return existCategory;
   }
+
+  @Get(':id/children')
+  @ApiOperation({ summary: 'Kategoriya ID orqali faqat childlarni olish' })
+  @ApiOkResponse({ description: "Kategoriya ma'lumotlari", type: Category })
+  @ApiBadRequestResponse({ description: 'Kategoriya topilmadi' })
+  async findAllOnlyChildCategories(@Param('id') id: string) {
+    const existCategory = await this.categoryService.findAllOnlyChildCategories(
+      Number(id),
+    );
+    if (!existCategory) {
+      throw new NotFoundException(`Kategoriya ${id} bilan topilmadi`);
+    }
+    return existCategory;
+  }
 }
