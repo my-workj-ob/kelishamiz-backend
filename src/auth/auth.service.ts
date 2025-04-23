@@ -44,10 +44,10 @@ export class AuthService {
       username: user.username,
     };
     const accessToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '15m',
+      expiresIn: '12h',
     });
     const refreshToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '7d',
+      expiresIn: '24h',
     });
     return { accessToken, refreshToken };
   }
