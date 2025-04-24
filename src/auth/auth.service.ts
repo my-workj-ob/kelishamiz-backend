@@ -12,6 +12,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { OtpService } from './fake-otp.service';
+import { ProfileService } from '../profile/profile.service';
+import { Profile } from '../profile/enities/profile.entity';
 
 @Injectable()
 export class AuthService {
@@ -27,6 +29,8 @@ export class AuthService {
     private userRepo: Repository<User>,
     private jwtService: JwtService,
     private readonly otpService: OtpService,
+    @InjectRepository(Profile)
+    private profileRepo: Repository<Profile>,
   ) {}
 
   async findByPhone(phone: string): Promise<User | null> {
@@ -136,6 +140,33 @@ export class AuthService {
 
     const newUser = this.userRepo.create({ phone, username, location });
     const savedUser = await this.userRepo.save(newUser);
+
+    if (!newUser) {
+      throw new BadRequestException('User kitishda nomalum xatolik yuz berdi ');
+    }
+
+    // Check if Profile already exists for the user
+    const existingProfile = await this.profileRepo.findOne({
+      where: { user: savedUser },
+    });
+
+    if (!existingProfile) {
+      const newProfile = this.profileRepo.create({
+        user: savedUser,
+        phoneNumber: phone,
+        fullName: username,
+        location,
+      });
+
+      await this.profileRepo.save(newProfile);
+    } else {
+      // If profile exists, you can update it (optional)
+      existingProfile.phoneNumber = phone;
+      existingProfile.fullName = username;
+      existingProfile.location = location;
+
+      await this.profileRepo.save(existingProfile);
+    }
 
     const tokens = await this.generateTokens(savedUser);
 

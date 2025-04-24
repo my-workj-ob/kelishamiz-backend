@@ -82,7 +82,9 @@ export class AuthController {
 
     const profile = await this.profileRepo.findOne({
       where: {
-        userId: req.user.sub,
+        user: {
+          id: req.user.sub,
+        },
       },
     });
 
@@ -228,23 +230,14 @@ export class AuthController {
   })
   @ApiBody({ type: CreateAccountDto })
   async createAccount(@Body() body: CreateAccountDto, @Request() req: any) {
-    const { user, accessToken, refreshToken } =
-      await this.authService.createAccount(
-        body.phone,
-        body.username,
-        body.location,
-      );
-
-    const createProfileDto = {
-      phoneNumber: user.phone,
-      location: body.location,
-      username: body.username,
-    };
-    await this.profileService.create(createProfileDto, user);
+    const { accessToken, refreshToken } = await this.authService.createAccount(
+      body.phone,
+      body.username,
+      body.location,
+    );
 
     return {
       message: 'Akkaunt muvaffaqiyatli yaratildi!',
-      user,
       accessToken,
       refreshToken,
     };

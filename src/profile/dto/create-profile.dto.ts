@@ -36,7 +36,7 @@ export class CreateProfileDto {
   })
   @IsOptional()
   @IsString()
-  region?: string;
+  location?: string;
 
   @ApiProperty({
     required: false,

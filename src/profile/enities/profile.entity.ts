@@ -27,7 +27,7 @@ export class Profile {
   phoneNumber?: string;
 
   @Column({ nullable: true })
-  region?: string; // Tuman
+  location?: string; // Tuman
 
   @Column({ nullable: true })
   address?: string; // Manzil
@@ -35,8 +35,6 @@ export class Profile {
   @OneToOne(() => User, (user) => user.profile, { onDelete: 'CASCADE' })
   @JoinColumn()
   user?: User;
-  @Column({ nullable: true })
-  userId: number;
 
   @OneToMany(() => Product, (product) => product.profile)
   products?: Product[];

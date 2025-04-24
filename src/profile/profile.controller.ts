@@ -39,7 +39,7 @@ export class ProfileController {
     @Req() req: any, // Req tipini any yoki mos keladigan Request tipiga o'zgartiring
   ): Promise<Profile> {
     const user = req.user; // Payload user obyektida bo'lishi mumkin
-    return await this.profileService.create(createProfileDto, user);
+    return await this.profileService.create(createProfileDto);
   }
 
   @Get()
@@ -74,7 +74,7 @@ export class ProfileController {
     const user = req.user;
     const profile = await this.profileService.findByUser(user.id);
     if (!profile) {
-      return await this.profileService.create(updateProfileDto, user);
+      return await this.profileService.create(updateProfileDto);
     }
     return await this.profileService.update(profile.id, updateProfileDto);
   }

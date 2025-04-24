@@ -36,7 +36,7 @@ export class UpdateProfileDto {
   })
   @IsOptional()
   @IsString()
-  region?: string;
+  location?: string;
 
   @ApiProperty({
     required: false,

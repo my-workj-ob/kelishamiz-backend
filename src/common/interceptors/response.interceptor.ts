@@ -15,9 +15,6 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
     const path = req.url;
 
     const rawPaths = [
-      '/webhook',
-      '/callback',
-      '/payment/notify',
       '/auth/check-phone',
     ];
 

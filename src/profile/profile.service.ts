@@ -13,13 +13,10 @@ export class ProfileService {
     @InjectRepository(Profile)
     private profileRepository: Repository<Profile>,
   ) {}
-  async create(
-    createProfileDto: CreateProfileDto,
-    user: User,
-  ): Promise<Profile> {
+
+  async create(createProfileDto: CreateProfileDto): Promise<Profile> {
     const profile = this.profileRepository.create({
       ...createProfileDto,
-      user,
     });
     return await this.profileRepository.save(profile);
   }
@@ -29,7 +26,6 @@ export class ProfileService {
   }
 
   async findOne(id: number): Promise<Profile> {
-    console.log(id);
     const profile = await this.profileRepository.findOne({
       where: { id },
       relations: ['products', 'products.comments'],
