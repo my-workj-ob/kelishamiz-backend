@@ -10,10 +10,9 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Profile } from '../profile/enities/profile.entity';
 import { User } from './entities/user.entity';
 import { OtpService } from './fake-otp.service';
-import { ProfileService } from '../profile/profile.service';
-import { Profile } from '../profile/enities/profile.entity';
 
 @Injectable()
 export class AuthService {

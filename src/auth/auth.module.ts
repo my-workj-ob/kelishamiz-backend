@@ -1,4 +1,6 @@
+import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -18,6 +20,8 @@ import { OtpService } from './fake-otp.service';
       secret: process.env.JWT_SECRET_KEY || 'baxtiyor08072006',
       signOptions: { expiresIn: '7d' },
     }),
+    HttpModule,
+    ConfigModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, OtpService, ProfileService],
