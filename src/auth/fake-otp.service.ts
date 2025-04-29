@@ -78,7 +78,6 @@ export class OtpService {
     } catch (error) {
       if (error.response?.status === 401) {
         console.warn('Token eskiribdi (lekin kutilmagan), yangilayapman...');
-
         // Tokenni refresh qilamiz va yana bir marta yuboramiz
         this.tokenData = await this.fetchToken();
         token = this.tokenData.token;

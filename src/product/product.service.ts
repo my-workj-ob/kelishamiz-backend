@@ -45,7 +45,6 @@ export class ProductService {
   }
 
   async getLikedProducts(userId: number): Promise<Product[]> {
-
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
@@ -124,94 +123,94 @@ export class ProductService {
   async filter(filters: GetProductsDto, userId?: number): Promise<Product[]> {
     const {
       properties,
-      page,
-      limit,
-      skip: rawSkip,
-      take: rawTake,
       sortBy,
       sortOrder,
+      skip: rawSkip,
+      take: rawTake,
+      limit,
       ...otherFilters
     } = filters;
 
     const queryBuilder = this.productRepository.createQueryBuilder('product');
-    const order = {};
-    const relations = ['category', 'profile', 'district', 'district.region'];
 
-    queryBuilder.leftJoinAndSelect('product.category', 'category');
-    queryBuilder.leftJoinAndSelect('product.profile', 'profile');
-    queryBuilder.leftJoinAndSelect('product.district', 'district');
-    queryBuilder.leftJoinAndSelect('district.region', 'region');
+    // JOINlar
+    queryBuilder
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.profile', 'profile')
+      .leftJoinAndSelect('product.district', 'district')
+      .leftJoinAndSelect('district.region', 'region');
 
-    if (filters.categoryId && filters.categoryId !== 0) {
+    // ===== Filterlar boshlanishi =====
+
+    // Kategoriya
+    if (filters.categoryId !== null && filters.categoryId !== undefined) {
       queryBuilder.andWhere('product.categoryId = :categoryId', {
         categoryId: filters.categoryId,
       });
     }
 
-    if (filters.minPrice !== undefined && filters.maxPrice !== undefined) {
+    // Narx oralig'i
+    if (filters.minPrice !== null && filters.maxPrice !== null) {
       queryBuilder.andWhere('product.price BETWEEN :minPrice AND :maxPrice', {
         minPrice: filters.minPrice,
         maxPrice: filters.maxPrice,
       });
-    } else if (filters.minPrice !== undefined) {
+    } else if (filters.minPrice !== null && filters.minPrice !== undefined) {
       queryBuilder.andWhere('product.price >= :minPrice', {
         minPrice: filters.minPrice,
       });
-    } else if (filters.maxPrice !== undefined) {
+    } else if (filters.maxPrice !== null && filters.maxPrice !== undefined) {
       queryBuilder.andWhere('product.price <= :maxPrice', {
         maxPrice: filters.maxPrice,
       });
     }
 
+    // Sarlavha (title) bo'yicha qidirish
     if (filters.title) {
       queryBuilder.andWhere('product.title ILIKE :title', {
         title: `%${filters.title}%`,
       });
     }
 
-    if (filters.ownProduct && userId) {
+    // Faqat o'zining mahsulotlari
+    if (filters.ownProduct !== undefined && userId) {
       queryBuilder.andWhere('product.profileId = :userId', { userId });
     }
 
+    // PropertyValues (xususiyatlar) bo'yicha qidirish
     if (properties && Object.keys(properties).length > 0) {
-      // Xususiyatlar bo'yicha filtrlash logikasi
-      for (const key in properties) {
+      for (const key of Object.keys(properties)) {
         const value = properties[key];
-
-        // Agar value null yoki noto'g'ri formatda bo'lsa, bu filterni o'tkazib yuborish
-        if (
-          value !== null &&
-          (typeof value === 'object' || Array.isArray(value))
-        ) {
-          queryBuilder.andWhere(`product.propertyValues @> :prop`, {
+        if (value !== null && typeof value === 'object') {
+          queryBuilder.andWhere('product.propertyValues @> :prop', {
             prop: JSON.stringify({ [key]: value }),
           });
-        } else {
-          // Xato qiymatni tekshirish va xatolikni chiqarish
-          console.error(`Invalid property value for ${key}: ${value}`);
         }
       }
     }
 
-    // Boshqa filtrlar
-    if (filters.paymentType) {
+    // To'lov turi
+    if (filters.paymentType !== null && filters.paymentType !== undefined) {
       queryBuilder.andWhere('product.paymentType = :paymentType', {
         paymentType: filters.paymentType,
       });
     }
 
-    if (filters.currencyType) {
+    // Valyuta turi
+    if (filters.currencyType !== null && filters.currencyType !== undefined) {
       queryBuilder.andWhere('product.currencyType = :currencyType', {
         currencyType: filters.currencyType,
       });
     }
 
+    // Kelishish imkoniyati (negotiable)
     if (filters.negotiable !== undefined) {
       queryBuilder.andWhere('product.negotiable = :negotiable', {
         negotiable: filters.negotiable,
       });
     }
 
+    // Hudud va tuman bo'yicha qidirish
     if (filters.regionId && filters.districtId) {
       queryBuilder.andWhere(
         'district.id = :districtId AND region.id = :regionId',
@@ -230,15 +229,23 @@ export class ProductService {
       });
     }
 
+    // ===== Filterlar tugashi =====
+
+    // Tartiblash
     if (sortBy) {
-      order[`product.${sortBy}`] = sortOrder || 'ASC'; // Tartiblash uchun 'product.' prefiksini qo'shamiz
-      queryBuilder.orderBy(order);
+      queryBuilder.orderBy(
+        `product.${sortBy}`,
+        sortOrder?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC',
+      );
     }
 
-    const take = rawTake || limit || 10; // Agar `rawTake` yoki `limit` bo'lmasa, 10 ni default qilib olish
-    const validLimit = take >= 1 ? take : 10; // Agar `take` 1 dan kichik bo'lsa, uni 10 ga o'zgartiradi
-    const skip = rawSkip && rawSkip >= 0 ? rawSkip : 0; // Ensure skip is a valid number
-    queryBuilder.skip(skip).take(validLimit); // `take` ni validLimit bilan o'zgartirish
+    // Paginatsiya
+    const take = rawTake || limit || 10;
+    const skip = rawSkip !== undefined ? rawSkip : 0;
+
+    queryBuilder.skip(Math.max(skip, 0)).take(Math.max(take, 1));
+
+    // Ma'lumotlarni qaytarish
     return queryBuilder.getMany();
   }
 
@@ -255,8 +262,10 @@ export class ProductService {
       throw new NotFoundException(`Kategoriya ${categoryId} topilmadi`);
 
     const user = await this.profileRepository.findOne({
-      where: { id: userId },
+      where: { user: { id: userId } },
+      relations: ['user'],
     });
+
     if (!user) throw new NotFoundException(`Foydalanuvchi ${userId} topilmadi`);
 
     const product = this.productRepository.create({
