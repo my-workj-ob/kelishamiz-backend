@@ -16,10 +16,9 @@ export class CreatePropertyDto {
   @IsString()
   @IsOptional()
   categoryId: number; // Qo'shimcha ravishda kategoriya ID
-
   @ApiProperty({ example: 'For property Select ' })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  options?: string[];
+  options?: string[] | string;
 }

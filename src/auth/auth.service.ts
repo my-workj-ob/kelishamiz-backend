@@ -66,15 +66,15 @@ export class AuthService {
     refreshToken: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     try {
-      const payload = await this.jwtService.verifyAsync(refreshToken);
+      const decodedPayload = await this.jwtService.verifyAsync(refreshToken);
 
-      const user = await this.findById(payload.sub);
-      if (!user) {
+      const foundUser = await this.findById(decodedPayload.sub);
+      if (!foundUser) {
         throw new NotFoundException('Foydalanuvchi topilmadi.');
       }
 
-      return this.generateTokens(user);
-    } catch (error: any) {
+      return this.generateTokens(foundUser);
+    } catch {
       throw new BadRequestException('Yaroqsiz yoki eskirgan refresh token.');
     }
   }

@@ -13,7 +13,7 @@ export class PropertyService {
     @InjectRepository(Category) // Category uchun repositoryni inyeksiya qilish
     private categoryRepository: Repository<Category>,
   ) {}
-
+  //
   async create(createPropertyDto: CreatePropertyDto): Promise<Property> {
     const { categoryId, options, ...propertyData } = createPropertyDto;
 
@@ -26,8 +26,13 @@ export class PropertyService {
 
     const property = this.propertyRepository.create({
       ...propertyData,
-      category,
-      options: propertyData.type === PropertyType.SELECT ? options : undefined,
+      category: { id: categoryId },
+      options:
+        propertyData.type === PropertyType.SELECT
+          ? options
+          : propertyData.type === PropertyType.INTEGER
+            ? [String(options)]
+            : undefined,
     });
     return await this.propertyRepository.save(property);
   }
