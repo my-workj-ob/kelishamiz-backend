@@ -54,8 +54,13 @@ export class OtpService {
 
   async sendOtp(phone: string): Promise<string> {
     const otpCode = this.generateOtp();
-    const apiUrl = 'https://notify.eskiz.uz/api/message/sms/send';
 
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEV MODE] OTP kodi: ${otpCode} -> ${phone}`);
+      return otpCode;
+    }
+
+    const apiUrl = 'https://notify.eskiz.uz/api/message/sms/send';
     const payload = {
       mobile_phone: phone.replace('+', ''),
       message: `Kelishamiz.uz saytiga ro‘yxatdan o‘tish uchun tasdiqlash kodi: ${otpCode}`,
@@ -78,7 +83,6 @@ export class OtpService {
     } catch (error) {
       if (error.response?.status === 401) {
         console.warn('Token eskiribdi (lekin kutilmagan), yangilayapman...');
-        // Tokenni refresh qilamiz va yana bir marta yuboramiz
         this.tokenData = await this.fetchToken();
         token = this.tokenData.token;
 

@@ -15,7 +15,7 @@ export class PropertyService {
   ) {}
   //
   async create(createPropertyDto: CreatePropertyDto): Promise<Property> {
-    const { categoryId, options, ...propertyData } = createPropertyDto;
+    const { categoryId, ...propertyData } = createPropertyDto;
 
     const category = await this.categoryRepository.findOne({
       where: { id: categoryId },
@@ -27,12 +27,7 @@ export class PropertyService {
     const property = this.propertyRepository.create({
       ...propertyData,
       category: { id: categoryId },
-      options:
-        propertyData.type === PropertyType.SELECT
-          ? options
-          : propertyData.type === PropertyType.INTEGER
-            ? [String(options)]
-            : undefined,
+      options: propertyData.type === PropertyType.SELECT ? [] : undefined,
     });
     return await this.propertyRepository.save(property);
   }

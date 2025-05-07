@@ -12,6 +12,7 @@ export class UploadService {
       // Faylni Vercel Blob-ga yuklash
       const blob = await put(file.originalname, file.buffer, {
         access: 'public', // Faylni hammaga ochiq qilish
+        addRandomSuffix: true, // Noyob nom yaratadi: file-abc123.jpg
       });
 
       return blob.url; // Yuklangan fayl URL-si
