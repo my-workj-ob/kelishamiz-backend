@@ -15,7 +15,10 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.setGlobalPrefix('api');
+
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
+
   app.use(
     cors({
       origin: ['https://kelishamiz.uz', 'http://localhost:5173'],
@@ -28,15 +31,10 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   const config = new DocumentBuilder()
-
     .setTitle('Auth API')
-
     .setDescription('NestJS Authentication API')
-
     .setVersion('1.0')
-
     .addBearerAuth()
-
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -45,7 +43,6 @@ async function bootstrap() {
 
   app.use(
     '/api/docs',
-
     express.static(join(__dirname, '../node_modules/swagger-ui-dist')),
   );
 
