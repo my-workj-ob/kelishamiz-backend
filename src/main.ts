@@ -16,8 +16,13 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
-
-  app.use(cors());
+  app.use(
+    cors({
+      origin: ['https://kelishamiz.uz', 'http://localhost:5173'],
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+      credentials: true,
+    }),
+  );
 
   app.useGlobalPipes(new ValidationPipe());
   app.useGlobalInterceptors(new ResponseInterceptor());
