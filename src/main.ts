@@ -15,12 +15,9 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-
-
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
-
   app.enableCors({
-    origin: ['http://localhost:5173', "https://kelishamiz.uz"],
+    origin: ['http://localhost:5173', 'https://kelishamiz.uz', 'https://kelishamiz-backend.vercel.app'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
