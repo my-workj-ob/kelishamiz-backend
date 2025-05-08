@@ -11,7 +11,7 @@ export class CategoryService {
   constructor(
     @InjectRepository(Category)
     private categoryRepository: Repository<Category>,
-  ) {}
+  ) { }
 
   async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
     const category = this.categoryRepository.create(createCategoryDto);
@@ -42,24 +42,24 @@ export class CategoryService {
     return existCategoryById;
   }
 
-  async findAll(parentId: string | null | undefined): Promise<Category[]> {
-    const whereClause: any = {};
-    let relations: string[] = [];
-
-    if (parentId === undefined) {
-      relations = ['parent', 'children'];
-    } else if (parentId === 'null') {
-      whereClause.parent = IsNull();
-    } else if (parentId) {
-      whereClause.parent = { id: Number(parentId) };
-      relations = ['children', 'parent'];
-    }
-
-    return await this.categoryRepository.find({
-      where: whereClause,
-      relations: relations,
+  async findAll(
+    parentId: number | null = null,
+  ): Promise<Category[]> {
+    const categories = await this.categoryRepository.find({
+      where: parentId ? { parent: { id: parentId } } : { parent: IsNull() },
+      relations: ['parent'],
     });
+
+    const tree = await Promise.all(
+      categories.map(async (category) => ({
+        ...category,
+        children: await this.findAll(category.id),
+      })),
+    );
+
+    return tree;
   }
+
 
   async findAllOnlyChildCategories(parentId: number): Promise<Category[]> {
     const parent = await this.categoryRepository.findOne({

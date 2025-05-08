@@ -21,7 +21,7 @@ import { Category } from './entities/category.entity';
 @ApiTags('Category')
 @Controller('category')
 export class CategoryController {
-  constructor(private readonly categoryService: CategoryService) {}
+  constructor(private readonly categoryService: CategoryService) { }
 
   @Post()
   @ApiOperation({ summary: 'Yangi kategoriya yaratish' })
@@ -46,8 +46,9 @@ export class CategoryController {
       'Faqat berilgan ota kategoriyaga tegishli bolalarni olish uchun (null - faqat ota kategoriyalar)',
   })
   async findAll(@Query('parentId') parentId?: string): Promise<Category[]> {
-    return this.categoryService.findAll(parentId);
+    return this.categoryService.findAll(Number(parentId));
   }
+
 
   @Get(':id')
   @ApiOperation({ summary: 'Kategoriya ID orqali olish' })
