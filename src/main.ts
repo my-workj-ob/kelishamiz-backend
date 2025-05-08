@@ -20,7 +20,7 @@ async function bootstrap() {
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
 
   app.enableCors({
-    origin: ['http://localhost:5173'],
+    origin: ['http://localhost:5173', "https://kelishamiz.uz"],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
