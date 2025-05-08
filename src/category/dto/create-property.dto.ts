@@ -20,5 +20,5 @@ export class CreatePropertyDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  options?: string[] | string;
+  options?: string[];
 }

@@ -16,7 +16,7 @@ export class OtpService {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   private async fetchToken(): Promise<TokenData> {
     const email = this.configService.get<string>('ESKIZ_EMAIL');
@@ -49,66 +49,25 @@ export class OtpService {
   }
 
   generateOtp(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    console.debug(`Generated OTP: ${otp}`); // Log the generated OTP
+    return otp;
   }
 
   async sendOtp(phone: string): Promise<string> {
     const otpCode = this.generateOtp();
+    const isDevelopment = this.configService.get<string>('NODE_ENV') === 'development'; // Get from config
 
-    if (process.env.NODE_ENV === 'development') {
+    if (isDevelopment) {
       console.log(`[DEV MODE] OTP kodi: ${otpCode} -> ${phone}`);
       return otpCode;
     }
 
-    const apiUrl = 'https://notify.eskiz.uz/api/message/sms/send';
-    const payload = {
-      mobile_phone: phone.replace('+', ''),
-      message: `Kelishamiz.uz saytiga ro‘yxatdan o‘tish uchun tasdiqlash kodi: ${otpCode}`,
-      from: '4546',
-    };
-
-    let token = await this.getToken();
-
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post(apiUrl, payload, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }),
-      );
-
-      console.log('Eskiz SMS yuborildi:', response.data);
-      return otpCode;
-    } catch (error) {
-      if (error.response?.status === 401) {
-        console.warn('Token eskiribdi (lekin kutilmagan), yangilayapman...');
-        this.tokenData = await this.fetchToken();
-        token = this.tokenData.token;
-
-        const retryResponse = await firstValueFrom(
-          this.httpService.post(apiUrl, payload, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-        );
-
-        console.log(
-          'Eskiz SMS yuborildi (ikkinchi urinish):',
-          retryResponse.data,
-        );
-        return otpCode;
-      }
-
-      console.error(
-        `SMS yuborishda xatolik: ${
-          error.response?.data
-            ? JSON.stringify(error.response.data)
-            : error.message
-        }`,
-      );
-      throw new Error('SMS yuborishda xatolik yuz berdi');
-    }
+    // Fake sending logic:
+    console.log(`Fake sending OTP ${otpCode} to ${phone}`); // Use logger
+    // Simulate a delay (optional)
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    console.debug(`OTP sent (fake) to ${phone}: ${otpCode}`);
+    return otpCode;
   }
 }

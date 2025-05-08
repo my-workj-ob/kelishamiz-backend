@@ -12,10 +12,10 @@ export class PropertyService {
     private propertyRepository: Repository<Property>,
     @InjectRepository(Category) // Category uchun repositoryni inyeksiya qilish
     private categoryRepository: Repository<Category>,
-  ) {}
+  ) { }
   //
   async create(createPropertyDto: CreatePropertyDto): Promise<Property> {
-    const { categoryId, ...propertyData } = createPropertyDto;
+    const { categoryId, options, ...propertyData } = createPropertyDto;
 
     const category = await this.categoryRepository.findOne({
       where: { id: categoryId },
@@ -27,8 +27,9 @@ export class PropertyService {
     const property = this.propertyRepository.create({
       ...propertyData,
       category: { id: categoryId },
-      options: propertyData.type === PropertyType.SELECT ? [] : undefined,
+      options: propertyData.type === PropertyType.SELECT ? options : undefined,
     });
+
     return await this.propertyRepository.save(property);
   }
 

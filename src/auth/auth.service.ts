@@ -30,7 +30,7 @@ export class AuthService {
     private readonly otpService: OtpService,
     @InjectRepository(Profile)
     private profileRepo: Repository<Profile>,
-  ) {}
+  ) { }
 
   async findByPhone(phone: string): Promise<User | null> {
     return this.userRepo.findOne({ where: { phone } });
