@@ -146,7 +146,7 @@ export class ProductController {
   @UseInterceptors(FilesInterceptor('files')) // Frontendda yuborilgan 'files' nomi bilan moslashtirilgan
   @Post()
   async create(
-    @UploadedFile() files: Express.Multer.File[],
+    @UploadedFiles() files: Express.Multer.File[],
     @Body() body: any,
     @Req() req: any,
   ): Promise<Product> {
