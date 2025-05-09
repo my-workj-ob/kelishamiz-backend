@@ -160,14 +160,14 @@ export class ProductController {
     const createProductDto: Omit<ProductDto, 'images'> = {
       title: body.title,
       description: body.description,
-      price: +body.price,
-      categoryId: +body.categoryId,
+      price: Number(body.price),
+      categoryId: Number(body.categoryId),
       location: body.location,
       paymentType: body.paymentType,
       currencyType: body.currencyType,
       negotiable: body.negotiable,
-      regionId: +body.regionId,
-      districtId: +body.districtId,
+      regionId: Number(body.regionId),
+      districtId: Number(body.districtId),
       // properties: JSON.parse(body.properties || '[]'),
     };
     console.log(body);

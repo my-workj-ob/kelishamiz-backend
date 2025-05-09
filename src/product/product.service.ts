@@ -304,8 +304,8 @@ export class ProductService {
       category,
       profile: user,
       images: productImages,
-      region: { id: +createProductDto.regionId },
-      district: { id: +createProductDto.districtId },
+      region: { id: Number(createProductDto.regionId) },
+      district: { id: Number(createProductDto.districtId) },
       // propertyValues: properties || [], // propertyValues ni qo'shamiz
     });
 
