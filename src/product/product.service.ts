@@ -267,13 +267,18 @@ export class ProductService {
     userId: number,
   ): Promise<Product> {
     const { categoryId, ...productData } = createProductDto;
-    console.log(files);
+    console.log('Fayllar:', files);
+    console.log('Rasm ma\'lumotlari:', imageDtos);
+    console.log('Mahsulot ma\'lumotlari:', createProductDto);
+    console.log('Foydalanuvchi IDsi:', userId);
 
     const category = await this.categoryRepository.findOne({ where: { id: categoryId } });
     if (!category) throw new NotFoundException(`Kategoriya topilmadi`);
+    console.log('Topilgan kategoriya:', category);
 
     const user = await this.profileRepository.findOne({ where: { user: { id: userId } } });
     if (!user) throw new NotFoundException(`Foydalanuvchi topilmadi`);
+    console.log('Topilgan foydalanuvchi profili:', user);
 
     const productImages: ProductImage[] = [];
     for (let i = 0; i < files.length; i++) {
@@ -281,7 +286,7 @@ export class ProductService {
       const imageDto = imageDtos[i];
       try {
         const vercelFileUrl = await this.uploadService.uploadFile(file);
-        console.log('Uploaded file URL:', vercelFileUrl);
+        console.log('Yuklangan fayl URLi:', vercelFileUrl);
         await this.fileService.saveFile(vercelFileUrl);
 
         const newProductImage = this.productImageRepository.create({
@@ -291,13 +296,12 @@ export class ProductService {
 
         productImages.push(newProductImage);
       } catch (error) {
-        console.error('Upload error:', error);
-        console.log(files);
+        console.error('Yuklash xatoligi:', error);
+        console.log('Xatolikka sabab bo\'lgan fayllar:', files);
         throw new InternalServerErrorException(`Rasm yuklashda xatolik: ${error.message}`);
       }
     }
-
-
+    console.log('Yaratilgan mahsulot rasmlari:', productImages);
 
     const product = this.productRepository.create({
       ...productData,
@@ -308,8 +312,10 @@ export class ProductService {
       district: { id: Number(createProductDto.districtId) },
       // propertyValues: properties || [], // propertyValues ni qo'shamiz
     });
+    console.log('Yaratilgan mahsulot obyekti:', product);
 
     await this.productRepository.save(product);
+    console.log('Mahsulot saqlandi.');
 
     return await this.productRepository.findOneOrFail({
       where: { id: product.id },

@@ -5,6 +5,7 @@ import {
   Body,
   Controller,
   Get,
+  InternalServerErrorException,
   NotFoundException,
   Param,
   Post,
@@ -153,7 +154,12 @@ export class ProductController {
     let filesMeta: ProductImageDto[] = [];
     console.log(filesMeta);
 
-    filesMeta = JSON.parse(body.filesMeta);
+    try {
+      filesMeta = JSON.parse(body.filesMeta);
+    } catch (error) {
+      console.error('filesMeta ni parse qilishda xatolik:', error);
+      throw new InternalServerErrorException('filesMeta ma\'lumotlarini qayta ishlashda xatolik.');
+    }
 
     console.log(filesMeta);
 
@@ -165,15 +171,17 @@ export class ProductController {
       location: body.location,
       paymentType: body.paymentType,
       currencyType: body.currencyType,
-      negotiable: body.negotiable,
+      negotiable: body.negotiable === 'true', // Boolean tipiga o'tkazish
       regionId: Number(body.regionId),
       districtId: Number(body.districtId),
       // properties: JSON.parse(body.properties || '[]'),
     };
-    console.log(body);
+    console.log('Qabul qilingan body:', body);
+    console.log('Yaratilgan DTO:', createProductDto);
 
     return this.productService.create(files, filesMeta, createProductDto, req.user.userId);
   }
+
 
 
   // 🔸 POST: Filter products
