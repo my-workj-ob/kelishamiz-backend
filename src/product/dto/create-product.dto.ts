@@ -76,13 +76,11 @@ export class ProductDto {
   @Type(() => ProductImageDto)
   images: ProductImageDto[]; // `mainImage` o'rniga rasmlar massivi
 
-  @ApiProperty({ required: false })
-  // images?: string[]; // Buni olib tashlang
 
-  // @ApiProperty({ type: [ProductPropertyDto], required: false })
-  // @ValidateNested({ each: true })
-  // @Type(() => ProductPropertyDto)
-  // properties?: ProductPropertyDto[];
+  @ApiProperty({ type: [ProductPropertyDto], required: false })
+  @ValidateNested({ each: true })
+  @Type(() => ProductPropertyDto)
+  properties?: ProductPropertyDto[];
 
   @ApiProperty({ example: 'Pullik', description: "To'lov turi" })
   @IsNotEmpty()
@@ -94,10 +92,11 @@ export class ProductDto {
   @IsString()
   currencyType: string;
 
-  // @ApiProperty({ example: false, description: 'Kelishish mumkinligi' })
-  // @IsOptional()
-  // @IsBoolean()
-  // negotiable?: boolean;
+  @ApiProperty({ example: false, description: 'Kelishish mumkinligi' })
+  @IsOptional()
+  @IsBoolean()
+  negotiable?: boolean;
+  
 
   @ApiProperty({ example: 1, description: 'Viloyat IDsi' })
   regionId: number;

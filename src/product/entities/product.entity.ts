@@ -67,20 +67,6 @@ export class Product {
   @Column({ nullable: true })
   profileId: number;
 
-  // @ApiProperty({ // Buni olib tashlang
-  //   example: 'https://example.com/main.jpg',
-  //   description: 'Asosiy rasm manzili',
-  // })
-  // @Column()
-  // mainImage: string;
-
-  // @ApiProperty({ // Buni olib tashlang
-  //   example: ['https://example.com/image1.jpg'],
-  //   description: "Qo'shimcha rasmlar manzillari",
-  //   required: false,
-  // })
-  // @Column('simple-array', { nullable: true })
-  // images: string[];
 
   @OneToMany(() => ProductImage, (image) => image.product, { cascade: true })
   images: ProductImage[]; // Rasmlar uchun yangi relation
@@ -113,14 +99,19 @@ export class Product {
   )
   productProperties: ProductProperty[];
 
+
+  @Column({ type: 'jsonb', nullable: true })
+  propertyValues: Record<string, any>;
+
+
   @Column()
   paymentType: string;
 
   @Column()
   currencyType: string;
 
-  // @Column({ default: false })
-  // negotiable: boolean;
+  @Column({ default: false })
+  negotiable: boolean;
 
   @Column({ default: 0 })
   likesCount: number;
@@ -131,6 +122,7 @@ export class Product {
   @ManyToMany(() => User, (user) => user.likedProjects)
   @JoinTable()
   likes: User[];
+
 
   @ManyToOne(() => Region, (region) => region.products, { eager: true })
   @JoinColumn({ name: 'regionId' })

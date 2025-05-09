@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -29,11 +30,11 @@ import {
 import { User } from './../auth/entities/user.entity';
 import { JwtOptionalAuthGuard } from './../common/jwt/guards/jwt-optional-auth.guard';
 import { SearchService } from './../search-filter/search-filter.service';
-import { ProductDto } from './dto/create-product.dto';
+import { ProductDto, ProductImageDto } from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
 import { Product } from './entities/product.entity';
 import { ProductService } from './product.service';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Products')
 @ApiBearerAuth()
@@ -140,30 +141,43 @@ export class ProductController {
     },
   })
   @ApiBadRequestResponse({ description: "Yaroqsiz ma'lumotlar kiritildi" })
-  @ApiOperation({ summary: "mahsulot qo'shish" })
-  // @UsePipes(new ValidationPipe())
-  @UseInterceptors(FileFieldsInterceptor([{ name: 'images', maxCount: 10 }])) // Misol uchun, 10 tagacha rasm qabul qilish
+  @ApiOperation({ summary: "Mahsulot qo'shish" })
+  @UseInterceptors(FilesInterceptor('files')) // Frontendda yuborilgan 'files' nomi bilan moslashtirilgan
+  @Post()
   async create(
-    @Body() createProductDto: ProductDto,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() body: any,
     @Req() req: any,
-    @UploadedFiles() files: { images?: Express.Multer.File[] }, // Fayllarni qabul qilish
   ): Promise<Product> {
+    let filesMeta: ProductImageDto[] = [];
+    console.log(body);
 
-    console.log(createProductDto);
-    const res = await this.productService.create(
-      createProductDto,
-      req?.user?.userId,
-      files?.images || [],
-    );
+    if (body.filesMeta) {
+      try {
+        filesMeta = JSON.parse(body.filesMeta);
+      } catch (e) {
+        throw new BadRequestException('Rasm metadata noto‘g‘ri formatda');
+      }
+    }
+    console.log(filesMeta);
 
-   
-    
+    const createProductDto: Omit<ProductDto, 'images'> = {
+      title: body.title,
+      description: body.description,
+      price: +body.price,
+      categoryId: +body.categoryId,
+      location: body.location,
+      paymentType: body.paymentType,
+      currencyType: body.currencyType,
+      negotiable: body.negotiable,
+      regionId: +body.regionId,
+      districtId: +body.districtId,
+      properties: JSON.parse(body.properties || '[]'),
+    };
 
-    return res
-
-
-
+    return this.productService.create(files, filesMeta, createProductDto, req.user.userId);
   }
+
 
   // 🔸 POST: Filter products
   @UseGuards(JwtOptionalAuthGuard)
