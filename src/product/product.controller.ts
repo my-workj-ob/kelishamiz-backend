@@ -10,6 +10,7 @@ import {
   Post,
   Query,
   Req,
+  UploadedFile,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -145,7 +146,7 @@ export class ProductController {
   @UseInterceptors(FilesInterceptor('files')) // Frontendda yuborilgan 'files' nomi bilan moslashtirilgan
   @Post()
   async create(
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFile() files: Express.Multer.File[],
     @Body() body: any,
     @Req() req: any,
   ): Promise<Product> {
