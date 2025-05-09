@@ -155,7 +155,7 @@ export class ProductController {
 
     if (body.filesMeta) {
       try {
-        filesMeta = JSON.parse(body.filesMeta);
+        filesMeta = body.filesMeta
       } catch (e) {
         console.log(files);
         throw new BadRequestException('Rasm metadata noto‘g‘ri formatda');
