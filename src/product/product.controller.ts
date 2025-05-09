@@ -151,7 +151,7 @@ export class ProductController {
     @Req() req: any,
   ): Promise<Product> {
     let filesMeta: ProductImageDto[] = [];
-    console.log(files);
+    console.log(filesMeta);
 
     filesMeta = JSON.parse(body.filesMeta);
 
