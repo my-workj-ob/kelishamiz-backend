@@ -320,7 +320,7 @@ export class ProductService {
 
     return await this.productRepository.findOneOrFail({
       where: { id: product.id },
-      relations: ['category', 'images', 'region', 'district'],
+      relations: ['category', 'images'],
     });
   }
 }

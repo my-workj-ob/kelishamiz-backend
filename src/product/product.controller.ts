@@ -103,8 +103,8 @@ export class ProductController {
         paymentType: { type: 'string' },
         currencyType: { type: 'string' },
         negotiable: { type: 'boolean', default: false },
-        regionId: { type: 'number' },
-        districtId: { type: 'number' },
+        // regionId: { type: 'number' },
+        // districtId: { type: 'number' },
         properties: {
           type: 'array',
           items: {
@@ -136,7 +136,6 @@ export class ProductController {
         'location',
         'paymentType',
         'currencyType',
-        'regionId',
         'districtId',
         'images', // Rasmlar majburiy bo'lishi kerak
       ],
