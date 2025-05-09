@@ -267,7 +267,7 @@ export class ProductService {
     userId: number,
   ): Promise<Product> {
     const { categoryId, properties, ...productData } = createProductDto;
-console.log(files);
+    console.log(files);
 
     const category = await this.categoryRepository.findOne({ where: { id: categoryId } });
     if (!category) throw new NotFoundException(`Kategoriya topilmadi`);
