@@ -267,6 +267,7 @@ export class ProductService {
     userId: number,
   ): Promise<Product> {
     const { categoryId, properties, ...productData } = createProductDto;
+console.log(files);
 
     const category = await this.categoryRepository.findOne({ where: { id: categoryId } });
     if (!category) throw new NotFoundException(`Kategoriya topilmadi`);
@@ -291,6 +292,7 @@ export class ProductService {
         productImages.push(newProductImage);
       } catch (error) {
         console.error('Upload error:', error);
+        console.log(files);
         throw new InternalServerErrorException(`Rasm yuklashda xatolik: ${error.message}`);
       }
     }

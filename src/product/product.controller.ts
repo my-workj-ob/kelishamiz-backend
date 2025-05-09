@@ -151,11 +151,12 @@ export class ProductController {
   ): Promise<Product> {
     let filesMeta: ProductImageDto[] = [];
     console.log(files);
-    
+
     if (body.filesMeta) {
       try {
         filesMeta = JSON.parse(body.filesMeta);
       } catch (e) {
+        console.log(files);
         throw new BadRequestException('Rasm metadata noto‘g‘ri formatda');
       }
     }
