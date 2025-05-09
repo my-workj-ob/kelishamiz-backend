@@ -28,7 +28,7 @@ export class LocationService {
     return this.regionRepo.find({ relations: ['districts'] });
   }
 
-  getDistrictsByRegion(regionId: number) {
-    return this.districtRepo.find({ where: { regionId } });
-  }
+  // getDistrictsByRegion(regionId: number) {
+  //   return this.districtRepo.find({ where: { regionId } });
+  // }
 }

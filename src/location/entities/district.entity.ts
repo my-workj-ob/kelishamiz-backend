@@ -23,8 +23,8 @@ export class District {
   @JoinColumn({ name: 'regionId' })
   region: Region;
 
-  @Column()
-  regionId: number;
-  @OneToMany(() => Product, (product) => product.district)
-  products: Product[];
+  // @Column()
+  // regionId: number;
+  // @OneToMany(() => Product, (product) => product.district)
+  // products: Product[];
 }

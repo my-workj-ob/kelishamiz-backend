@@ -13,6 +13,6 @@ export class Region {
 
   @OneToMany(() => District, (district) => district.region)
   districts: District[];
-  @OneToMany(() => Product, (product) => product.region)
-  products: Product[];
+  // @OneToMany(() => Product, (product) => product.region)
+  // products: Product[];
 }
