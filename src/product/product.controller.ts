@@ -152,10 +152,11 @@ export class ProductController {
     @Req() req: any,
   ): Promise<Product> {
     let filesMeta: ProductImageDto[] = [];
-    console.log(filesMeta);
 
     try {
       filesMeta = JSON.parse(body.filesMeta);
+      console.log(filesMeta);
+      
     } catch (error) {
       console.error('filesMeta ni parse qilishda xatolik:', error);
       throw new InternalServerErrorException('filesMeta ma\'lumotlarini qayta ishlashda xatolik.');
