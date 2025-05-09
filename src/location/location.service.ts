@@ -14,7 +14,7 @@ export class LocationService {
 
     @InjectRepository(District)
     private districtRepo: Repository<District>,
-  ) {}
+  ) { }
 
   createRegion(dto: CreateRegionDto) {
     return this.regionRepo.save(dto);
@@ -28,7 +28,7 @@ export class LocationService {
     return this.regionRepo.find({ relations: ['districts'] });
   }
 
-  // getDistrictsByRegion(regionId: number) {
-  //   return this.districtRepo.find({ where: { regionId } });
-  // }
+  getDistrictsByRegion(regionId: number) {
+    return this.districtRepo.find({ where: { regionId } });
+  }
 }

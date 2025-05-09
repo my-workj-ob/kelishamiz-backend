@@ -77,10 +77,10 @@ export class ProductDto {
   images: ProductImageDto[]; // `mainImage` o'rniga rasmlar massivi
 
 
-  // @ApiProperty({ type: [ProductPropertyDto], required: false })
-  // @ValidateNested({ each: true })
-  // @Type(() => ProductPropertyDto)
-  // properties?: ProductPropertyDto[];
+  @ApiProperty({ type: [ProductPropertyDto], required: false })
+  @ValidateNested({ each: true })
+  @Type(() => ProductPropertyDto)
+  properties?: ProductPropertyDto[];
 
   @ApiProperty({ example: 'Pullik', description: "To'lov turi" })
   @IsNotEmpty()
@@ -98,9 +98,9 @@ export class ProductDto {
   negotiable?: boolean;
 
 
-  // @ApiProperty({ example: 1, description: 'Viloyat IDsi' })
-  // regionId: number;
+  @ApiProperty({ example: 1, description: 'Viloyat IDsi' })
+  regionId: number;
 
-  // @ApiProperty({ example: 5, description: 'Tuman IDsi' })
-  // districtId: number;
+  @ApiProperty({ example: 5, description: 'Tuman IDsi' })
+  districtId: number;
 }

@@ -11,8 +11,8 @@ export class Region {
   @Column({ unique: true })
   name: string;
 
-  // @OneToMany(() => District, (district) => district.region)
-  // districts: District[];
-  // @OneToMany(() => Product, (product) => product.region)
-  // products: Product[];
+  @OneToMany(() => District, (district) => district.region)
+  districts: District[];
+  @OneToMany(() => Product, (product) => product.region)
+  products: Product[];
 }

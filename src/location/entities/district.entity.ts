@@ -17,14 +17,14 @@ export class District {
   @Column()
   name: string;
 
-  // @ManyToOne(() => Region, (region) => region.districts, {
-  //   onDelete: 'CASCADE',
-  // })
-  // @JoinColumn({ name: 'regionId' })
-  // region: Region;
+  @ManyToOne(() => Region, (region) => region.districts, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'regionId' })
+  region: Region;
 
-  // @Column()
-  // regionId: number;
-  // @OneToMany(() => Product, (product) => product.district)
-  // products: Product[];
+  @Column()
+  regionId: number;
+  @OneToMany(() => Product, (product) => product.district)
+  products: Product[];
 }

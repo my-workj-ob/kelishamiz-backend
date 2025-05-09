@@ -176,8 +176,8 @@ export class ProductController {
       paymentType: body.paymentType,
       currencyType: body.currencyType,
       negotiable: body.negotiable === 'true',
-      // regionId: Number(body.regionId),
-      // districtId: Number(body.districtId),
+      regionId: Number(body.regionId),
+      districtId: Number(body.districtId),
     };
     console.log('Qabul qilingan body:', body);
     console.log('Yaratilgan DTO:', createProductDto);

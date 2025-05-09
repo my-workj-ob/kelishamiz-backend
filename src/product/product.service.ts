@@ -266,7 +266,7 @@ export class ProductService {
     createProductDto: Omit<ProductDto, 'images'>,
     userId: number,
   ): Promise<Product> {
-    const { categoryId, ...productData } = createProductDto;
+    const { categoryId, properties, ...productData } = createProductDto;
     console.log('Fayllar:', files);
     console.log('Rasm ma\'lumotlari (imageDtos):', imageDtos);
     console.log('Mahsulot ma\'lumotlari:', createProductDto);
@@ -309,9 +309,9 @@ export class ProductService {
       category,
       profile: user,
       images: productImages,
-      // regionId: Number(createProductDto.regionId) 
-      // districtId: Number(createProductDto.)
-      // propertyValues: properties || [], // propertyValues ni qo'shamiz
+      regionId: Number(createProductDto.regionId),
+      districtId: Number(createProductDto.districtId),
+      propertyValues: properties || [], // propertyValues ni qo'shamiz
     });
     console.log('Yaratilgan mahsulot obyekti:', product);
 
@@ -320,7 +320,7 @@ export class ProductService {
 
     return await this.productRepository.findOneOrFail({
       where: { id: product.id },
-      relations: ['category', 'images'],
+      relations: ['category', 'images', 'region', 'district'],
     });
   }
 }

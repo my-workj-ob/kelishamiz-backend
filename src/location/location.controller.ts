@@ -7,7 +7,7 @@ import { LocationService } from './location.service';
 @ApiTags('Joylashuv')
 @Controller('location')
 export class LocationController {
-  constructor(private readonly service: LocationService) {}
+  constructor(private readonly service: LocationService) { }
 
   @Post('region')
   @ApiOperation({ summary: "Yangi viloyat qo'shish" })
@@ -27,9 +27,9 @@ export class LocationController {
     return this.service.getAllRegions();
   }
 
-  // @Get('districts/:regionId')
-  // @ApiOperation({ summary: "Viloyat IDsi orqali tumanlar ro'yxatini olish" })
-  // getDistricts(@Param('regionId') regionId: string) {
-  //   return this.service.getDistrictsByRegion(Number(regionId));
-  // }
+  @Get('districts/:regionId')
+  @ApiOperation({ summary: "Viloyat IDsi orqali tumanlar ro'yxatini olish" })
+  getDistricts(@Param('regionId') regionId: string) {
+    return this.service.getDistrictsByRegion(Number(regionId));
+  }
 }
