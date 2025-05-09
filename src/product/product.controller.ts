@@ -153,14 +153,8 @@ export class ProductController {
     let filesMeta: ProductImageDto[] = [];
     console.log(files);
 
-    if (body.filesMeta) {
-      try {
-        filesMeta = body.filesMeta
-      } catch (e) {
-        console.log(files);
-        throw new BadRequestException('Rasm metadata noto‘g‘ri formatda');
-      }
-    }
+    filesMeta = JSON.parse(body.filesMeta);
+
     console.log(filesMeta);
 
     const createProductDto: Omit<ProductDto, 'images'> = {
