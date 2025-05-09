@@ -17,8 +17,13 @@ async function bootstrap() {
 
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
   app.enableCors({
-    origin: ['http://localhost:5173', 'https://kelishamiz.uz', 'https://kelishamiz-backend.vercel.app'],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: [
+      'http://localhost:5173',
+      'https://kelishamiz.uz',
+      'https://kelishamiz-backend.vercel.app',
+      'https://it-experts-nine.vercel.app',
+    ],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
