@@ -258,10 +258,13 @@ export class ProductService {
   async create(
     createProductDto: ProductDto,
     userId: number,
-    files: Express.Multer.File[], // Fayllarni qabul qilish
+    files: Express.Multer.File[],
   ): Promise<Product> {
-    const { categoryId, properties, images: imageDtos, ...productData } = createProductDto;
-    console.log(userId);
+   
+    
+    const { categoryId, images: imageDtos, ...productData } = createProductDto;
+
+
 
     const category = await this.categoryRepository.findOne({
       where: { id: categoryId },
@@ -279,6 +282,8 @@ export class ProductService {
     if (!user) throw new NotFoundException(`Foydalanuvchi ${userId} topilmadi`);
 
     const productImages: ProductImage[] = [];
+    console.log(productImages);
+
     if (imageDtos && files && files.length === imageDtos.length) {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -289,11 +294,12 @@ export class ProductService {
         try {
           const vercelFileUrl = await this.uploadService.uploadFile(file);
           await this.fileService.saveFile(vercelFileUrl);
-          const newProductImage = this.productImageRepository.create({ // Repository orqali yaratish
+          const newProductImage = this.productImageRepository.create({
             url: vercelFileUrl,
             isMainImage: imageDto.isMainImage,
           });
           productImages.push(newProductImage);
+
         } catch (error) {
           throw new InternalServerErrorException(
             `Rasm yuklashda xatolik yuz berdi (${file.originalname})`,
@@ -311,12 +317,12 @@ export class ProductService {
       ...productData,
       category,
       profile: user,
-      productProperties: properties?.map((propDto) =>
-        this.productPropertyRepository.create({
-          propertyId: propDto.propertyId,
-          value: propDto.value,
-        }),
-      ),
+      // productProperties: properties?.map((propDto) =>
+      //   this.productPropertyRepository.create({
+      //     propertyId: propDto.propertyId,
+      //     value: propDto.value,
+      //   }),
+      // ),
       images: productImages, // Yuklangan rasmlarni mahsulotga bog'lash
     });
 

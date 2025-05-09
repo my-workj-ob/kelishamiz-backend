@@ -9,35 +9,42 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
+import { Column } from 'typeorm';
 
+// DTO da:
+// ProductPropertyValueDto ni birinchi o'rinda e'lon qilish
 export class ProductPropertyValueDto {
-  @ApiProperty({ example: 'Rangi', description: 'Xususiyat nomi' })
-  @IsNotEmpty()
+  @ApiProperty({ example: 'Eshiklar soni', description: 'Xususiyat nomi' })
   @IsString()
   key: string;
-  @ApiProperty({ example: 'Qizil', description: 'Xususiyat qiymati' })
-  @IsNotEmpty()
+
+  @ApiProperty({ example: '2', description: 'Xususiyat qiymati' })
   @IsString()
   value: string;
 }
 
+// Keyin ProductPropertyDto ni e'lon qilish
 export class ProductPropertyDto {
   @ApiProperty({ example: 1, description: 'Xususiyat IDsi' })
   @IsNotEmpty()
   @IsNumber()
   propertyId: number;
+
   @ApiProperty({ example: 'STRING', description: 'Xususiyat turi' })
   @IsNotEmpty()
   @IsString()
   type: string;
+
   @ApiProperty({
-    type: ProductPropertyValueDto,
-    description: 'Xususiyatning nomi va qiymati',
+    example: { key: 'Eshiklar soni', value: '2' },
+    description: 'Xususiyat nomi va qiymati',
   })
   @ValidateNested()
   @Type(() => ProductPropertyValueDto)
-  value: Record<string, string>;
+  value: ProductPropertyValueDto;
 }
+
+
 
 export class ProductImageDto {
   @ApiProperty({ type: 'string', format: 'binary', description: 'Mahsulot rasmi' })
@@ -72,10 +79,10 @@ export class ProductDto {
   @ApiProperty({ required: false })
   // images?: string[]; // Buni olib tashlang
 
-  @ApiProperty({ type: [ProductPropertyDto], required: false })
-  @ValidateNested({ each: true })
-  @Type(() => ProductPropertyDto)
-  properties?: ProductPropertyDto[];
+  // @ApiProperty({ type: [ProductPropertyDto], required: false })
+  // @ValidateNested({ each: true })
+  // @Type(() => ProductPropertyDto)
+  // properties?: ProductPropertyDto[];
 
   @ApiProperty({ example: 'Pullik', description: "To'lov turi" })
   @IsNotEmpty()
@@ -87,10 +94,10 @@ export class ProductDto {
   @IsString()
   currencyType: string;
 
-  @ApiProperty({ example: false, description: 'Kelishish mumkinligi' })
-  @IsOptional()
-  @IsBoolean()
-  negotiable?: boolean;
+  // @ApiProperty({ example: false, description: 'Kelishish mumkinligi' })
+  // @IsOptional()
+  // @IsBoolean()
+  // negotiable?: boolean;
 
   @ApiProperty({ example: 1, description: 'Viloyat IDsi' })
   regionId: number;

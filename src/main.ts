@@ -23,7 +23,7 @@ async function bootstrap() {
   });
 
 
-  app.useGlobalPipes(new ValidationPipe());
+  // app.useGlobalPipes(new ValidationPipe());
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   const config = new DocumentBuilder()

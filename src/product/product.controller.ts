@@ -141,18 +141,28 @@ export class ProductController {
   })
   @ApiBadRequestResponse({ description: "Yaroqsiz ma'lumotlar kiritildi" })
   @ApiOperation({ summary: "mahsulot qo'shish" })
-  @UsePipes(new ValidationPipe())
+  // @UsePipes(new ValidationPipe())
   @UseInterceptors(FileFieldsInterceptor([{ name: 'images', maxCount: 10 }])) // Misol uchun, 10 tagacha rasm qabul qilish
   async create(
     @Body() createProductDto: ProductDto,
     @Req() req: any,
     @UploadedFiles() files: { images?: Express.Multer.File[] }, // Fayllarni qabul qilish
   ): Promise<Product> {
-    return this.productService.create(
+
+    console.log(createProductDto);
+    const res = await this.productService.create(
       createProductDto,
       req?.user?.userId,
-      files?.images || [], // Fayllarni servisga yuborish (agar bo'lsa)
+      files?.images || [],
     );
+
+   
+    
+
+    return res
+
+
+
   }
 
   // 🔸 POST: Filter products

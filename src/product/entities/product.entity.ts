@@ -119,8 +119,8 @@ export class Product {
   @Column()
   currencyType: string;
 
-  @Column({ default: false })
-  negotiable: boolean;
+  // @Column({ default: false })
+  // negotiable: boolean;
 
   @Column({ default: 0 })
   likesCount: number;
