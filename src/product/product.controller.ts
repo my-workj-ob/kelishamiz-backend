@@ -150,8 +150,8 @@ export class ProductController {
     @Req() req: any,
   ): Promise<Product> {
     let filesMeta: ProductImageDto[] = [];
-    console.log(body);
-
+    console.log(files);
+    
     if (body.filesMeta) {
       try {
         filesMeta = JSON.parse(body.filesMeta);
@@ -174,6 +174,7 @@ export class ProductController {
       districtId: +body.districtId,
       properties: JSON.parse(body.properties || '[]'),
     };
+    console.log(body);
 
     return this.productService.create(files, filesMeta, createProductDto, req.user.userId);
   }

@@ -96,7 +96,7 @@ export class ProductDto {
   @IsOptional()
   @IsBoolean()
   negotiable?: boolean;
-  
+
 
   @ApiProperty({ example: 1, description: 'Viloyat IDsi' })
   regionId: number;
