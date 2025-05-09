@@ -151,12 +151,16 @@ export class ProductController {
     @Body() body: any,
     @Req() req: any,
   ): Promise<Product> {
-    let filesMeta: ProductImageDto[] = [];
+    let filesMeta: { isMainImage: boolean }[] = [];
 
     try {
-      filesMeta = JSON.parse(body.filesMeta);
-      console.log(filesMeta);
-      
+      if (body.filesMeta) {
+        filesMeta = JSON.parse(body.filesMeta);
+        console.log('Parsed filesMeta:', filesMeta);
+      } else {
+        console.log('filesMeta bodyda topilmadi, bo\'sh massiv ishlatiladi.');
+        filesMeta = []; // Agar frontenddan yuborilmasa bo'sh massiv ishlatamiz
+      }
     } catch (error) {
       console.error('filesMeta ni parse qilishda xatolik:', error);
       throw new InternalServerErrorException('filesMeta ma\'lumotlarini qayta ishlashda xatolik.');
@@ -172,13 +176,23 @@ export class ProductController {
       location: body.location,
       paymentType: body.paymentType,
       currencyType: body.currencyType,
-      negotiable: body.negotiable === 'true', // Boolean tipiga o'tkazish
+      negotiable: body.negotiable === 'true',
       regionId: Number(body.regionId),
       districtId: Number(body.districtId),
-      // properties: JSON.parse(body.properties || '[]'),
     };
     console.log('Qabul qilingan body:', body);
     console.log('Yaratilgan DTO:', createProductDto);
+
+    // Agar fayllar soni filesMeta soniga mos kelmasa, ogohlantirish
+    if (files.length !== filesMeta.length && filesMeta.length > 0) {
+      console.warn('Fayllar soni va filesMeta soni mos kelmaydi. Ehtimoliy xatolik.');
+    } else if (filesMeta.length === 0 && files.length > 0) {
+      // Agar filesMeta yuborilmagan bo'lsa, barcha rasmlarni asosiy emas deb belgilash
+      filesMeta = files.map(() => ({ isMainImage: false }));
+      console.log('Yaratilgan filesMeta (bo\'sh massiv):', filesMeta);
+    } else if (files.length === 0 && filesMeta.length > 0) {
+      console.warn('Fayllar yuborilmagan, lekin filesMeta mavjud. Bu kutilmagan holat.');
+    }
 
     return this.productService.create(files, filesMeta, createProductDto, req.user.userId);
   }

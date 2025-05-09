@@ -268,7 +268,7 @@ export class ProductService {
   ): Promise<Product> {
     const { categoryId, ...productData } = createProductDto;
     console.log('Fayllar:', files);
-    console.log('Rasm ma\'lumotlari:', imageDtos);
+    console.log('Rasm ma\'lumotlari (imageDtos):', imageDtos);
     console.log('Mahsulot ma\'lumotlari:', createProductDto);
     console.log('Foydalanuvchi IDsi:', userId);
 
@@ -283,7 +283,8 @@ export class ProductService {
     const productImages: ProductImage[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const imageDto = imageDtos[i];
+      // Agar filesMeta dan ma'lumot kelsa, uni ishlatamiz
+      const isMainImage = imageDtos[i]?.isMainImage || false;
       try {
         const vercelFileUrl = await this.uploadService.uploadFile(file);
         console.log('Yuklangan fayl URLi:', vercelFileUrl);
@@ -291,7 +292,7 @@ export class ProductService {
 
         const newProductImage = this.productImageRepository.create({
           url: vercelFileUrl,
-          isMainImage: imageDto.isMainImage || false,
+          isMainImage: isMainImage,
         });
 
         productImages.push(newProductImage);
