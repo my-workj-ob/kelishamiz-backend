@@ -98,9 +98,9 @@ export class ProductDto {
   negotiable?: boolean;
 
 
-  @ApiProperty({ example: 1, description: 'Viloyat IDsi' })
-  regionId: number;
+  // @ApiProperty({ example: 1, description: 'Viloyat IDsi' })
+  // regionId: number;
 
-  @ApiProperty({ example: 5, description: 'Tuman IDsi' })
-  districtId: number;
+  // @ApiProperty({ example: 5, description: 'Tuman IDsi' })
+  // districtId: number;
 }

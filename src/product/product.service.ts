@@ -309,8 +309,8 @@ export class ProductService {
       category,
       profile: user,
       images: productImages,
-      region: { id: Number(createProductDto.regionId) },
-      district: { id: Number(createProductDto.districtId) },
+      // regionId: Number(createProductDto.regionId) 
+      // districtId: Number(createProductDto.)
       // propertyValues: properties || [], // propertyValues ni qo'shamiz
     });
     console.log('Yaratilgan mahsulot obyekti:', product);

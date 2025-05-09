@@ -124,19 +124,19 @@ export class Product {
   likes: User[];
 
 
-  @ManyToOne(() => Region, (region) => region.products, { eager: true })
-  @JoinColumn({ name: 'regionId' })
-  region: Region;
+  // @ManyToOne(() => Region, (region) => region.products, { eager: true })
+  // @JoinColumn({ name: 'regionId' })
+  // region: Region;
 
-  @Column({ nullable: true })
-  regionId: number;
+  // @Column({ nullable: true })
+  // regionId: number;
 
-  @ManyToOne(() => District, (district) => district.products, { eager: true })
-  @JoinColumn({ name: 'districtId' })
-  district: District;
+  // @ManyToOne(() => District, (district) => district.products, { eager: true })
+  // @JoinColumn({ name: 'districtId' })
+  // district: District;
 
-  @Column({ nullable: true })
-  districtId: number;
+  // @Column({ nullable: true })
+  // districtId: number;
 
   @Column({ default: false })
   ownProduct: boolean;
