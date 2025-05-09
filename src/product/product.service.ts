@@ -16,8 +16,8 @@ import { ProductDto } from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
 import { ProductProperty } from './entities/product-property-entity';
 import { Product, } from './entities/product.entity';
-import { FileService } from 'src/file/file.service';
-import { UploadService } from 'src/file/uploadService';
+import { FileService } from './../file/file.service';
+import { UploadService } from './../file/uploadService';
 import { ProductImage } from './entities/Product-Image.entity';
 
 @Injectable()
