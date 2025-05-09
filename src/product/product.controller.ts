@@ -37,7 +37,7 @@ export class ProductController {
   constructor(
     private readonly productService: ProductService,
     private readonly searchService: SearchService,
-  ) {}
+  ) { }
 
   // 🔹 GET: All products
   @Get()
@@ -92,8 +92,9 @@ export class ProductController {
   async create(
     @Body() createProductDto: ProductDto,
     @Req() req: any,
+    files: Express.Multer.File[], // Fayllarni qabul qilish
   ): Promise<Product> {
-    return this.productService.create(createProductDto, req?.user?.userId);
+    return this.productService.create(createProductDto, req?.user?.userId, files);
   }
 
   // 🔸 POST: Filter products

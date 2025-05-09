@@ -1,3 +1,4 @@
+// src/products/entities/product.entity.ts
 import { ApiProperty } from '@nestjs/swagger';
 import {
   Column,
@@ -18,9 +19,7 @@ import { District } from './../../location/entities/district.entity';
 import { Region } from './../../location/entities/region.entity';
 import { Profile } from './../../profile/enities/profile.entity';
 import { ProductProperty } from './product-property-entity';
-
-// ...
-
+import { ProductImage } from './Product-Image.entity';
 @Entity()
 export class Product {
   @ApiProperty({ example: 1, description: 'Mahsulotning noyob identifikatori' })
@@ -45,7 +44,6 @@ export class Product {
   @Column('decimal', { precision: 10, scale: 2 })
   price: number;
 
-  // ✅ Yangi maydonlar: minPrice va maxPrice
   @ApiProperty({
     example: 1200.0,
     description: 'Minimal narx (agar mavjud bo‘lsa)',
@@ -69,20 +67,23 @@ export class Product {
   @Column({ nullable: true })
   profileId: number;
 
-  @ApiProperty({
-    example: 'https://example.com/main.jpg',
-    description: 'Asosiy rasm manzili',
-  })
-  @Column()
-  mainImage: string;
+  // @ApiProperty({ // Buni olib tashlang
+  //   example: 'https://example.com/main.jpg',
+  //   description: 'Asosiy rasm manzili',
+  // })
+  // @Column()
+  // mainImage: string;
 
-  @ApiProperty({
-    example: ['https://example.com/image1.jpg'],
-    description: "Qo'shimcha rasmlar manzillari",
-    required: false,
-  })
-  @Column('simple-array', { nullable: true })
-  images: string[];
+  // @ApiProperty({ // Buni olib tashlang
+  //   example: ['https://example.com/image1.jpg'],
+  //   description: "Qo'shimcha rasmlar manzillari",
+  //   required: false,
+  // })
+  // @Column('simple-array', { nullable: true })
+  // images: string[];
+
+  @OneToMany(() => ProductImage, (image) => image.product, { cascade: true })
+  images: ProductImage[]; // Rasmlar uchun yangi relation
 
   @ApiProperty({
     type: () => Category,
@@ -144,6 +145,7 @@ export class Product {
 
   @Column({ nullable: true })
   districtId: number;
+
   @Column({ default: false })
   ownProduct: boolean;
 
@@ -161,3 +163,4 @@ export class Product {
   @CreateDateColumn()
   createdAt: Date;
 }
+

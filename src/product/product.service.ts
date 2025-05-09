@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
+  BadRequestException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -14,7 +15,10 @@ import { Profile } from './../profile/enities/profile.entity';
 import { ProductDto } from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
 import { ProductProperty } from './entities/product-property-entity';
-import { Product } from './entities/product.entity';
+import { Product, } from './entities/product.entity';
+import { FileService } from 'src/file/file.service';
+import { UploadService } from 'src/file/uploadService';
+import { ProductImage } from './entities/Product-Image.entity';
 
 @Injectable()
 export class ProductService {
@@ -26,12 +30,14 @@ export class ProductService {
     @InjectRepository(Profile)
     private profileRepository: Repository<Profile>,
     @InjectRepository(Property)
-    private propertyRepository: Repository<Property>,
-    @InjectRepository(ProductProperty)
     private productPropertyRepository: Repository<ProductProperty>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
-  ) {}
+    private readonly fileService: FileService,
+    private readonly uploadService: UploadService,
+    @InjectRepository(ProductImage)
+    private productImageRepository: Repository<ProductImage>,
+  ) { }
 
   async findAll() {
     return this.productRepository.find();
@@ -249,8 +255,12 @@ export class ProductService {
     return queryBuilder.getMany();
   }
 
-  async create(createProductDto: ProductDto, userId: number): Promise<Product> {
-    const { categoryId, properties, ...productData } = createProductDto;
+  async create(
+    createProductDto: ProductDto,
+    userId: number,
+    files: Express.Multer.File[], // Fayllarni qabul qilish
+  ): Promise<Product> {
+    const { categoryId, properties, images: imageDtos, ...productData } = createProductDto;
     console.log(userId);
 
     const category = await this.categoryRepository.findOne({
@@ -268,6 +278,35 @@ export class ProductService {
 
     if (!user) throw new NotFoundException(`Foydalanuvchi ${userId} topilmadi`);
 
+    const productImages: ProductImage[] = [];
+    if (imageDtos && files && files.length === imageDtos.length) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const imageDto = imageDtos[i];
+        if (!file) {
+          throw new BadRequestException(`Rasm fayli yuklanmagan`);
+        }
+        try {
+          const vercelFileUrl = await this.uploadService.uploadFile(file);
+          await this.fileService.saveFile(vercelFileUrl);
+          const newProductImage = this.productImageRepository.create({ // Repository orqali yaratish
+            url: vercelFileUrl,
+            isMainImage: imageDto.isMainImage,
+          });
+          productImages.push(newProductImage);
+        } catch (error) {
+          throw new InternalServerErrorException(
+            `Rasm yuklashda xatolik yuz berdi (${file.originalname})`,
+            error,
+          );
+        }
+      }
+    } else if (imageDtos?.length > 0 || files?.length > 0) {
+      throw new BadRequestException(
+        'Rasm fayllari va ma’lumotlari mos kelmadi',
+      );
+    }
+
     const product = this.productRepository.create({
       ...productData,
       category,
@@ -278,6 +317,7 @@ export class ProductService {
           value: propDto.value,
         }),
       ),
+      images: productImages, // Yuklangan rasmlarni mahsulotga bog'lash
     });
 
     await this.productRepository.save(product);
@@ -285,7 +325,7 @@ export class ProductService {
     try {
       return await this.productRepository.findOneOrFail({
         where: { id: product.id },
-        relations: ['category', 'productProperties.property'],
+        relations: ['category', 'productProperties.property', 'images'],
       });
     } catch (error) {
       if (error instanceof EntityNotFoundError) {
@@ -296,4 +336,5 @@ export class ProductService {
       throw error;
     }
   }
+
 }

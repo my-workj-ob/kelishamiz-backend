@@ -11,4 +11,4 @@ import { UploadService } from './uploadService';
   providers: [FileService, UploadService],
   exports: [FileService, UploadService],
 })
-export class FileModule {}
+export class FileModule { }

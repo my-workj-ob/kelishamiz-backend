@@ -15,7 +15,7 @@ export class FileController {
   constructor(
     private readonly uploadService: UploadService,
     private readonly fileService: FileService,
-  ) {}
+  ) { }
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
