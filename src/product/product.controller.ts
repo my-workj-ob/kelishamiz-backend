@@ -9,7 +9,9 @@ import {
   Post,
   Query,
   Req,
+  UploadedFiles,
   UseGuards,
+  UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -17,6 +19,8 @@ import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
@@ -29,6 +33,7 @@ import { ProductDto } from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
 import { Product } from './entities/product.entity';
 import { ProductService } from './product.service';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Products')
 @ApiBearerAuth()
@@ -82,19 +87,72 @@ export class ProductController {
   // 🔸 POST: Create product
   @UseGuards(AuthGuard('jwt'))
   @Post()
-  @ApiCreatedResponse({
-    description: 'Mahsulot muvaffaqiyatli yaratildi',
-    type: Product,
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        description: { type: 'string' },
+        price: { type: 'number' },
+        categoryId: { type: 'number' },
+        location: { type: 'string' },
+        paymentType: { type: 'string' },
+        currencyType: { type: 'string' },
+        negotiable: { type: 'boolean', default: false },
+        regionId: { type: 'number' },
+        districtId: { type: 'number' },
+        properties: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              propertyId: { type: 'number' },
+              type: { type: 'string' },
+              value: { type: 'object' },
+            },
+          },
+          nullable: true,
+        },
+        images: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              file: { type: 'string', format: 'binary' },
+              isMainImage: { type: 'boolean' },
+            },
+          },
+        },
+      },
+      required: [
+        'title',
+        'description',
+        'price',
+        'categoryId',
+        'location',
+        'paymentType',
+        'currencyType',
+        'regionId',
+        'districtId',
+        'images', // Rasmlar majburiy bo'lishi kerak
+      ],
+    },
   })
   @ApiBadRequestResponse({ description: "Yaroqsiz ma'lumotlar kiritildi" })
   @ApiOperation({ summary: "mahsulot qo'shish" })
   @UsePipes(new ValidationPipe())
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'images', maxCount: 10 }])) // Misol uchun, 10 tagacha rasm qabul qilish
   async create(
     @Body() createProductDto: ProductDto,
     @Req() req: any,
-    files: Express.Multer.File[], // Fayllarni qabul qilish
+    @UploadedFiles() files: { images?: Express.Multer.File[] }, // Fayllarni qabul qilish
   ): Promise<Product> {
-    return this.productService.create(createProductDto, req?.user?.userId, files);
+    return this.productService.create(
+      createProductDto,
+      req?.user?.userId,
+      files?.images || [], // Fayllarni servisga yuborish (agar bo'lsa)
+    );
   }
 
   // 🔸 POST: Filter products
