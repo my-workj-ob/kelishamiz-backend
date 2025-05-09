@@ -266,7 +266,7 @@ export class ProductService {
     createProductDto: Omit<ProductDto, 'images'>,
     userId: number,
   ): Promise<Product> {
-    const { categoryId, properties, ...productData } = createProductDto;
+    const { categoryId, ...productData } = createProductDto;
     console.log(files);
 
     const category = await this.categoryRepository.findOne({ where: { id: categoryId } });
@@ -306,7 +306,7 @@ export class ProductService {
       images: productImages,
       region: { id: +createProductDto.regionId },
       district: { id: +createProductDto.districtId },
-      propertyValues: properties || [], // propertyValues ni qo'shamiz
+      // propertyValues: properties || [], // propertyValues ni qo'shamiz
     });
 
     await this.productRepository.save(product);

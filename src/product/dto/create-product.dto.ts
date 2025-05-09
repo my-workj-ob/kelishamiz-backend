@@ -77,10 +77,10 @@ export class ProductDto {
   images: ProductImageDto[]; // `mainImage` o'rniga rasmlar massivi
 
 
-  @ApiProperty({ type: [ProductPropertyDto], required: false })
-  @ValidateNested({ each: true })
-  @Type(() => ProductPropertyDto)
-  properties?: ProductPropertyDto[];
+  // @ApiProperty({ type: [ProductPropertyDto], required: false })
+  // @ValidateNested({ each: true })
+  // @Type(() => ProductPropertyDto)
+  // properties?: ProductPropertyDto[];
 
   @ApiProperty({ example: 'Pullik', description: "To'lov turi" })
   @IsNotEmpty()

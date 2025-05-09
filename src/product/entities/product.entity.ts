@@ -100,8 +100,8 @@ export class Product {
   productProperties: ProductProperty[];
 
 
-  @Column({ type: 'jsonb', nullable: true })
-  propertyValues: Record<string, any>;
+  // @Column({ type: 'jsonb', nullable: true })
+  // propertyValues: Record<string, any>;
 
 
   @Column()

@@ -173,7 +173,7 @@ export class ProductController {
       negotiable: body.negotiable,
       regionId: +body.regionId,
       districtId: +body.districtId,
-      properties: JSON.parse(body.properties || '[]'),
+      // properties: JSON.parse(body.properties || '[]'),
     };
     console.log(body);
 
