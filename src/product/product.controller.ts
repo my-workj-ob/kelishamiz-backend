@@ -165,7 +165,7 @@ export class ProductController {
       negotiable: Boolean(body.negotiable),
       regionId: Number(body.regionId),
       districtId: Number(body.districtId),
-      properties: body.propertyValues || [],
+      properties: body.properties || [],
       imageIndex: body.imageIndex || 0,
     };
 
