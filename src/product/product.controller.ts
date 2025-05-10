@@ -94,7 +94,6 @@ export class ProductController {
 
   @UseGuards(AuthGuard('jwt'))
   @ApiConsumes('multipart/form-data')
-
   @Post()
   @ApiBody({
     schema: {
@@ -169,6 +168,9 @@ export class ProductController {
       properties: body.propertyValues || [],
       imageIndex: body.imageIndex || 0,
     };
+
+    console.log('properties', body.properties);
+    console.log('propertiesValues', body.propertyValues);
 
     return this.productService.create(files, createProductDto, req.user.userId);
   }
