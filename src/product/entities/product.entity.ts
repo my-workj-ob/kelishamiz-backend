@@ -67,7 +67,6 @@ export class Product {
   @Column({ nullable: true })
   profileId: number;
 
-
   @OneToMany(() => ProductImage, (image) => image.product, { cascade: true })
   images: ProductImage[]; // Rasmlar uchun yangi relation
 
@@ -99,10 +98,8 @@ export class Product {
   )
   productProperties: ProductProperty[];
 
-
   @Column({ type: 'jsonb', nullable: true })
   propertyValues: Record<string, any>;
-
 
   @Column()
   paymentType: string;
@@ -123,7 +120,6 @@ export class Product {
   @JoinTable()
   likes: User[];
 
-
   @ManyToOne(() => Region, (region) => region.products, { eager: true })
   @JoinColumn({ name: 'regionId' })
   region: Region;
@@ -141,6 +137,9 @@ export class Product {
   @Column({ default: false })
   ownProduct: boolean;
 
+  @Column({ default: 0, nullable: true })
+  imageIndex: number;
+
   @UpdateDateColumn({
     type: 'timestamp with time zone',
     default: () => 'CURRENT_TIMESTAMP',
@@ -155,4 +154,3 @@ export class Product {
   @CreateDateColumn()
   createdAt: Date;
 }
-

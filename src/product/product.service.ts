@@ -15,7 +15,7 @@ import { Profile } from './../profile/enities/profile.entity';
 import { ProductDto } from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
 import { ProductProperty } from './entities/product-property-entity';
-import { Product, } from './entities/product.entity';
+import { Product } from './entities/product.entity';
 import { FileService } from './../file/file.service';
 import { UploadService } from './../file/uploadService';
 import { ProductImage } from './entities/Product-Image.entity';
@@ -41,7 +41,7 @@ export class ProductService {
     private readonly uploadService: UploadService,
     @InjectRepository(ProductImage)
     private productImageRepository: Repository<ProductImage>,
-  ) { }
+  ) {}
 
   async findAll() {
     return this.productRepository.find();
@@ -50,7 +50,12 @@ export class ProductService {
   async findOne(id: number): Promise<Product | null> {
     return this.productRepository.findOne({
       where: { id },
-      relations: ['profile', 'productProperties', 'productProperties.property', "images"],
+      relations: [
+        'profile',
+        'productProperties',
+        'productProperties.property',
+        'images',
+      ],
     });
   }
 
@@ -262,44 +267,47 @@ export class ProductService {
 
   async create(
     files: Express.Multer.File[],
-    imageDtos: { isMainImage: boolean }[], // filesMeta frontenddan keladi
     createProductDto: Omit<ProductDto, 'images'>,
     userId: number,
   ): Promise<Product> {
     const { categoryId, properties, ...productData } = createProductDto;
     console.log('Fayllar:', files);
-    console.log('Rasm ma\'lumotlari (imageDtos):', imageDtos);
-    console.log('Mahsulot ma\'lumotlari:', createProductDto);
+    console.log("Mahsulot ma'lumotlari:", createProductDto);
     console.log('Foydalanuvchi IDsi:', userId);
 
-    const category = await this.categoryRepository.findOne({ where: { id: categoryId } });
+    const category = await this.categoryRepository.findOne({
+      where: { id: categoryId },
+    });
     if (!category) throw new NotFoundException(`Kategoriya topilmadi`);
     console.log('Topilgan kategoriya:', category);
 
-    const user = await this.profileRepository.findOne({ where: { user: { id: userId } } });
+    const user = await this.profileRepository.findOne({
+      where: { user: { id: userId } },
+    });
     if (!user) throw new NotFoundException(`Foydalanuvchi topilmadi`);
     console.log('Topilgan foydalanuvchi profili:', user);
 
     const productImages: ProductImage[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      // Agar filesMeta dan ma'lumot kelsa, uni ishlatamiz
-      const isMainImage = imageDtos[i]?.isMainImage || false;
+
       try {
         const vercelFileUrl = await this.uploadService.uploadFile(file);
-        console.log('Yuklangan fayl URLi:', vercelFileUrl);
+
         await this.fileService.saveFile(vercelFileUrl);
 
         const newProductImage = this.productImageRepository.create({
           url: vercelFileUrl,
-          isMainImage: isMainImage,
         });
 
+        
         productImages.push(newProductImage);
       } catch (error) {
         console.error('Yuklash xatoligi:', error);
-        console.log('Xatolikka sabab bo\'lgan fayllar:', files);
-        throw new InternalServerErrorException(`Rasm yuklashda xatolik: ${error.message}`);
+        console.log("Xatolikka sabab bo'lgan fayllar:", files);
+        throw new InternalServerErrorException(
+          `Rasm yuklashda xatolik: ${error.message}`,
+        );
       }
     }
     console.log('Yaratilgan mahsulot rasmlari:', productImages);

@@ -36,7 +36,10 @@ import { ProductDto, ProductImageDto } from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
 import { Product } from './entities/product.entity';
 import { ProductService } from './product.service';
-import { FileFieldsInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FilesInterceptor,
+} from '@nestjs/platform-express';
 
 @ApiTags('Products')
 @ApiBearerAuth()
@@ -45,7 +48,7 @@ export class ProductController {
   constructor(
     private readonly productService: ProductService,
     private readonly searchService: SearchService,
-  ) { }
+  ) {}
 
   // 🔹 GET: All products
   @Get()
@@ -123,7 +126,6 @@ export class ProductController {
             type: 'object',
             properties: {
               file: { type: 'string', format: 'binary' },
-              isMainImage: { type: 'boolean' },
             },
           },
         },
@@ -150,22 +152,6 @@ export class ProductController {
     @Body() body: any,
     @Req() req: any,
   ): Promise<Product> {
-    let filesMeta: { isMainImage: boolean }[] = [];
-
-    try {
-      if (body.filesMeta) {
-        filesMeta = JSON.parse(body.filesMeta);
-        console.log('Parsed filesMeta:', filesMeta);
-      } else {
-        console.log('filesMeta bodyda topilmadi, bo\'sh massiv ishlatiladi.');
-        filesMeta = []; // Agar frontenddan yuborilmasa bo'sh massiv ishlatamiz
-      }
-    } catch (error) {
-      console.error('filesMeta ni parse qilishda xatolik:', error);
-      throw new InternalServerErrorException('filesMeta ma\'lumotlarini qayta ishlashda xatolik.');
-    }
-
-
     const createProductDto: Omit<ProductDto, 'images'> = {
       title: body.title,
       description: body.description,
@@ -174,29 +160,15 @@ export class ProductController {
       location: body.location,
       paymentType: body.paymentType,
       currencyType: body.currencyType,
-      negotiable: Boolean(body.negotiable) === true,
+      negotiable: Boolean(body.negotiable),
       regionId: Number(body.regionId),
       districtId: Number(body.districtId),
-      properties: body.properties || [], // propertyValues ni qo'shamiz
+      properties: body.propertyValues || [],
+      imageIndex: body.imageIndex || 0,
     };
-    console.log('Qabul qilingan body:', body);
-    console.log('Yaratilgan DTO:', createProductDto);
 
-    // Agar fayllar soni filesMeta soniga mos kelmasa, ogohlantirish
-    if (files.length !== filesMeta.length && filesMeta.length > 0) {
-      console.warn('Fayllar soni va filesMeta soni mos kelmaydi. Ehtimoliy xatolik.');
-    } else if (filesMeta.length === 0 && files.length > 0) {
-      // Agar filesMeta yuborilmagan bo'lsa, barcha rasmlarni asosiy emas deb belgilash
-      filesMeta = files.map(() => ({ isMainImage: false }));
-      console.log('Yaratilgan filesMeta (bo\'sh massiv):', filesMeta);
-    } else if (files.length === 0 && filesMeta.length > 0) {
-      console.warn('Fayllar yuborilmagan, lekin filesMeta mavjud. Bu kutilmagan holat.');
-    }
-
-    return this.productService.create(files, filesMeta, createProductDto, req.user.userId);
+    return this.productService.create(files, createProductDto, req.user.userId);
   }
-
-
 
   // 🔸 POST: Filter products
   @UseGuards(JwtOptionalAuthGuard)

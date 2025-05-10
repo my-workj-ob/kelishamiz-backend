@@ -4,6 +4,7 @@ import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsNotEmpty,
+  isNumber,
   IsNumber,
   IsOptional,
   IsString,
@@ -44,10 +45,12 @@ export class ProductPropertyDto {
   value: ProductPropertyValueDto;
 }
 
-
-
 export class ProductImageDto {
-  @ApiProperty({ type: 'string', format: 'binary', description: 'Mahsulot rasmi' })
+  @ApiProperty({
+    type: 'string',
+    format: 'binary',
+    description: 'Mahsulot rasmi',
+  })
   @IsOptional()
   file?: Express.Multer.File;
 
@@ -76,7 +79,6 @@ export class ProductDto {
   @Type(() => ProductImageDto)
   images: ProductImageDto[]; // `mainImage` o'rniga rasmlar massivi
 
-
   @ApiProperty({ type: [ProductPropertyDto], required: false })
   @ValidateNested({ each: true })
   @Type(() => ProductPropertyDto)
@@ -97,6 +99,10 @@ export class ProductDto {
   @IsBoolean()
   negotiable?: boolean;
 
+  @ApiProperty({ example: false, description: 'Kelishish mumkinligi' })
+  @IsOptional()
+  @IsNumber()
+  imageIndex: number;
 
   @ApiProperty({ example: 1, description: 'Viloyat IDsi' })
   regionId: number;
