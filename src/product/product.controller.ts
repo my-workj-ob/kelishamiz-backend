@@ -165,7 +165,6 @@ export class ProductController {
       throw new InternalServerErrorException('filesMeta ma\'lumotlarini qayta ishlashda xatolik.');
     }
 
-    console.log(filesMeta);
 
     const createProductDto: Omit<ProductDto, 'images'> = {
       title: body.title,
@@ -178,6 +177,7 @@ export class ProductController {
       negotiable: Boolean(body.negotiable) === true,
       regionId: Number(body.regionId),
       districtId: Number(body.districtId),
+      properties: body.properties || [], // propertyValues ni qo'shamiz
     };
     console.log('Qabul qilingan body:', body);
     console.log('Yaratilgan DTO:', createProductDto);
