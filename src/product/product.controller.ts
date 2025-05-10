@@ -175,7 +175,7 @@ export class ProductController {
       location: body.location,
       paymentType: body.paymentType,
       currencyType: body.currencyType,
-      negotiable: body.negotiable === 'true',
+      negotiable: Boolean(body.negotiable) === true,
       regionId: Number(body.regionId),
       districtId: Number(body.districtId),
     };
