@@ -300,7 +300,6 @@ export class ProductService {
           url: vercelFileUrl,
         });
 
-        
         productImages.push(newProductImage);
       } catch (error) {
         console.error('Yuklash xatoligi:', error);
@@ -319,6 +318,7 @@ export class ProductService {
       images: productImages,
       regionId: Number(createProductDto.regionId),
       districtId: Number(createProductDto.districtId),
+      imageIndex: Number(createProductDto.imageIndex),
       propertyValues: properties || [], // propertyValues ni qo'shamiz
     });
     console.log('Yaratilgan mahsulot obyekti:', product);
