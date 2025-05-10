@@ -99,7 +99,7 @@ export class ProductDto {
   @IsBoolean()
   negotiable?: boolean;
 
-  @ApiProperty({ example: false, description: 'Kelishish mumkinligi' })
+  @ApiProperty({ example: 1, description: 'main image' })
   @IsOptional()
   @IsNumber()
   imageIndex: number;

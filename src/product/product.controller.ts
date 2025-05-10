@@ -91,9 +91,11 @@ export class ProductController {
   }
 
   // 🔸 POST: Create product
+
   @UseGuards(AuthGuard('jwt'))
-  @Post()
   @ApiConsumes('multipart/form-data')
+
+  @Post()
   @ApiBody({
     schema: {
       type: 'object',
@@ -105,6 +107,7 @@ export class ProductController {
         location: { type: 'string' },
         paymentType: { type: 'string' },
         currencyType: { type: 'string' },
+        mainImage: { type: 'number' },
         negotiable: { type: 'boolean', default: false },
         // regionId: { type: 'number' },
         // districtId: { type: 'number' },
