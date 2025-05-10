@@ -1,25 +1,21 @@
-import createServer from '@vendia/serverless-express';
-import { Handler } from 'aws-lambda';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { ExpressAdapter } from '@nestjs/platform-express';
+
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+
+import cors from 'cors';
+
 import express from 'express';
+
 import { join } from 'path';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+
+import { ValidationPipe } from '@nestjs/common';
+import { AppModule } from './app.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
-let cachedServer;
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
 
-async function bootstrap(): Promise<any> {
-  const expressApp = express();
-
-  expressApp.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
-
-  const app = await NestFactory.create(
-    AppModule,
-    new ExpressAdapter(expressApp),
-  );
-
+  app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
   app.enableCors({
     origin: [
       'http://localhost:5173',
@@ -31,6 +27,7 @@ async function bootstrap(): Promise<any> {
     credentials: true,
   });
 
+  // app.useGlobalPipes(new ValidationPipe());
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   const config = new DocumentBuilder()
@@ -41,16 +38,15 @@ async function bootstrap(): Promise<any> {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
+
   SwaggerModule.setup('api/docs', app, document);
 
-  await app.init();
-  return createServer({ app: expressApp }); // Bu server obyektini qaytaradi (proxy funktsiyasi ham shu obyektda)
+  app.use(
+    '/api/docs',
+    express.static(join(__dirname, '../node_modules/swagger-ui-dist')),
+  );
+
+  await app.listen(process.env.PORT || 8888);
 }
 
-export const handler: Handler = async (event, context) => {
-  if (!cachedServer) {
-    cachedServer = await bootstrap();
-  }
-
-  return cachedServer(event, context); // Faqat shunchaki serverni chaqirasiz — proxy bu yerda
-};
+bootstrap();
