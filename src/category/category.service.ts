@@ -15,6 +15,7 @@ export class CategoryService {
 
   async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
     const category = this.categoryRepository.create(createCategoryDto);
+    console.log(createCategoryDto);
 
     if (createCategoryDto.parentId) {
       const parentCategory = await this.categoryRepository.findOne({
@@ -25,8 +26,10 @@ export class CategoryService {
       }
       category.parent = parentCategory;
     }
+    const res = await this.categoryRepository.save(category);
+    console.log(res);
 
-    return await this.categoryRepository.save(category);
+    return res;
   }
 
   async findOne(id: number): Promise<Category> {
@@ -83,5 +86,19 @@ export class CategoryService {
     });
 
     return children;
+  }
+
+  async deleteCategory(id) {
+    const category = await this.categoryRepository.findOne({
+      where: { id: id },
+    });
+
+    if (!category) {
+      throw new NotFoundException('category topilmadi');
+    }
+
+    const deleteCategory = await this.categoryRepository.delete({ id: id });
+
+    return deleteCategory;
   }
 }

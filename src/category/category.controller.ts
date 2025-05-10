@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   NotFoundException,
   Param,
@@ -85,5 +86,10 @@ export class CategoryController {
       throw new NotFoundException(`Kategoriya ${id} bilan topilmadi`);
     }
     return existCategory;
+  }
+
+  @Delete(':id')
+  async deleteCategory(@Param('id') id: number) {
+    return this.categoryService.deleteCategory(id);
   }
 }
