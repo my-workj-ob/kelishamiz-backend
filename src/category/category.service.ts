@@ -11,7 +11,7 @@ export class CategoryService {
   constructor(
     @InjectRepository(Category)
     private categoryRepository: Repository<Category>,
-  ) { }
+  ) {}
 
   async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
     const category = this.categoryRepository.create(createCategoryDto);
@@ -42,9 +42,7 @@ export class CategoryService {
     return existCategoryById;
   }
 
-  async findAll(
-    parentId: number | null = null,
-  ): Promise<Category[]> {
+  async findAll(parentId: number | null = null): Promise<Category[]> {
     const categories = await this.categoryRepository.find({
       where: parentId ? { parent: { id: parentId } } : { parent: IsNull() },
       relations: ['parent'],
@@ -60,7 +58,6 @@ export class CategoryService {
     return tree;
   }
 
-
   async findAllOnlyChildCategories(parentId: number): Promise<Category[]> {
     const parent = await this.categoryRepository.findOne({
       where: { id: parentId },
@@ -73,6 +70,16 @@ export class CategoryService {
       where: {
         parent: { id: parent.id },
       },
+    });
+
+    return children;
+  }
+  async findAllOnlyPropertiesByCategory(parentId: number): Promise<Category[]> {
+    const children = await this.categoryRepository.find({
+      where: {
+        id: parentId,
+      },
+      relations: ['properties'],
     });
 
     return children;

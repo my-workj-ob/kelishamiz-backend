@@ -42,7 +42,6 @@ import {
 } from '@nestjs/platform-express';
 
 @ApiTags('Products')
-@ApiBearerAuth()
 @Controller('products')
 export class ProductController {
   constructor(
@@ -169,13 +168,9 @@ export class ProductController {
       imageIndex: body.imageIndex || 0,
     };
 
-    console.log('properties', body.properties);
-    console.log('propertiesValues', body.propertyValues);
-
     return this.productService.create(files, createProductDto, req.user.userId);
   }
 
-  // 🔸 POST: Filter products
   @UseGuards(JwtOptionalAuthGuard)
   @Post('filter')
   @ApiOkResponse({
