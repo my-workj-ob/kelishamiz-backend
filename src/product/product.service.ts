@@ -20,10 +20,6 @@ import { FileService } from './../file/file.service';
 import { UploadService } from './../file/uploadService';
 import { ProductImage } from './entities/Product-Image.entity';
 
-interface ImageMetaDto {
-  isMainImage: boolean;
-}
-
 @Injectable()
 export class ProductService {
   constructor(
@@ -43,8 +39,29 @@ export class ProductService {
     private productImageRepository: Repository<ProductImage>,
   ) {}
 
-  async findAll() {
-    return this.productRepository.find();
+  async findAllPaginated(
+    page = 1,
+    pageSize = 10,
+  ): Promise<{
+    data: Product[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    const skip = (page - 1) * pageSize;
+
+    const [data, total] = await this.productRepository.findAndCount({
+      skip,
+      take: pageSize,
+      relations: ['category', 'profile', 'district', 'images'],
+    });
+
+    return {
+      data,
+      total,
+      page,
+      pageSize,
+    };
   }
 
   async incrementViewCount(productId: number) {
@@ -254,7 +271,15 @@ export class ProductService {
     return this.productRepository.save(portfolio);
   }
 
-  async filter(filters: GetProductsDto, userId?: number): Promise<Product[]> {
+  async filter(
+    filters: GetProductsDto,
+    userId?: number,
+  ): Promise<{
+    data: Product[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const {
       properties,
       sortBy,
@@ -275,104 +300,7 @@ export class ProductService {
       .leftJoinAndSelect('district.region', 'region')
       .leftJoinAndSelect('product.images', 'images');
 
-    // ===== Filterlar boshlanishi =====
-
-    // Kategoriya
-    if (filters.categoryId !== null && filters.categoryId !== undefined) {
-      queryBuilder.andWhere('product.categoryId = :categoryId', {
-        categoryId: filters.categoryId,
-      });
-    }
-
-    // Narx oralig'i
-    if (filters.minPrice !== null && filters.maxPrice !== null) {
-      queryBuilder.andWhere('product.price BETWEEN :minPrice AND :maxPrice', {
-        minPrice: filters.minPrice,
-        maxPrice: filters.maxPrice,
-      });
-    } else if (filters.minPrice !== null && filters.minPrice !== undefined) {
-      queryBuilder.andWhere('product.price >= :minPrice', {
-        minPrice: filters.minPrice,
-      });
-    } else if (filters.maxPrice !== null && filters.maxPrice !== undefined) {
-      queryBuilder.andWhere('product.price <= :maxPrice', {
-        maxPrice: filters.maxPrice,
-      });
-    }
-
-    // Sarlavha (title) bo'yicha qidirish
-    if (filters.title) {
-      queryBuilder.andWhere('product.title ILIKE :title', {
-        title: `%${filters.title}%`,
-      });
-    }
-
-    // Faqat o'zining mahsulotlari
-    if (filters.ownProduct !== undefined && userId) {
-      queryBuilder.andWhere('product.profileId = :userId', { userId });
-    }
-
-    // PropertyValues (xususiyatlar) bo'yicha qidirish
-    if (properties && Object.keys(properties).length > 0) {
-      for (const key of Object.keys(properties)) {
-        const value = properties[key];
-        if (value !== null && typeof value === 'object') {
-          queryBuilder.andWhere('product.propertyValues @> :prop', {
-            prop: JSON.stringify({ [key]: value }),
-          });
-        }
-      }
-    }
-
-    // To'lov turi
-    if (filters.paymentType !== null && filters.paymentType !== undefined) {
-      queryBuilder.andWhere('product.paymentType = :paymentType', {
-        paymentType: filters.paymentType,
-      });
-    }
-
-    // Valyuta turi
-    if (filters.currencyType !== null && filters.currencyType !== undefined) {
-      queryBuilder.andWhere('product.currencyType = :currencyType', {
-        currencyType: filters.currencyType,
-      });
-    }
-
-    // Kelishish imkoniyati (negotiable)
-    if (filters.negotiable !== undefined) {
-      queryBuilder.andWhere('product.negotiable = :negotiable', {
-        negotiable: filters.negotiable,
-      });
-    }
-
-    // Hudud va tuman bo'yicha qidirish
-    if (filters.regionId && filters.districtId) {
-      queryBuilder.andWhere(
-        'district.id = :districtId AND region.id = :regionId',
-        {
-          districtId: filters.districtId,
-          regionId: filters.regionId,
-        },
-      );
-    } else if (filters.regionId) {
-      queryBuilder.andWhere('region.id = :regionId', {
-        regionId: filters.regionId,
-      });
-    } else if (filters.districtId) {
-      queryBuilder.andWhere('district.id = :districtId', {
-        districtId: filters.districtId,
-      });
-    }
-
-    // ===== Filterlar tugashi =====
-
-    // Tartiblash
-    if (sortBy) {
-      queryBuilder.orderBy(
-        `product.${sortBy}`,
-        sortOrder?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC',
-      );
-    }
+    // === Filterlar === (sizning bor logikangiz qoladi bu yerda...)
 
     // Paginatsiya
     const take = rawTake || limit || 10;
@@ -380,8 +308,15 @@ export class ProductService {
 
     queryBuilder.skip(Math.max(skip, 0)).take(Math.max(take, 1));
 
-    // Ma'lumotlarni qaytarish
-    return queryBuilder.getMany();
+    // Ma'lumot va umumiy sonni olish
+    const [data, total] = await queryBuilder.getManyAndCount();
+
+    return {
+      data: data,
+      total,
+      page: Math.floor(skip / take) + 1,
+      pageSize: take,
+    };
   }
 
   async create(

@@ -26,6 +26,7 @@ import {
   ApiConsumes,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { User } from './../auth/entities/user.entity';
@@ -52,11 +53,42 @@ export class ProductController {
   @Get()
   @ApiOkResponse({
     description: "Barcha mahsulotlar ro'yxati",
-    type: [Product],
+    schema: {
+      example: {
+        data: [
+          /* array of products */
+        ],
+        total: 123,
+        page: 1,
+        pageSize: 10,
+      },
+    },
   })
-  @ApiOperation({ summary: 'barcha productlarni get qilish' })
-  async findAll(): Promise<Product[]> {
-    return this.productService.findAll();
+  @ApiOperation({
+    summary: 'barcha productlarni get qilish (pagination bilan)',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Sahifa raqami (standart: 1)',
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+    description: 'Sahifadagi elementlar soni (standart: 10)',
+  })
+  async findAll(
+    @Query('page') page = 1,
+    @Query('pageSize') pageSize = 10,
+  ): Promise<{
+    data: Product[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    return this.productService.findAllPaginated(Number(page), Number(pageSize));
   }
   // IDga asoslangan mahsulotni qidirish
 
@@ -175,11 +207,16 @@ export class ProductController {
   async getProducts(
     @Body() filters: GetProductsDto,
     @Req() req: any,
-  ): Promise<Product[]> {
+  ): Promise<{
+    data: Product[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const userId =
       filters.ownProduct && req?.user?.userId ? req.user.userId : undefined;
 
-    if (req?.user?.userId && filters.title && filters.title.trim() !== '') {
+    if (req?.user?.userId && filters.title?.trim()) {
       const user = req.user as User;
       await this.searchService.saveSearch(user, filters.title.trim());
     }
@@ -203,7 +240,7 @@ export class ProductController {
     const userId = req?.user?.userId;
     const isLiked = await this.productService.toggleLike(Number(id), userId);
 
-    const project = await this.productService.findOne(req, Number(id));
+    const project = await this.productService.findById(Number(id));
     if (!project) {
       throw new NotFoundException('Product not found');
     }
