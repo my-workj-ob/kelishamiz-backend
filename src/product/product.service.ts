@@ -60,8 +60,8 @@ export class ProductService {
     await this.productRepository.save(product);
   }
 
-  async findOne(id: number, categoryId?: number): Promise<Product | null> {
-    const where: any = { id };
+  async findOne(title: string, categoryId?: number): Promise<Product | null> {
+    const where: any = { title };
 
     if (categoryId) {
       where.category = { id: categoryId };
@@ -79,25 +79,49 @@ export class ProductService {
     });
   }
 
+  async findById(id: number): Promise<Product | null> {
+    const where: any = { id };
+
+    return this.productRepository.findOne({
+      where,
+      relations: [
+        'profile',
+        'productProperties',
+        'productProperties.property',
+        'images',
+        'category',
+      ],
+    });
+  }
+
   async getFullTextSearchByCategory(
     query: string,
     categoryId: number,
+    location?: string,
   ): Promise<Product[]> {
     const qb = this.productRepository.createQueryBuilder('product');
+    const words = query.trim().split(/\s+/).filter(Boolean);
 
-    // So'zlarni to'g'ri formatlash (& bilan bog'lash)
-    const formattedQuery = query
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .join(' & ');
+    // Dynamic ILIKE query for each word
+    words.forEach((word, index) => {
+      qb.andWhere(
+        `(LOWER(product.title) ILIKE LOWER(:word${index}) OR LOWER(product.description) ILIKE LOWER(:word${index}))`,
+        { [`word${index}`]: `%${word}%` },
+      );
+    });
 
-    qb.where(
-      `to_tsvector('simple', product.title || ' ' || product.description) @@ to_tsquery('simple', :query)`,
-      { query: formattedQuery },
-    )
-      .andWhere('product.categoryId = :categoryId', { categoryId })
-      .leftJoinAndSelect('product.profile', 'profile')
+    // Apply category filter
+    qb.andWhere('product.categoryId = :categoryId', { categoryId });
+
+    // Apply location filter if provided
+    if (location) {
+      qb.andWhere('LOWER(product.location) ILIKE LOWER(:location)', {
+        location: `%${location}%`,
+      });
+    }
+
+    // Join relations
+    qb.leftJoinAndSelect('product.profile', 'profile')
       .leftJoinAndSelect('product.productProperties', 'productProperties')
       .leftJoinAndSelect('productProperties.property', 'property')
       .leftJoinAndSelect('product.images', 'images')
@@ -107,14 +131,14 @@ export class ProductService {
   }
 
   async getSmartSearchByIdAndCategory(
-    id: number,
+    title: string,
     categoryId: number,
   ): Promise<Product[]> {
     // Avval, ID asosida mahsulotni topish
-    if (!id && !categoryId) {
+    if (!title && !categoryId) {
       throw new NotFoundException('topilmadi id categoryId');
     }
-    const product = await this.findOne(id, categoryId);
+    const product = await this.findOne(title, categoryId);
 
     if (!product) {
       throw new Error('Mahsulot topilmadi');

@@ -59,44 +59,12 @@ export class ProductController {
     return this.productService.findAll();
   }
   // IDga asoslangan mahsulotni qidirish
-  @Get('search-by-id-and-category/:id')
-  async searchByIdAndCategory(
-    @Param('id', ParseIntPipe) id: number,
-    @Query('categoryId', ParseIntPipe) categoryId: number,
-  ) {
-    const products = await this.productService.getSmartSearchByIdAndCategory(
-      id,
-      categoryId,
-    );
-    return { data: products };
-  }
 
   @UseGuards(JwtOptionalAuthGuard)
   @Get('liked/:userId')
   @ApiOperation({ summary: 'foydalnavchi yoqtirgan mahsulotlar' })
   async getLikedProducts(@Param('userId') userId: number) {
     return this.productService.getLikedProducts(userId);
-  }
-
-  // 🔹 GET: One product by ID
-  @Get(':id')
-  @ApiOkResponse({ description: "Mahsulot ma'lumotlari", type: Product })
-  @ApiBadRequestResponse({ description: 'Mahsulot topilmadi' })
-  @ApiOperation({ summary: 'id orqali get qilish' })
-  @UseGuards(JwtOptionalAuthGuard)
-  async findOne(
-    @Param('id') id: number,
-    @Query('categoryId') categoryId?: number,
-  ) {
-    const product = await this.productService.findOne(
-      Number(id),
-      categoryId ? Number(categoryId) : undefined,
-    );
-    if (!product) {
-      throw new NotFoundException('mahsulot topilmadi');
-    }
-
-    return product;
   }
 
   // 🔹 GET: Product like status
@@ -241,5 +209,24 @@ export class ProductController {
     }
 
     return { liked: isLiked, likesCount: project.likesCount };
+  }
+
+  @Get('search-by-id-and-category/:title')
+  async searchByIdAndCategory(
+    @Param('title') title: string,
+    @Query('categoryId', ParseIntPipe) categoryId: number,
+  ) {
+    const products = await this.productService.getSmartSearchByIdAndCategory(
+      title,
+      categoryId,
+    );
+    return products;
+  }
+
+  @Get('by-id/:id') // universal route emas!
+  async findOneById(@Param('id', ParseIntPipe) id: number) {
+    const product = await this.productService.findById(id);
+    if (!product) throw new NotFoundException('topilmadi');
+    return product;
   }
 }
