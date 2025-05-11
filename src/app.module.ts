@@ -49,7 +49,6 @@ import { CacheModule } from '@nestjs/cache-manager';
       autoLoadEntities: true,
       entities: [Category, Product, User, FileEntity, Comment, UserSearch],
       synchronize: true,
-      logging: ['query', 'error'],
     }),
 
     CacheModule.registerAsync({
