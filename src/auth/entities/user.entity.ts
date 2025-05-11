@@ -11,6 +11,7 @@ import { Like } from './../../like/entities/like.entity';
 import { Product } from './../../product/entities/product.entity';
 import { Profile } from './../../profile/enities/profile.entity';
 import { UserSearch } from './../../search-filter/entities/user-search.entity';
+import { UserViewedProduct } from 'src/product/entities/product-view.entity';
 
 @Entity()
 export class User {
@@ -31,11 +32,14 @@ export class User {
 
   @OneToMany(() => Comment, (comment) => comment.user, { cascade: true })
   comments: Comment[];
-  @ManyToMany(() => Product, (project) => project.likes)
-  likedProjects: Product[];
 
   @OneToMany(() => Like, (like) => like.user, { cascade: true })
   likes: Like[];
+
+  @OneToMany(() => UserViewedProduct, (viewProduct) => viewProduct.user, {
+    cascade: true,
+  })
+  viewedProducts: UserViewedProduct[];
 
   @OneToMany(() => UserSearch, (search) => search.user)
   searches: UserSearch[];

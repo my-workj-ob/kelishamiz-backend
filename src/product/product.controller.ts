@@ -5,13 +5,13 @@ import {
   Body,
   Controller,
   Get,
-  InternalServerErrorException,
+  Inject,
   NotFoundException,
   Param,
+  ParseIntPipe,
   Post,
   Query,
   Req,
-  UploadedFile,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -24,7 +24,6 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiConsumes,
-  ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -32,21 +31,21 @@ import {
 import { User } from './../auth/entities/user.entity';
 import { JwtOptionalAuthGuard } from './../common/jwt/guards/jwt-optional-auth.guard';
 import { SearchService } from './../search-filter/search-filter.service';
-import { ProductDto, ProductImageDto } from './dto/create-product.dto';
+import { ProductDto } from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
 import { Product } from './entities/product.entity';
 import { ProductService } from './product.service';
-import {
-  FileFieldsInterceptor,
-  FilesInterceptor,
-} from '@nestjs/platform-express';
-
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 @ApiTags('Products')
+@ApiBearerAuth()
 @Controller('products')
 export class ProductController {
   constructor(
     private readonly productService: ProductService,
     private readonly searchService: SearchService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   // 🔹 GET: All products
@@ -59,6 +58,18 @@ export class ProductController {
   async findAll(): Promise<Product[]> {
     return this.productService.findAll();
   }
+  // IDga asoslangan mahsulotni qidirish
+  @Get('search-by-id-and-category/:id')
+  async searchByIdAndCategory(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('categoryId', ParseIntPipe) categoryId: number,
+  ) {
+    const products = await this.productService.getSmartSearchByIdAndCategory(
+      id,
+      categoryId,
+    );
+    return { data: products };
+  }
 
   @UseGuards(JwtOptionalAuthGuard)
   @Get('liked/:userId')
@@ -66,13 +77,26 @@ export class ProductController {
   async getLikedProducts(@Param('userId') userId: number) {
     return this.productService.getLikedProducts(userId);
   }
+
   // 🔹 GET: One product by ID
   @Get(':id')
   @ApiOkResponse({ description: "Mahsulot ma'lumotlari", type: Product })
   @ApiBadRequestResponse({ description: 'Mahsulot topilmadi' })
   @ApiOperation({ summary: 'id orqali get qilish' })
-  async findOne(@Param('id') id: string) {
-    return await this.productService.findOne(Number(id));
+  @UseGuards(JwtOptionalAuthGuard)
+  async findOne(
+    @Param('id') id: number,
+    @Query('categoryId') categoryId?: number,
+  ) {
+    const product = await this.productService.findOne(
+      Number(id),
+      categoryId ? Number(categoryId) : undefined,
+    );
+    if (!product) {
+      throw new NotFoundException('mahsulot topilmadi');
+    }
+
+    return product;
   }
 
   // 🔹 GET: Product like status
@@ -211,7 +235,7 @@ export class ProductController {
     const userId = req?.user?.userId;
     const isLiked = await this.productService.toggleLike(Number(id), userId);
 
-    const project = await this.productService.findOne(Number(id));
+    const project = await this.productService.findOne(req, Number(id));
     if (!project) {
       throw new NotFoundException('Product not found');
     }

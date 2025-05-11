@@ -28,7 +28,7 @@ export class ProfileService {
   async findOne(id: number): Promise<Profile> {
     const profile = await this.profileRepository.findOne({
       where: { id },
-      relations: ['products', 'products.comments'],
+      relations: ['likes'],
     });
     if (!profile) {
       throw new NotFoundException(`Profil ${id} bilan topilmadi`);
@@ -51,7 +51,6 @@ export class ProfileService {
   }
 
   async findByUser(userId: number): Promise<Profile | any> {
-    console.log(userId);
     return await this.profileRepository.findOne({
       where: { user: { id: userId } },
       relations: ['comments'],

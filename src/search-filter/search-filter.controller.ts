@@ -58,7 +58,7 @@ export class SearchFilterController {
     @Query('page') page: number = 1,
     @Query('pageSize') pageSize: number = 10,
   ): Promise<{ data: string[]; total: number }> {
-    const user = req.user as User;
+    const user = req.user?.userId as number;
     return this.searchService.getAllUserSearches(user, page, pageSize);
   }
 

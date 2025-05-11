@@ -21,6 +21,7 @@ import { UserSearch } from './search-filter/entities/user-search.entity';
 import { SearchFilterController } from './search-filter/search-filter.controller';
 import { SearchModule } from './search-filter/search-filter.module';
 import { ThrottlerModule, ThrottlerModuleOptions } from '@nestjs/throttler';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
   imports: [
@@ -48,6 +49,15 @@ import { ThrottlerModule, ThrottlerModuleOptions } from '@nestjs/throttler';
       autoLoadEntities: true,
       entities: [Category, Product, User, FileEntity, Comment, UserSearch],
       synchronize: true,
+    }),
+
+    CacheModule.registerAsync({
+      isGlobal: true,
+      useFactory: async () => ({
+        store: (await import('cache-manager-redis-store')).default,
+        url: process.env.REDIS_URL || 'redis://localhost:6379',
+        ttl: 600,
+      }),
     }),
     AuthModule,
     CategoryModule,

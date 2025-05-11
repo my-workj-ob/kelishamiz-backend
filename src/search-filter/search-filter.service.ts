@@ -35,16 +35,14 @@ export class SearchService {
   }
 
   async getAllUserSearches(
-    user: User,
+    userId: number,
     page: number = 1,
     pageSize: number = 10,
   ): Promise<{ data: string[]; total: number }> {
     const skip = (page - 1) * pageSize;
     const [searches, total] = await this.userSearchRepository.findAndCount({
       where: {
-        user: {
-          id: user.id,
-        },
+        user: { id: userId },
       },
       order: { createdAt: 'DESC' },
       skip,

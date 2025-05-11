@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityNotFoundError, Repository } from 'typeorm';
+import { EntityNotFoundError, ILike, Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
 import { Category } from '../category/entities/category.entity';
 import { Property } from './../category/entities/property.entity';
@@ -47,15 +47,88 @@ export class ProductService {
     return this.productRepository.find();
   }
 
-  async findOne(id: number): Promise<Product | null> {
+  async incrementViewCount(productId: number) {
+    const product = await this.productRepository.findOne({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      throw new NotFoundException('mahsulot topilmadi');
+    }
+
+    product.viewCount += 1;
+    await this.productRepository.save(product);
+  }
+
+  async findOne(id: number, categoryId?: number): Promise<Product | null> {
+    const where: any = { id };
+
+    if (categoryId) {
+      where.category = { id: categoryId };
+    }
+
     return this.productRepository.findOne({
-      where: { id },
+      where,
       relations: [
         'profile',
         'productProperties',
         'productProperties.property',
         'images',
+        'category',
       ],
+    });
+  }
+
+  async getFullTextSearchByCategory(
+    query: string,
+    categoryId: number,
+  ): Promise<Product[]> {
+    const qb = this.productRepository.createQueryBuilder('product');
+
+    // So'zlarni to'g'ri formatlash (& bilan bog'lash)
+    const formattedQuery = query
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .join(' & ');
+
+    qb.where(
+      `to_tsvector('simple', product.title || ' ' || product.description) @@ to_tsquery('simple', :query)`,
+      { query: formattedQuery },
+    )
+      .andWhere('product.categoryId = :categoryId', { categoryId })
+      .leftJoinAndSelect('product.profile', 'profile')
+      .leftJoinAndSelect('product.productProperties', 'productProperties')
+      .leftJoinAndSelect('productProperties.property', 'property')
+      .leftJoinAndSelect('product.images', 'images')
+      .take(20);
+
+    return qb.getMany();
+  }
+
+  async getSmartSearchByIdAndCategory(
+    id: number,
+    categoryId: number,
+  ): Promise<Product[]> {
+    // Avval, ID asosida mahsulotni topish
+    if (!id && !categoryId) {
+      throw new NotFoundException('topilmadi id categoryId');
+    }
+    const product = await this.findOne(id, categoryId);
+
+    if (!product) {
+      throw new Error('Mahsulot topilmadi');
+    }
+
+    // Endi, ushbu mahsulotga o'xshash boshqa mahsulotlarni qidirish
+    const query = `${product.title} ${product.description}`; // O'xshashlik uchun title va descriptionni birlashtirgan holda
+    return this.getFullTextSearchByCategory(query, categoryId); // Kategoriya bilan qidiruv
+  }
+
+  async getUserProducts(id: number) {
+    return this.profileRepository.findOne({
+      where: { id },
+      relations: ['products'],
     });
   }
 

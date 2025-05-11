@@ -14,6 +14,7 @@ import { FileService } from 'src/file/file.service';
 import { UploadService } from 'src/file/uploadService';
 import { FileModule } from 'src/file/file.module';
 import { ProductImage } from './entities/Product-Image.entity';
+import { UserViewedProduct } from './entities/product-view.entity';
 
 @Module({
   imports: [
@@ -25,13 +26,13 @@ import { ProductImage } from './entities/Product-Image.entity';
       Property,
       UserSearch,
       ProductProperty,
-      ProductImage
-
+      ProductImage,
+      UserViewedProduct,
     ]),
-    FileModule
+    FileModule,
   ],
-  exports: [ProductService,],
+  exports: [ProductService],
   controllers: [ProductController],
   providers: [ProductService, SearchService, UploadService],
 })
-export class ProductModule { }
+export class ProductModule {}

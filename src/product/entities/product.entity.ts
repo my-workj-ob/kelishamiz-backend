@@ -87,6 +87,9 @@ export class Product {
   @Column()
   categoryId: number;
 
+  @Column({ nullable: true })
+  viewCount: number;
+
   @ApiProperty({ example: 'Toshkent', description: 'Mahsulot joylashuvi' })
   @Column()
   location: string;
@@ -116,7 +119,7 @@ export class Product {
   @Column({ default: 0 })
   commentsCount: number;
 
-  @ManyToMany(() => User, (user) => user.likedProjects)
+  @ManyToMany(() => User, (user) => user.likes)
   @JoinTable()
   likes: User[];
 
