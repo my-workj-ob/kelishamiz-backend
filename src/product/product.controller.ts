@@ -216,11 +216,7 @@ export class ProductController {
     @Param('title') title: string,
     @Query('categoryId', ParseIntPipe) categoryId: number,
   ) {
-    const products = await this.productService.getSmartSearchByIdAndCategory(
-      title,
-      categoryId,
-    );
-    return products;
+    return this.productService.getSmartSearchByIdAndCategory(title, categoryId);
   }
 
   @Get('by-id/:id') // universal route emas!

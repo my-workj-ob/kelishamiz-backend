@@ -78,7 +78,6 @@ export class ProductService {
       ],
     });
   }
-
   async findById(id: number): Promise<Product | null> {
     const where: any = { id };
 
@@ -99,54 +98,77 @@ export class ProductService {
     categoryId: number,
     location?: string,
   ): Promise<Product[]> {
-    const qb = this.productRepository.createQueryBuilder('product');
-    const words = query.trim().split(/\s+/).filter(Boolean);
+    try {
+      const qb = this.productRepository.createQueryBuilder('product');
 
-    // Dynamic ILIKE query for each word
-    words.forEach((word, index) => {
-      qb.andWhere(
-        `(LOWER(product.title) ILIKE LOWER(:word${index}) OR LOWER(product.description) ILIKE LOWER(:word${index}))`,
-        { [`word${index}`]: `%${word}%` },
+      // SIMILARITY ni oldindan hisoblash va alias berish
+      qb.addSelect('SIMILARITY(product.title, :query)', 'title_similarity')
+        .addSelect('SIMILARITY(product.description, :query)', 'desc_similarity')
+        .setParameter('query', query);
+
+      // Order by aliaslar
+      qb.orderBy('title_similarity', 'DESC').addOrderBy(
+        'desc_similarity',
+        'DESC',
       );
-    });
 
-    // Apply category filter
-    qb.andWhere('product.categoryId = :categoryId', { categoryId });
+      const words = query.trim().split(/\s+/).filter(Boolean);
+      if (words.length === 0) {
+        throw new NotFoundException('Qidiruv so‘zi bo‘sh');
+      }
 
-    // Apply location filter if provided
-    if (location) {
-      qb.andWhere('LOWER(product.location) ILIKE LOWER(:location)', {
-        location: `%${location}%`,
-      });
+      const queryString = words.join(' ');
+
+      // WHERE
+      qb.where(
+        '(product.title % :queryString OR product.description % :queryString)',
+        { queryString },
+      );
+
+      qb.andWhere('product.categoryId = :categoryId', { categoryId });
+
+      if (location) {
+        qb.andWhere('LOWER(product.location) ILIKE LOWER(:location)', {
+          location: `%${location}%`,
+        });
+      }
+
+      // JOINlar
+      qb.leftJoinAndSelect('product.profile', 'profile')
+        .leftJoinAndSelect('product.productProperties', 'productProperties')
+        .leftJoinAndSelect('productProperties.property', 'property')
+        .leftJoinAndSelect('product.images', 'images')
+        .take(20);
+      const products = await qb.getMany();
+
+      if (products.length === 0) {
+        throw new NotFoundException('Mos mahsulotlar topilmadi');
+      }
+
+      return products;
+    } catch (error) {
+      console.error('Error during product search:', error);
+      throw new NotFoundException('Qidiruvda xatolik yuz berdi');
     }
-
-    // Join relations
-    qb.leftJoinAndSelect('product.profile', 'profile')
-      .leftJoinAndSelect('product.productProperties', 'productProperties')
-      .leftJoinAndSelect('productProperties.property', 'property')
-      .leftJoinAndSelect('product.images', 'images')
-      .take(20);
-
-    return qb.getMany();
   }
 
   async getSmartSearchByIdAndCategory(
     title: string,
     categoryId: number,
   ): Promise<Product[]> {
-    // Avval, ID asosida mahsulotni topish
-    if (!title && !categoryId) {
-      throw new NotFoundException('topilmadi id categoryId');
+    if (!title || !categoryId) {
+      throw new NotFoundException('title va categoryId talab qilinadi');
     }
+
     const product = await this.findOne(title, categoryId);
 
     if (!product) {
-      throw new Error('Mahsulot topilmadi');
+      throw new NotFoundException('Mahsulot topilmadi');
     }
 
-    // Endi, ushbu mahsulotga o'xshash boshqa mahsulotlarni qidirish
-    const query = `${product.title} ${product.description}`; // O'xshashlik uchun title va descriptionni birlashtirgan holda
-    return this.getFullTextSearchByCategory(query, categoryId); // Kategoriya bilan qidiruv
+    const combinedQuery = `${product.title} ${product.description || ''}`;
+
+    return this.getFullTextSearchByCategory(combinedQuery.trim(), categoryId);
   }
 
   async getUserProducts(id: number) {
