@@ -80,8 +80,8 @@ export class ProductController {
     description: 'Sahifadagi elementlar soni (standart: 10)',
   })
   async findAll(
-    @Query('page') page = 1,
-    @Query('pageSize') pageSize = 10,
+    @Query('page', new ParseIntPipe()) page = 1,
+    @Query('pageSize', new ParseIntPipe()) pageSize = 10,
   ): Promise<{
     data: Product[];
     total: number;
