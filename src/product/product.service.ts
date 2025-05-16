@@ -371,10 +371,13 @@ export class ProductService {
     }
 
     // === SORTING ===
-    queryBuilder.orderBy(
-      `product.${sortBy}`,
-      sortOrder.toUpperCase() as 'ASC' | 'DESC',
-    );
+    const allowedSortFields = ['price', 'createdAt', 'title']; // mos ustunlar
+    const safeSortBy = allowedSortFields.includes(sortBy)
+      ? sortBy
+      : 'createdAt';
+    const safeSortOrder = sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    queryBuilder.orderBy(`product.${safeSortBy}`, safeSortOrder);
 
     // === PAGINATION ===
     const take = rawTake || limit || 10;
