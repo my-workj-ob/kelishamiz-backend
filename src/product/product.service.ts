@@ -53,7 +53,9 @@ export class ProductService {
     const [data, total] = await this.productRepository.findAndCount({
       skip,
       take: pageSize,
+
       relations: ['category', 'profile', 'district', 'images'],
+      order: { createdAt: 'DESC' },
     });
 
     return {
