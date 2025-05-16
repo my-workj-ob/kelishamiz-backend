@@ -283,9 +283,19 @@ export class ProductService {
     pageSize: number;
   }> {
     const {
+      categoryId,
+      minPrice,
+      maxPrice,
+      title,
+      ownProduct,
       properties,
-      sortBy,
-      sortOrder,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+      paymentType,
+      currencyType,
+      negotiable,
+      regionId,
+      districtId,
       skip: rawSkip,
       take: rawTake,
       limit,
@@ -302,19 +312,80 @@ export class ProductService {
       .leftJoinAndSelect('district.region', 'region')
       .leftJoinAndSelect('product.images', 'images');
 
-    // === Filterlar === (sizning bor logikangiz qoladi bu yerda...)
+    // === FILTERLAR ===
 
-    // Paginatsiya
+    if (categoryId) {
+      queryBuilder.andWhere('product.categoryId = :categoryId', { categoryId });
+    }
+
+    if (minPrice !== null && minPrice !== undefined) {
+      queryBuilder.andWhere('product.price >= :minPrice', { minPrice });
+    }
+
+    if (maxPrice !== null && maxPrice !== undefined) {
+      queryBuilder.andWhere('product.price <= :maxPrice', { maxPrice });
+    }
+
+    if (title && title.trim()) {
+      queryBuilder.andWhere('product.title ILIKE :title', {
+        title: `%${title}%`,
+      });
+    }
+
+    if (paymentType) {
+      queryBuilder.andWhere('product.paymentType = :paymentType', {
+        paymentType,
+      });
+    }
+
+    if (currencyType) {
+      queryBuilder.andWhere('product.currencyType = :currencyType', {
+        currencyType,
+      });
+    }
+
+    if (negotiable !== null && negotiable !== undefined) {
+      queryBuilder.andWhere('product.negotiable = :negotiable', { negotiable });
+    }
+
+    if (districtId) {
+      queryBuilder.andWhere('product.districtId = :districtId', { districtId });
+    } else if (regionId) {
+      queryBuilder.andWhere('region.id = :regionId', { regionId });
+    }
+
+    if (ownProduct && userId) {
+      queryBuilder.andWhere('product.profileId = :userId', { userId });
+    }
+
+    // Agar property'lar bo'lsa (array bo'lishi mumkin)
+    if (properties && Array.isArray(properties) && properties.length > 0) {
+      properties.forEach((prop, index) => {
+        const key = `propertyKey${index}`;
+        const value = `propertyValue${index}`;
+        queryBuilder.andWhere(`product.properties ->> :${key} = :${value}`, {
+          [key]: prop.key,
+          [value]: prop.value,
+        });
+      });
+    }
+
+    // === SORTING ===
+    queryBuilder.orderBy(
+      `product.${sortBy}`,
+      sortOrder.toUpperCase() as 'ASC' | 'DESC',
+    );
+
+    // === PAGINATION ===
     const take = rawTake || limit || 10;
     const skip = rawSkip !== undefined ? rawSkip : 0;
 
     queryBuilder.skip(Math.max(skip, 0)).take(Math.max(take, 1));
 
-    // Ma'lumot va umumiy sonni olish
     const [data, total] = await queryBuilder.getManyAndCount();
 
     return {
-      data: data,
+      data,
       total,
       page: Math.floor(skip / take) + 1,
       pageSize: take,

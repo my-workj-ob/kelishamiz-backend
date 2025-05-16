@@ -112,7 +112,6 @@ export class ProductController {
     const liked = await this.productService.checkLikeStatus(projectId, userId);
     return { liked };
   }
-
   // 🔸 POST: Create product
 
   @UseGuards(AuthGuard('jwt'))
