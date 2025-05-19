@@ -134,7 +134,7 @@ export class ProfileController {
     @Req() req: any,
   ): Promise<Profile> {
     const user = req.user;
-    const profile = await this.profileService.findByUser(user.id);
+    const profile = await this.profileService.findByUser(user?.userId);
     if (!profile) {
       return await this.profileService.create(updateProfileDto);
     }

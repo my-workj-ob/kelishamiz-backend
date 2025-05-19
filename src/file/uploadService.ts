@@ -9,13 +9,12 @@ import { put } from '@vercel/blob';
 export class UploadService {
   async uploadFile(file: Express.Multer.File): Promise<string> {
     try {
-      // Faylni Vercel Blob-ga yuklash
       const blob = await put(file.originalname, file.buffer, {
-        access: 'public', // Faylni hammaga ochiq qilish
-        addRandomSuffix: true, // Noyob nom yaratadi: file-abc123.jpg
+        access: 'public',
+        addRandomSuffix: true, 
       });
 
-      return blob.url; // Yuklangan fayl URL-si
+      return blob.url; 
     } catch (error) {
       console.error('Vercel Blob yuklashda xatolik:', error);
       throw new Error('Vercel Blob-ga fayl yuklashda muammo yuz berdi!');
