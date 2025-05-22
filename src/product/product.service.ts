@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityNotFoundError, ILike, Repository } from 'typeorm';
+import { EntityNotFoundError, ILike, In, Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
 import { Category } from '../category/entities/category.entity';
 import { Property } from './../category/entities/property.entity';
@@ -197,18 +197,31 @@ export class ProductService {
     });
   }
 
+  async getLikedProductsByIds(productIds: number[]): Promise<Product[]> {
+    if (!productIds || productIds.length === 0) return [];
+
+    return this.productRepository.find({
+      where: {
+        id: In(productIds),
+      },
+    });
+  }
+
   async getLikedProducts(userId: number): Promise<Product[]> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
     if (!user) {
       throw new NotFoundException('User not found');
     }
+
     const likedProducts = await this.productRepository.find({
       where: {
         likes: {
-          id: userId, // Foydalanuvchiga like bosgan mahsulotlar
+          id: userId,
         },
       },
-      relations: ['likes'], // 'likes' orqali aloqani olish
+      relations: ['likes'],
     });
 
     return likedProducts;

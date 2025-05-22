@@ -94,11 +94,41 @@ export class ProductController {
 
   @UseGuards(JwtOptionalAuthGuard)
   @Get('liked/:userId')
-  @ApiOperation({ summary: 'foydalnavchi yoqtirgan mahsulotlar' })
-  async getLikedProducts(@Param('userId') userId: number) {
-    return this.productService.getLikedProducts(userId);
-  }
+  @ApiOperation({ summary: 'Foydalanuvchi yoki guest yoqtirgan mahsulotlar' })
+  async getLikedProducts(
+    @Param('userId') userId: number,
+    @Query('ids') ids?: string,
+  ) {
+    const localIds = ids
+      ? ids
+          .split(',')
+          .map((id) => Number(id))
+          .filter((id) => !isNaN(id))
+      : [];
 
+    let dbLikedProducts: Product[] = [];
+    let localLikedProducts: Product[] = [];
+
+    // Agar user mavjud bo‘lsa, bazadan olish
+    if (userId && userId !== 0) {
+      dbLikedProducts = await this.productService.getLikedProducts(userId);
+    }
+
+    // Agar local idlar mavjud bo‘lsa, localStorage'dan olinganlarni ham olish
+    if (localIds.length > 0) {
+      localLikedProducts =
+        await this.productService.getLikedProductsByIds(localIds);
+    }
+
+    // Ikkalasini birlashtirib, dublikatlarsiz qaytarish
+    const allProductsMap = new Map<number, Product>();
+
+    [...dbLikedProducts, ...localLikedProducts].forEach((product) => {
+      allProductsMap.set(product.id, product);
+    });
+
+    return Array.from(allProductsMap.values());
+  }
   // 🔹 GET: Product like status
   @Get(':id/like/status')
   @ApiOkResponse({
