@@ -3,6 +3,7 @@ import {
   Entity,
   JoinColumn,
   ManyToMany,
+  ManyToOne,
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
@@ -53,11 +54,11 @@ export class User {
   @Column({ nullable: true })
   regionId?: number;
 
-  @OneToOne(() => Region, { nullable: true })
+  @ManyToOne(() => Region, { nullable: true })
   @JoinColumn({ name: 'regionId' })
   region?: Region;
 
-  @OneToOne(() => District, { nullable: true })
+  @ManyToOne(() => District, { nullable: true })
   @JoinColumn({ name: 'districtId' })
   district?: District;
 

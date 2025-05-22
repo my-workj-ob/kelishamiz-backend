@@ -1,11 +1,15 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Injectable, NotFoundException, Search } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { User } from './../auth/entities/user.entity';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { Profile } from './enities/profile.entity';
+import { Product } from 'src/product/entities/product.entity';
+import { UserSearch } from 'src/search-filter/entities/user-search.entity';
+import { Like } from './../like/entities/like.entity';
+import { Comment } from './../comments/entities/comments.entity';
 
 @Injectable()
 export class ProfileService {
@@ -13,7 +17,17 @@ export class ProfileService {
     @InjectRepository(Profile)
     private profileRepository: Repository<Profile>,
     @InjectRepository(User)
-    private userRepository: Repository<User>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
+    @InjectRepository(User) private readonly userRepository: Repository<User>,
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
+    @InjectRepository(Profile)
+    @InjectRepository(Comment)
+    private readonly commentRepository: Repository<Comment>,
+    @InjectRepository(Like) private readonly likeRepository: Repository<Like>,
+    @InjectRepository(UserSearch)
+    private readonly searchRepository: Repository<UserSearch>, // agar bor bo‘lsa
   ) {}
 
   async create(createProfileDto: CreateProfileDto): Promise<Profile> {
@@ -74,10 +88,10 @@ export class ProfileService {
       relations: [
         'profile',
         'profile.products',
-        'region',
-        'district',
+        'profile.likes',
+        'profile.comments',
         'likes',
-        'viewedProducts',
+        'profile.viewedProducts',
         'searches',
       ],
     });
@@ -86,7 +100,51 @@ export class ProfileService {
       throw new NotFoundException('User not found');
     }
 
-    await this.userRepository.remove(user); // bu orqali profile ham, product ham o‘chadi
+    // 1. Remove liked products (ManyToMany)
+    await this.dataSource
+      .createQueryBuilder()
+      .delete()
+      .from('product_likes_user') // Many-to-Many join table name
+      .where('userId = :userId', { userId: id })
+      .execute();
+
+    // 2. Remove viewedProducts (agar bu ham ManyToMany bo‘lsa)
+    await this.dataSource
+      .createQueryBuilder()
+      .delete()
+      .from('viewed_products_user') // to‘g‘ri table name bo‘lishi kerak
+      .where('userId = :userId', { userId: id })
+      .execute();
+
+    // 3. Remove searches (agar bogʻlangan bo‘lsa)
+    await this.searchRepository.delete({ user: { id } });
+
+    // 4. Remove profile’s products
+    if (user.profile?.products?.length) {
+      const productIds = user.profile.products.map((p) => p.id);
+      await this.productRepository.delete(productIds);
+    }
+
+    // 5. Remove profile's comments and likes
+    if (user.profile?.comments?.length) {
+      const commentIds = user.profile.comments.map((c) => c.id);
+      await this.commentRepository.delete(commentIds);
+    }
+
+    if (user.profile?.likes?.length) {
+      const likeIds = user.profile.likes.map((l) => l.id);
+      await this.likeRepository.delete(likeIds);
+    }
+
+    // 6. Remove profile (child of user)
+    if (user.profile) {
+      if (user.profile?.id !== undefined) {
+        await this.profileRepository.delete(user.profile.id);
+      }
+    }
+
+    // 7. Remove user
+    await this.userRepository.delete(id);
   }
 
   async findByUser(userId: number): Promise<Profile | any> {

@@ -13,7 +13,7 @@ export class UserSearch {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User, (user) => user.searches)
+  @ManyToOne(() => User, (user) => user.searches, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 

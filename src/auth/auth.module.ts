@@ -13,10 +13,21 @@ import { User } from './entities/user.entity';
 import { OtpService } from './fake-otp.service';
 import { Region } from 'src/location/entities/region.entity';
 import { District } from 'src/location/entities/district.entity';
+import { Product } from 'src/product/entities/product.entity';
+import { Like } from 'src/like/entities/like.entity';
+import { UserSearch } from 'src/search-filter/entities/user-search.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Profile, Region, District]),
+    TypeOrmModule.forFeature([
+      User,
+      Profile,
+      Region,
+      District,
+      Product,
+      Like,
+      UserSearch,
+    ]),
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET_KEY || 'baxtiyor08072006',

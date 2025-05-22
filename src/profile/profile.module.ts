@@ -14,6 +14,7 @@ import { FileService } from 'src/file/file.service';
 import { UploadService } from 'src/file/uploadService';
 import { ProductImage } from 'src/product/entities/Product-Image.entity';
 import { FileEntity } from 'src/file/entities/file.entity';
+import { Like } from 'src/like/entities/like.entity';
 
 @Module({
   imports: [
@@ -25,7 +26,8 @@ import { FileEntity } from 'src/file/entities/file.entity';
       Property,
       User,
       ProductImage,
-      FileEntity
+      FileEntity,
+      Like,
     ]),
   ],
   providers: [
