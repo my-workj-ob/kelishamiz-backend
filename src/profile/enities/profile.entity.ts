@@ -28,9 +28,6 @@ export class Profile {
   @Column({ nullable: true })
   phoneNumber?: string;
 
-  @Column({ nullable: true })
-  regionId?: number;
-
   @OneToOne(() => Region, { nullable: true })
   @JoinColumn({ name: 'regionId' }) // 👈 Shu joy MUHIM
   region?: Region;
@@ -38,9 +35,6 @@ export class Profile {
   @OneToOne(() => District, { nullable: true })
   @JoinColumn({ name: 'districtId' }) // 👈 Shu ham MUHIM
   district?: District;
-
-  @Column({ nullable: true })
-  districtId?: number;
 
   @Column({ nullable: true })
   address?: string; // Manzil
