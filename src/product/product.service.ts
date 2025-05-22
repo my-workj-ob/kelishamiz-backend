@@ -197,34 +197,46 @@ export class ProductService {
     });
   }
 
-  async getLikedProductsByIds(productIds: number[]): Promise<Product[]> {
-    if (!productIds || productIds.length === 0) return [];
+  async getLikedProducts(
+    userId: number | null,
+    productIds: number[] = [],
+  ): Promise<Product[]> {
+    let likedFromDb: Product[] = [];
 
-    return this.productRepository.find({
-      where: {
-        id: In(productIds),
-      },
-    });
-  }
+    if (userId) {
+      const user = await this.userRepository.findOne({
+        where: { id: userId },
+      });
 
-  async getLikedProducts(userId: number): Promise<Product[]> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-    });
-    if (!user) {
-      throw new NotFoundException('User not found');
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      likedFromDb = await this.productRepository.find({
+        where: {
+          likes: {
+            id: userId,
+          },
+        },
+        relations: ['likes'],
+      });
     }
 
-    const likedProducts = await this.productRepository.find({
-      where: {
-        likes: {
-          id: userId,
+    let likedFromLocal: Product[] = [];
+    if (productIds.length > 0) {
+      likedFromLocal = await this.productRepository.find({
+        where: {
+          id: In(productIds),
         },
-      },
-      relations: ['likes'],
+      });
+    }
+
+    const allProductsMap = new Map<number, Product>();
+    [...likedFromDb, ...likedFromLocal].forEach((product) => {
+      allProductsMap.set(product.id, product);
     });
 
-    return likedProducts;
+    return Array.from(allProductsMap.values());
   }
 
   async toggleLike(projectId: number, userId: number): Promise<boolean> {

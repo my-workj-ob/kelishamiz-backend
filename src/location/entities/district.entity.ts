@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Product } from './../../product/entities/product.entity';
 import { Region } from './region.entity';
+import { Profile } from 'src/profile/enities/profile.entity';
 
 @Entity()
 export class District {
@@ -27,4 +28,7 @@ export class District {
   regionId: number;
   @OneToMany(() => Product, (product) => product.district)
   products: Product[];
+  // district.entity.ts
+  @OneToMany(() => Profile, (profile) => profile.district)
+  profiles: Profile[];
 }

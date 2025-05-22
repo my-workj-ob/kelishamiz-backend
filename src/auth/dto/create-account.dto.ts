@@ -17,10 +17,17 @@ export class CreateAccountDto {
   readonly username: string;
 
   @ApiProperty({
-    example: 'Toshkent shahar',
+    example: 'regionId (Region Id = 10)',
     description: 'Foydalanuvchi manzili',
   })
   @IsNotEmpty()
   @IsString()
-  readonly location: string;
+  readonly regionId: number;
+  @ApiProperty({
+    example: 'districtId (district Id) = 20',
+    description: 'Foydalanuvchi manzili',
+  })
+  @IsNotEmpty()
+  @IsString()
+  readonly districtId: number;
 }

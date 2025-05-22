@@ -13,6 +13,8 @@ import { Repository } from 'typeorm';
 import { Profile } from '../profile/enities/profile.entity';
 import { User } from './entities/user.entity';
 import { OtpService } from './fake-otp.service';
+import { Region } from 'src/location/entities/region.entity';
+import { District } from 'src/location/entities/district.entity';
 
 @Injectable()
 export class AuthService {
@@ -30,7 +32,12 @@ export class AuthService {
     private readonly otpService: OtpService,
     @InjectRepository(Profile)
     private profileRepo: Repository<Profile>,
-  ) { }
+
+    @InjectRepository(Region)
+    private regionRepository: Repository<Region>,
+    @InjectRepository(District)
+    private districtRepository: Repository<District>,
+  ) {}
 
   async findByPhone(phone: string): Promise<User | null> {
     return this.userRepo.findOne({ where: { phone } });
@@ -116,7 +123,8 @@ export class AuthService {
   async createAccount(
     phone: string,
     username: string,
-    location: string,
+    regionId: number,
+    districtId: number,
   ): Promise<{ user: User; accessToken: string; refreshToken: string }> {
     const storedOtp = this.temporaryOtps[phone];
 
@@ -136,15 +144,22 @@ export class AuthService {
         'Bu telefon raqam allaqachon ro‘yxatdan o‘tgan.',
       );
     }
-
-    const newUser = this.userRepo.create({ phone, username, location });
+    const region = await this.regionRepository.findOneBy({ id: regionId });
+    const district = await this.districtRepository.findOneBy({
+      id: districtId,
+    });
+    const newUser = this.userRepo.create({
+      phone,
+      username,
+      regionId,
+      districtId,
+    } as Partial<User>);
     const savedUser = await this.userRepo.save(newUser);
 
     if (!newUser) {
       throw new BadRequestException('User kitishda nomalum xatolik yuz berdi ');
     }
 
-    // Check if Profile already exists for the user
     const existingProfile = await this.profileRepo.findOne({
       where: { user: savedUser },
     });
@@ -154,15 +169,16 @@ export class AuthService {
         user: savedUser,
         phoneNumber: phone,
         fullName: username,
-        location,
-      });
+        district,
+        region,
+      } as Partial<User>);
 
       await this.profileRepo.save(newProfile);
     } else {
-      // If profile exists, you can update it (optional)
       existingProfile.phoneNumber = phone;
       existingProfile.fullName = username;
-      existingProfile.location = location;
+      existingProfile.regionId = region?.id;
+      existingProfile.districtId = district?.id;
 
       await this.profileRepo.save(existingProfile);
     }

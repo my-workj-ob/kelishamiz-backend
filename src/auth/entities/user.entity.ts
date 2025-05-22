@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  JoinColumn,
   ManyToMany,
   OneToMany,
   OneToOne,
@@ -12,6 +13,8 @@ import { Product } from './../../product/entities/product.entity';
 import { Profile } from './../../profile/enities/profile.entity';
 import { UserSearch } from './../../search-filter/entities/user-search.entity';
 import { UserViewedProduct } from 'src/product/entities/product-view.entity';
+import { Region } from 'src/location/entities/region.entity';
+import { District } from 'src/location/entities/district.entity';
 
 @Entity()
 export class User {
@@ -44,5 +47,19 @@ export class User {
   @OneToMany(() => UserSearch, (search) => search.user)
   searches: UserSearch[];
   @Column({ nullable: true })
-  location: string; // Mana bu qatorni qo'shing
+  location: string;
+
+  @Column({ nullable: true })
+  regionId?: number;
+
+  @OneToOne(() => Region, { nullable: true })
+  @JoinColumn({ name: 'regionId' }) // 👈 Shu joy MUHIM
+  region?: Region;
+
+  @OneToOne(() => District, { nullable: true })
+  @JoinColumn({ name: 'districtId' }) // 👈 Shu ham MUHIM
+  district?: District;
+
+  @Column({ nullable: true })
+  districtId?: number;
 }

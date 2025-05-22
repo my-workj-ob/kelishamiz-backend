@@ -11,6 +11,8 @@ import { User } from './../../auth/entities/user.entity';
 import { Comment } from './../../comments/entities/comments.entity';
 import { Like } from './../../like/entities/like.entity';
 import { Product } from './../../product/entities/product.entity';
+import { Region } from 'src/location/entities/region.entity';
+import { District } from 'src/location/entities/district.entity';
 
 @Entity()
 export class Profile {
@@ -27,7 +29,18 @@ export class Profile {
   phoneNumber?: string;
 
   @Column({ nullable: true })
-  location?: string; // Tuman
+  regionId?: number;
+
+  @OneToOne(() => Region, { nullable: true })
+  @JoinColumn({ name: 'regionId' }) // 👈 Shu joy MUHIM
+  region?: Region;
+
+  @OneToOne(() => District, { nullable: true })
+  @JoinColumn({ name: 'districtId' }) // 👈 Shu ham MUHIM
+  district?: District;
+
+  @Column({ nullable: true })
+  districtId?: number;
 
   @Column({ nullable: true })
   address?: string; // Manzil

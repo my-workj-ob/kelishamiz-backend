@@ -53,7 +53,7 @@ export class ProfileService {
   async findByUser(userId: number): Promise<Profile | any> {
     return await this.profileRepository.findOne({
       where: { user: { id: userId } },
-      relations: ['comments'],
+      relations: ['region', 'district'],
     });
   }
 }

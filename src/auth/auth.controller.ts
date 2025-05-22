@@ -233,7 +233,8 @@ export class AuthController {
     const { accessToken, refreshToken } = await this.authService.createAccount(
       body.phone,
       body.username,
-      body.location,
+      body.regionId,
+      body.districtId,
     );
 
     return {
