@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsNumber } from 'class-validator';
 
 export class UpdateProfileDto {
   @ApiProperty({
@@ -31,8 +31,8 @@ export class UpdateProfileDto {
 
   @ApiProperty({
     required: false,
-    example: 'Surxondaryo',
-    description: 'Tuman',
+    example: 'Surxondaryo viloyati',
+    description: 'Hudud (viloyat) nomi',
   })
   @IsOptional()
   @IsString()
@@ -40,10 +40,28 @@ export class UpdateProfileDto {
 
   @ApiProperty({
     required: false,
-    example: "Guliston ko'chasi",
+    example: "Guliston ko'chasi, 12-uy",
     description: 'Manzil',
   })
   @IsOptional()
   @IsString()
   address?: string;
+
+  @ApiProperty({
+    required: false,
+    example: 10,
+    description: 'Region ID (viloyat IDsi)',
+  })
+  @IsOptional()
+  @IsNumber()
+  regionId?: number;
+
+  @ApiProperty({
+    required: false,
+    example: 35,
+    description: 'District ID (tuman IDsi)',
+  })
+  @IsOptional()
+  @IsNumber()
+  districtId?: number;
 }

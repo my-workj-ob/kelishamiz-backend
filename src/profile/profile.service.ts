@@ -12,6 +12,8 @@ export class ProfileService {
   constructor(
     @InjectRepository(Profile)
     private profileRepository: Repository<Profile>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
   ) {}
 
   async create(createProfileDto: CreateProfileDto): Promise<Profile> {
@@ -40,14 +42,51 @@ export class ProfileService {
     id: number,
     updateProfileDto: UpdateProfileDto,
   ): Promise<Profile> {
-    const profile = await this.findOne(id);
-    this.profileRepository.merge(profile, updateProfileDto);
-    return await this.profileRepository.save(profile);
+    const profile = await this.profileRepository.findOne({
+      where: { id },
+      relations: ['user'],
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Profil topilmadi');
+    }
+
+    Object.assign(profile, updateProfileDto);
+    const updatedProfile = await this.profileRepository.save(profile);
+
+    const { regionId, districtId } = updateProfileDto;
+    if (regionId || districtId) {
+      if (profile.user?.id) {
+        await this.userRepository.update(profile.user.id, {
+          ...(regionId && { regionId }),
+          ...(districtId && { districtId }),
+        });
+      }
+    }
+
+    return updatedProfile;
   }
 
-  async remove(id: number): Promise<void> {
-    const profile = await this.findOne(id);
-    await this.profileRepository.remove(profile);
+  // user.service.ts
+  async removeUser(id: number): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: [
+        'profile',
+        'products',
+        'region',
+        'district',
+        'likes',
+        'viewedProducts',
+        'searches',
+      ],
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.userRepository.remove(user); // bu orqali profile ham, product ham o‘chadi
   }
 
   async findByUser(userId: number): Promise<Profile | any> {

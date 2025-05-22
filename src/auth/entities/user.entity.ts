@@ -46,18 +46,16 @@ export class User {
 
   @OneToMany(() => UserSearch, (search) => search.user)
   searches: UserSearch[];
-  @Column({ nullable: true })
-  location: string;
 
   @Column({ nullable: true })
   regionId?: number;
 
   @OneToOne(() => Region, { nullable: true })
-  @JoinColumn({ name: 'regionId' }) // 👈 Shu joy MUHIM
+  @JoinColumn({ name: 'regionId' })
   region?: Region;
 
   @OneToOne(() => District, { nullable: true })
-  @JoinColumn({ name: 'districtId' }) // 👈 Shu ham MUHIM
+  @JoinColumn({ name: 'districtId' })
   district?: District;
 
   @Column({ nullable: true })
