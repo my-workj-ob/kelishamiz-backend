@@ -24,7 +24,7 @@ export class User {
   @Column({ unique: true })
   phone: string;
 
-  @Column({ nullable: true, unique: true })
+  @Column()
   username?: string;
 
   @Column({ nullable: true })
@@ -44,7 +44,10 @@ export class User {
   })
   viewedProducts: UserViewedProduct[];
 
-  @OneToMany(() => UserSearch, (search) => search.user)
+  @OneToMany(() => UserSearch, (search) => search.user, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
   searches: UserSearch[];
 
   @Column({ nullable: true })

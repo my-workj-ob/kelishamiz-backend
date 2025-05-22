@@ -73,7 +73,7 @@ export class ProfileService {
       where: { id },
       relations: [
         'profile',
-        'products',
+        'profile.products',
         'region',
         'district',
         'likes',
