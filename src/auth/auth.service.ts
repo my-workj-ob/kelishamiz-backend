@@ -144,24 +144,28 @@ export class AuthService {
         'Bu telefon raqam allaqachon ro‘yxatdan o‘tgan.',
       );
     }
+
     const region = await this.regionRepository.findOneBy({ id: regionId });
     const district = await this.districtRepository.findOneBy({
       id: districtId,
     });
+
     const newUser = this.userRepo.create({
       phone,
       username,
       regionId,
       districtId,
-    } as Partial<User>);
+    });
+
     const savedUser = await this.userRepo.save(newUser);
 
-    if (!newUser) {
-      throw new BadRequestException('User kitishda nomalum xatolik yuz berdi ');
+    if (!savedUser) {
+      throw new BadRequestException('User saqlashda xatolik yuz berdi.');
     }
 
+    // Check profile
     const existingProfile = await this.profileRepo.findOne({
-      where: { user: savedUser },
+      where: { user: { id: savedUser.id } },
     });
 
     if (!existingProfile) {
@@ -169,16 +173,16 @@ export class AuthService {
         user: savedUser,
         phoneNumber: phone,
         fullName: username,
-        district,
         region,
-      } as Partial<User>);
+        district,
+      } as Partial<Profile>);
 
       await this.profileRepo.save(newProfile);
     } else {
       existingProfile.phoneNumber = phone;
       existingProfile.fullName = username;
-      existingProfile.regionId = region?.id;
-      existingProfile.districtId = district?.id;
+      existingProfile.region = region ?? undefined;
+      existingProfile.district = district ?? undefined;
 
       await this.profileRepo.save(existingProfile);
     }

@@ -81,7 +81,7 @@ export class ProfileService {
     return updatedProfile;
   }
 
-  // user.service.ts
+
   async removeUser(id: number): Promise<void> {
     const user = await this.userRepository.findOne({
       where: { id },
@@ -91,7 +91,7 @@ export class ProfileService {
         'profile.likes',
         'profile.comments',
         'likes',
-        'profile.viewedProducts',
+        'viewedProducts',
         'searches',
       ],
     });
@@ -100,7 +100,6 @@ export class ProfileService {
       throw new NotFoundException('User not found');
     }
 
-    // 1. Remove liked products (ManyToMany)
     await this.dataSource
       .createQueryBuilder()
       .delete()

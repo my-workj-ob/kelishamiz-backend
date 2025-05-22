@@ -2,6 +2,7 @@ import {
   Column,
   Entity,
   JoinColumn,
+  JoinTable,
   ManyToMany,
   ManyToOne,
   OneToMany,
@@ -43,6 +44,7 @@ export class User {
   @OneToMany(() => UserViewedProduct, (viewProduct) => viewProduct.user, {
     cascade: true,
   })
+  @JoinTable() // <-- BU MUHIM
   viewedProducts: UserViewedProduct[];
 
   @OneToMany(() => UserSearch, (search) => search.user, {
