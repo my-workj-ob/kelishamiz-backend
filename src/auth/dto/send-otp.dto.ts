@@ -13,4 +13,5 @@ export class SendOtpDto {
       'Telefon raqami +998 bilan boshlanishi va 12 ta belgidan iborat bo‘lishi kerak.',
   })
   readonly phone: string;
+  readonly expiredTime: string;
 }

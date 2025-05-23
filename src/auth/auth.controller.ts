@@ -130,7 +130,13 @@ export class AuthController {
   @ApiBody({ type: SendOtpDto })
   async sendOtp(@Body() body: SendOtpDto) {
     const code = await this.authService.sendOtp(body.phone);
-    return { success: true, message: 'SMS kod yuborildi', code: code.otp };
+
+    return {
+      success: true,
+      message: 'SMS kod yuborildi',
+      code: code.otp,
+      expiredTime: code.expiredTime,
+    };
   }
 
   @Post('verify-otp')
