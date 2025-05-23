@@ -83,17 +83,27 @@ export class AuthService {
    * @param phone OTP yuboriladigan telefon raqami.
    * @returns Yuborilgan OTP kodi va xabar.
    */
-  async sendOtp(phone: string): Promise<{ otp?: string; message?: string }> {
+  async sendOtp(
+    phone: string,
+  ): Promise<{ otp?: string; message?: string; expiredTime?: number }> {
     const otpCode = await this.otpService.sendOtp(phone);
     const expiresAt = new Date(Date.now() + this.otpExpiryTimeMs);
     this.temporaryOtps[phone] = { code: otpCode, expiresAt, isVerified: false };
 
-    // Mana shu qatorda OTP kodi va tugash vaqti konsolga chiqarilishi kerak:
+    // OTP tugash vaqtini daqiqalarda hisoblaymiz (butun son)
+    const expiresInMinutes = Math.ceil(this.otpExpiryTimeMs / (1000 * 60)); // Millisekundlarni daqiqaga aylantiramiz
+
+    // OTP kodi va tugash vaqtini konsolga chiqarish
     console.log(
       `Telefon: ${phone}, Yuborilgan OTP kodi: ${otpCode}, OTP tugash vaqti: ${expiresAt.toLocaleString()}`,
     );
+    console.log(`OTP ${expiresInMinutes} daqiqadan keyin tugaydi.`); // Yangi qo'shilgan log
 
-    return { otp: otpCode, message: 'SMS kod yuborildi.' };
+    return {
+      otp: otpCode,
+      message: 'SMS kod yuborildi.',
+      expiredTime: expiresInMinutes,
+    };
   }
 
   /**

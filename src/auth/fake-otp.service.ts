@@ -72,7 +72,7 @@ export class OtpService {
    */
   generateOtp(): string {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    console.debug(`Yaratilgan OTP: ${otp}`); // Yaratilgan OTPni konsolga chiqarish
+    console.debug(`Generated OTP: ${otp}`); // Mana shu log chiqyapti
     return otp;
   }
 
@@ -85,45 +85,18 @@ export class OtpService {
   async sendOtp(phone: string): Promise<string> {
     const otpCode = this.generateOtp();
     const isDevelopment =
-      this.configService.get<string>('NODE_ENV') === 'development'; // Konfiguratsiyadan muhitni olish
+      this.configService.get<string>('NODE_ENV') === 'development';
 
     if (isDevelopment) {
-      console.log(`[RIVOJLANISH REJIMI] OTP kodi: ${otpCode} -> ${phone}`);
+      console.log(`[RIVOJLANISH REJIMI] OTP kodi: ${otpCode} -> ${phone}`); // Agar DEV mode bo'lsa, bu chiqyapti
       return otpCode;
     }
 
-    // Haqiqiy SMS yuborish logikasi (Eskiz.uz API orqali) bu yerda bo'ladi.
-    // Hozircha faqat simulyatsiya qilinadi.
     console.log(
-      `OTP ${otpCode} raqamiga yuborilmoqda (simulyatsiya): ${phone}`,
+      `OTP ${otpCode} raqamiga yuborilmoqda (simulyatsiya): ${phone}`, // Va mana bu log
     );
-    // Kechikishni simulyatsiya qilish (ixtiyoriy)
     await new Promise((resolve) => setTimeout(resolve, 500));
-    console.debug(`OTP yuborildi (simulyatsiya) ${phone} raqamiga: ${otpCode}`);
-
-    // Eskiz.uz API'si orqali SMS yuborish uchun quyidagi kodni qo'shishingiz mumkin:
-    /*
-    try {
-      const token = await this.getToken();
-      const sendSmsUrl = 'https://notify.eskiz.uz/api/message/sms/send';
-      const message = `Sizning OTP kodingiz: ${otpCode}`;
-
-      await firstValueFrom(
-        this.httpService.post(sendSmsUrl, qs.stringify({ mobile_phone: phone, message, 'from': '4546' }), { // 'from' may vary
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': `Bearer ${token}`,
-          },
-        }),
-      );
-      console.log(`OTP ${otpCode} raqamiga muvaffaqiyatli yuborildi: ${phone}`);
-    } catch (error) {
-      console.error(`OTP yuborishda xatolik yuz berdi ${phone}:`, error.response?.data || error.message);
-      // Xatolikni qayta tashlash yoki boshqa tarzda qayta ishlash
-      throw new Error('OTP yuborishda xatolik yuz berdi.');
-    }
-    */
-
+    console.debug(`OTP yuborildi (simulyatsiya) ${phone} raqamiga: ${otpCode}`); // Va bu log
     return otpCode;
   }
 }
