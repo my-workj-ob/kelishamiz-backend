@@ -22,7 +22,8 @@ export class AuthService {
     string,
     { code: string; expiresAt: Date; isVerified: boolean }
   > = {};
-  private readonly otpExpiryTimeMs = 5 * 60 * 1000;
+  // OTP muddati 1 daqiqa (1 * 60 * 1000 ms)
+  private readonly otpExpiryTimeMs = 1 * 60 * 1000;
   private readonly saltRounds = 10;
 
   constructor(
@@ -39,14 +40,29 @@ export class AuthService {
     private districtRepository: Repository<District>,
   ) {}
 
+  /**
+   * Telefon raqam orqali foydalanuvchini topadi.
+   * @param phone Foydalanuvchi telefon raqami.
+   * @returns Topilgan foydalanuvchi obyekti yoki null.
+   */
   async findByPhone(phone: string): Promise<User | null> {
     return this.userRepo.findOne({ where: { phone } });
   }
 
+  /**
+   * ID orqali foydalanuvchini topadi.
+   * @param id Foydalanuvchi IDsi.
+   * @returns Topilgan foydalanuvchi obyekti yoki null.
+   */
   async findById(id: number): Promise<User | null> {
     return this.userRepo.findOne({ where: { id } });
   }
 
+  /**
+   * Foydalanuvchi uchun access va refresh tokenlarini yaratadi.
+   * @param user Tokenlar yaratiladigan foydalanuvchi obyekti.
+   * @returns Access va refresh tokenlarini o'z ichiga olgan obyekt.
+   */
   async generateTokens(user: User) {
     const payload = {
       sub: user.id,
@@ -54,21 +70,39 @@ export class AuthService {
       username: user.username,
     };
     const accessToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '12h',
+      expiresIn: '12h', // Access token 12 soatdan keyin tugaydi
     });
     const refreshToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '30d',
+      expiresIn: '30d', // Refresh token 30 kundan keyin tugaydi
     });
     return { accessToken, refreshToken };
   }
 
+  /**
+   * Berilgan telefon raqamiga OTP (bir martalik parol) yuboradi.
+   * @param phone OTP yuboriladigan telefon raqami.
+   * @returns Yuborilgan OTP kodi va xabar.
+   */
   async sendOtp(phone: string): Promise<{ otp?: string; message?: string }> {
     const otpCode = await this.otpService.sendOtp(phone);
     const expiresAt = new Date(Date.now() + this.otpExpiryTimeMs);
     this.temporaryOtps[phone] = { code: otpCode, expiresAt, isVerified: false };
+
+    // Mana shu qatorda OTP kodi va tugash vaqti konsolga chiqarilishi kerak:
+    console.log(
+      `Telefon: ${phone}, Yuborilgan OTP kodi: ${otpCode}, OTP tugash vaqti: ${expiresAt.toLocaleString()}`,
+    );
+
     return { otp: otpCode, message: 'SMS kod yuborildi.' };
   }
 
+  /**
+   * Refresh token yordamida yangi access va refresh tokenlarini yaratadi.
+   * @param refreshToken Yangilash uchun ishlatiladigan refresh token.
+   * @returns Yangi access va refresh tokenlarini o'z ichiga olgan obyekt.
+   * @throws BadRequestException Agar refresh token yaroqsiz yoki eskirgan bo'lsa.
+   * @throws NotFoundException Agar foydalanuvchi topilmasa.
+   */
   async refreshTokens(
     refreshToken: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
@@ -86,6 +120,11 @@ export class AuthService {
     }
   }
 
+  /**
+   * Foydalanuvchini tizimga kirish jarayonini boshlaydi (OTP yuborish).
+   * @param phone Tizimga kirish uchun telefon raqami.
+   * @returns Jarayon muvaffaqiyati, xabar va foydalanuvchi mavjudligi holati.
+   */
   async login(phone: string): Promise<{
     success: boolean;
     message: string;
@@ -93,6 +132,7 @@ export class AuthService {
   }> {
     const user = await this.findByPhone(phone);
     await this.sendOtp(phone);
+
     return {
       success: true,
       message: user
@@ -102,24 +142,59 @@ export class AuthService {
     };
   }
 
+  /**
+   * Berilgan telefon raqami va kodni tekshirish orqali OTPni tasdiqlaydi.
+   * @param phone Tasdiqlanadigan telefon raqami.
+   * @param code Foydalanuvchi kiritgan OTP kodi.
+   * @returns Tasdiqlash muvaffaqiyati va xabar.
+   * @throws BadRequestException Agar OTP topilmasa, noto'g'ri bo'lsa yoki muddati tugagan bo'lsa.
+   */
   verifyOtp(
     phone: string,
     code: string,
   ): Promise<{ success: boolean; message?: string }> {
     const storedOtp = this.temporaryOtps[phone];
+    const now = new Date();
 
-    if (
-      !storedOtp ||
-      storedOtp.code !== code ||
-      storedOtp.expiresAt < new Date()
-    ) {
-      throw new BadRequestException('SMS kod noto‘g‘ri yoki muddati tugagan.');
+    // Konsolga tekshirilayotgan OTP ma'lumotlarini chiqarish
+    console.log(`Tekshirilmoqda: Telefon: ${phone}`);
+    console.log(`Kiritilgan OTP kodi: ${code}`);
+    if (storedOtp) {
+      console.log(`Saqlangan OTP kodi: ${storedOtp.code}`);
+      console.log(
+        `Saqlangan OTP tugash vaqti: ${storedOtp.expiresAt.toLocaleString()}`,
+      );
+    } else {
+      console.log('Bu telefon raqami uchun saqlangan OTP topilmadi.');
+    }
+    console.log(`Hozirgi vaqt: ${now.toLocaleString()}`);
+
+    if (!storedOtp) {
+      throw new BadRequestException('SMS kod topilmadi.');
+    }
+
+    if (storedOtp.code !== code) {
+      throw new BadRequestException('SMS kod noto‘g‘ri.');
+    }
+
+    if (storedOtp.expiresAt.getTime() < now.getTime()) {
+      throw new BadRequestException('SMS kod muddati tugagan.');
     }
 
     this.temporaryOtps[phone].isVerified = true;
     return Promise.resolve({ success: true, message: 'OTP tasdiqlandi.' });
   }
 
+  /**
+   * Yangi foydalanuvchi hisobini yaratadi.
+   * @param phone Foydalanuvchi telefon raqami.
+   * @param username Foydalanuvchi nomi.
+   * @param regionId Foydalanuvchi hududi IDsi.
+   * @param districtId Foydalanuvchi tumani IDsi.
+   * @returns Yaratilgan foydalanuvchi obyekti va tokenlar.
+   * @throws BadRequestException Agar OTP tasdiqlanmagan bo'lsa, muddati tugagan bo'lsa yoki foydalanuvchi saqlashda xatolik yuz bersa.
+   * @throws ConflictException Agar telefon raqami allaqachon ro'yxatdan o'tgan bo'lsa.
+   */
   async createAccount(
     phone: string,
     username: string,
@@ -163,7 +238,7 @@ export class AuthService {
       throw new BadRequestException('User saqlashda xatolik yuz berdi.');
     }
 
-    // Check profile
+    // Profilni tekshirish va yaratish/yangilash
     const existingProfile = await this.profileRepo.findOne({
       where: { user: { id: savedUser.id } },
     });
@@ -175,25 +250,33 @@ export class AuthService {
         fullName: username,
         region,
         district,
-      } as Partial<Profile>);
+      } as Partial<Profile>); // `as Partial<Profile>` is used here because `region` and `district` might be null/undefined if not found.
 
       await this.profileRepo.save(newProfile);
     } else {
       existingProfile.phoneNumber = phone;
       existingProfile.fullName = username;
-      existingProfile.region = region ?? undefined;
-      existingProfile.district = district ?? undefined;
+      existingProfile.region = region ?? undefined; // If region is null, set to undefined to avoid TypeORM issues with null relations
+      existingProfile.district = district ?? undefined; // If district is null, set to undefined
 
       await this.profileRepo.save(existingProfile);
     }
 
     const tokens = await this.generateTokens(savedUser);
 
+    // Hisob yaratilgandan so'ng va tokenlar berilgandan so'ng OTPni o'chiramiz
     delete this.temporaryOtps[phone];
 
     return { user: savedUser, ...tokens };
   }
 
+  /**
+   * OTP yordamida foydalanuvchini tizimga kiritadi.
+   * @param phone Tizimga kirish uchun telefon raqami.
+   * @param code Tasdiqlash uchun OTP kodi.
+   * @returns Tizimga kirish muvaffaqiyati, xabar va tokenlar.
+   * @throws NotFoundException Agar foydalanuvchi topilmasa.
+   */
   async loginWithOtp(
     phone: string,
     code: string,
@@ -213,7 +296,8 @@ export class AuthService {
     }
 
     const tokens = await this.generateTokens(existingUser);
-    delete this.temporaryOtps[phone]; // Logindan keyin OTP ni o'chiramiz
+    // Logindan keyin OTP ni o'chiramiz
+    delete this.temporaryOtps[phone];
 
     return {
       success: true,
@@ -222,6 +306,11 @@ export class AuthService {
     };
   }
 
+  /**
+   * Telefon raqamining tizimda mavjudligini tekshiradi.
+   * @param phone Tekshiriladigan telefon raqami.
+   * @returns Telefon raqami mavjudligi holati.
+   */
   async checkPhone(phone: string): Promise<{ exists: boolean }> {
     const user = await this.findByPhone(phone);
     return { exists: !!user };
