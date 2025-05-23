@@ -3,6 +3,7 @@ import {
   Entity,
   JoinColumn,
   ManyToMany,
+  ManyToOne,
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
@@ -28,32 +29,47 @@ export class Profile {
   @Column({ nullable: true })
   phoneNumber?: string;
 
-  @OneToOne(() => Region, { nullable: true })
-  @JoinColumn({ name: 'regionId' }) // 👈 Shu joy MUHIM
+  // ✅ Profile -> Region (Ko'pdan-birga)
+  @ManyToOne(() => Region, (region) => region.profiles, { nullable: true })
+  @JoinColumn({ name: 'regionId' })
   region?: Region;
 
-  @OneToOne(() => District, { nullable: true })
-  @JoinColumn({ name: 'districtId' }) // 👈 Shu ham MUHIM
+  @Column({ nullable: true })
+  regionId?: number;
+
+  // ✅ Profile -> District (Ko'pdan-birga)
+  @ManyToOne(() => District, (district) => district.profiles, {
+    nullable: true,
+  })
+  @JoinColumn({ name: 'districtId' })
   district?: District;
 
   @Column({ nullable: true })
-  address?: string; // Manzil
+  districtId?: number;
 
+  @Column({ nullable: true })
+  address?: string;
+
+  // ✅ Profile -> User (Birga-bir)
   @OneToOne(() => User, (user) => user.profile, { onDelete: 'CASCADE' })
   @JoinColumn()
   user?: User;
 
+  // ✅ Profile -> Product (Birga-ko'p)
   @OneToMany(() => Product, (product) => product.profile)
   products?: Product[];
 
+  // ✅ Profile -> Comment (Birga-ko'p)
   @OneToMany(() => Comment, (comment) => comment.profile, { cascade: true })
   comments?: Comment[];
 
+  // ✅ Profile -> likedProducts (Ko'pdan-ko'p)
   @ManyToMany(() => Product, (product) => product.likes)
   likedProducts?: Product[];
 
+  // ✅ Profile -> Like (Birga-ko'p)
   @OneToMany(() => Like, (like) => like.user, { cascade: true })
   likes?: Like[];
 
-  // Boshqa profilga oid maydonlar (rasm, bio va hokazo)
+  // Qo'shimcha maydonlar uchun joy qoldirilgan (rasm, bio va h.k.)
 }

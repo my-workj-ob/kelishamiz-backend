@@ -48,7 +48,7 @@ async function bootstrap() {
     express.static(join(__dirname, '../node_modules/swagger-ui-dist')),
   );
 
-  await app.listen(process.env.PORT || 8888);
+  await app.listen(process.env.PORT || 3333);
 }
 
 bootstrap();

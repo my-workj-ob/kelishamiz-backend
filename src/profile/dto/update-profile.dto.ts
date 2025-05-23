@@ -31,15 +31,6 @@ export class UpdateProfileDto {
 
   @ApiProperty({
     required: false,
-    example: 'Surxondaryo viloyati',
-    description: 'Hudud (viloyat) nomi',
-  })
-  @IsOptional()
-  @IsString()
-  location?: string;
-
-  @ApiProperty({
-    required: false,
     example: "Guliston ko'chasi, 12-uy",
     description: 'Manzil',
   })

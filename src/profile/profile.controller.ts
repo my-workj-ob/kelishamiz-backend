@@ -145,9 +145,9 @@ export class ProfileController {
   @ApiOkResponse({ description: "Profil o'chirildi" })
   async removeMe(@Req() req: any): Promise<void> {
     const user = req.user;
-    const profile = await this.profileService.findByUser(user.id);
+    const profile = await this.profileService.findByUser(user.userId);
     if (profile) {
-      await this.profileService.removeUser(profile.id);
+      await this.profileService.removeUser(profile.user.id);
     }
   }
 

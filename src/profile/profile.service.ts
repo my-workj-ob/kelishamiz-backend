@@ -81,8 +81,9 @@ export class ProfileService {
     return updatedProfile;
   }
 
-
+  // user.service.ts
   async removeUser(id: number): Promise<void> {
+    console.log('Deleting user with ID:', id); // 👈 qo‘shing
     const user = await this.userRepository.findOne({
       where: { id },
       relations: [
@@ -91,7 +92,6 @@ export class ProfileService {
         'profile.likes',
         'profile.comments',
         'likes',
-        'viewedProducts',
         'searches',
       ],
     });
@@ -104,14 +104,6 @@ export class ProfileService {
       .createQueryBuilder()
       .delete()
       .from('product_likes_user') // Many-to-Many join table name
-      .where('userId = :userId', { userId: id })
-      .execute();
-
-    // 2. Remove viewedProducts (agar bu ham ManyToMany bo‘lsa)
-    await this.dataSource
-      .createQueryBuilder()
-      .delete()
-      .from('viewed_products_user') // to‘g‘ri table name bo‘lishi kerak
       .where('userId = :userId', { userId: id })
       .execute();
 
@@ -135,21 +127,25 @@ export class ProfileService {
       await this.likeRepository.delete(likeIds);
     }
 
-    // 6. Remove profile (child of user)
     if (user.profile) {
       if (user.profile?.id !== undefined) {
+        console.log(user.profile);
         await this.profileRepository.delete(user.profile.id);
       }
     }
 
-    // 7. Remove user
     await this.userRepository.delete(id);
   }
 
   async findByUser(userId: number): Promise<Profile | any> {
-    return await this.profileRepository.findOne({
+    console.log('userId: ', userId);
+    const existUser = await this.profileRepository.findOne({
       where: { user: { id: userId } },
-      relations: ['region', 'district'],
+      relations: ['region', 'district', 'user'],
     });
+
+    console.log('existUser ', existUser);
+
+    return existUser;
   }
 }
