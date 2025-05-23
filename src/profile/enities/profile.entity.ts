@@ -70,6 +70,4 @@ export class Profile {
   // ✅ Profile -> Like (Birga-ko'p)
   @OneToMany(() => Like, (like) => like.user, { cascade: true })
   likes?: Like[];
-
-  // Qo'shimcha maydonlar uchun joy qoldirilgan (rasm, bio va h.k.)
 }
