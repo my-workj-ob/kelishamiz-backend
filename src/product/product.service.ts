@@ -307,6 +307,7 @@ export class ProductService {
     page: number;
     pageSize: number;
   }> {
+    // filters dan kerakli parametrlarni destructure qilish
     const {
       categoryId,
       minPrice,
@@ -327,17 +328,19 @@ export class ProductService {
       ...otherFilters
     } = filters;
 
+    // QueryBuilder ni yaratamiz
     const queryBuilder = this.productRepository.createQueryBuilder('product');
 
+    // Kerakli joinlar: category, profile, district, region, images
     queryBuilder
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.profile', 'profile')
       .leftJoinAndSelect('product.district', 'district')
-      .leftJoin('district.region', 'districtRegion') // alias: districtRegion
-      .leftJoinAndSelect('product.region', 'productRegion') // alias: productRegion
+      .leftJoin('district.region', 'districtRegion')
+      .leftJoinAndSelect('product.region', 'productRegion')
       .leftJoinAndSelect('product.images', 'images');
-    // === FILTERLAR ===
 
+    // === FILTERLAR ===
     if (categoryId) {
       queryBuilder.andWhere('product.categoryId = :categoryId', { categoryId });
     }
@@ -351,8 +354,9 @@ export class ProductService {
     }
 
     if (title && title.trim()) {
+      // case-insensitive search uchun ILIKE
       queryBuilder.andWhere('product.title ILIKE :title', {
-        title: `%${title}%`,
+        title: `%${title.trim()}%`,
       });
     }
 
@@ -375,6 +379,7 @@ export class ProductService {
     if (districtId) {
       queryBuilder.andWhere('product.districtId = :districtId', { districtId });
     } else if (regionId) {
+      // Agar districtId yo'q bo'lsa, region bo'yicha filter
       queryBuilder.andWhere('districtRegion.id = :regionId', { regionId });
     }
 
@@ -382,9 +387,10 @@ export class ProductService {
       queryBuilder.andWhere('product.profileId = :userId', { userId });
     }
 
-    // Agar property'lar bo'lsa (array bo'lishi mumkin)
+    // properties array bo'lsa, JSON filtr qo'shish (masalan, JSONB ustun bo'lsa)
     if (properties && Array.isArray(properties) && properties.length > 0) {
       properties.forEach((prop, index) => {
+        // Har bir property uchun alohida parametr nomi beramiz
         const key = `propertyKey${index}`;
         const value = `propertyValue${index}`;
         queryBuilder.andWhere(`product.properties ->> :${key} = :${value}`, {
@@ -395,7 +401,8 @@ export class ProductService {
     }
 
     // === SORTING ===
-    const allowedSortFields = ['price', 'createdAt', 'title']; // mos ustunlar
+    // Ruxsat berilgan sorting ustunlari ro'yxati
+    const allowedSortFields = ['price', 'createdAt', 'title'];
     const safeSortBy = allowedSortFields.includes(sortBy)
       ? sortBy
       : 'createdAt';
@@ -404,17 +411,24 @@ export class ProductService {
     queryBuilder.orderBy(`product.${safeSortBy}`, safeSortOrder);
 
     // === PAGINATION ===
-    const take = rawTake || limit || 10;
-    const skip = rawSkip !== undefined ? rawSkip : 0;
+    // take (limit) qiymatini aniqlash: avval rawTake, keyin limit, so'ngra default 10
+    const take = rawTake ?? limit ?? 10;
+
+    // skip qiymatini aniqlash: default 0
+    const skip = rawSkip ?? 0;
 
     queryBuilder.skip(Math.max(skip, 0)).take(Math.max(take, 1));
 
+    // Ma'lumotlar va jami sonini olish
     const [data, total] = await queryBuilder.getManyAndCount();
+
+    // Sahifa raqamini hisoblash: skip va take dan
+    const page = Math.floor(skip / take) + 1;
 
     return {
       data,
       total,
-      page: Math.floor(skip / take) + 1,
+      page,
       pageSize: take,
     };
   }
