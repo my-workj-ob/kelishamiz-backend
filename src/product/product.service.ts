@@ -329,14 +329,13 @@ export class ProductService {
 
     const queryBuilder = this.productRepository.createQueryBuilder('product');
 
-    // JOINlar
     queryBuilder
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.profile', 'profile')
       .leftJoinAndSelect('product.district', 'district')
-      .leftJoinAndSelect('district.region', 'region')
+      .leftJoin('district.region', 'districtRegion') // alias: districtRegion
+      .leftJoinAndSelect('product.region', 'productRegion') // alias: productRegion
       .leftJoinAndSelect('product.images', 'images');
-
     // === FILTERLAR ===
 
     if (categoryId) {

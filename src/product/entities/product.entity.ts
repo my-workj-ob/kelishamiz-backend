@@ -20,6 +20,7 @@ import { Region } from './../../location/entities/region.entity';
 import { Profile } from './../../profile/enities/profile.entity';
 import { ProductProperty } from './product-property-entity';
 import { ProductImage } from './Product-Image.entity';
+import { ChatRoom } from 'src/chat/entities/chat-room.entity';
 @Entity()
 export class Product {
   @ApiProperty({ example: 1, description: 'Mahsulotning noyob identifikatori' })
@@ -63,7 +64,7 @@ export class Product {
   })
   @JoinColumn({ name: 'profileId' })
   profile: Profile;
-
+  //
   @Column({ nullable: true })
   profileId: number;
 
@@ -142,6 +143,10 @@ export class Product {
 
   @Column({ default: 0, nullable: true })
   imageIndex: number;
+
+  // Ushbu mahsulotga tegishli chat xonalari
+  @OneToMany(() => ChatRoom, (chatRoom) => chatRoom.product)
+  chatRooms: ChatRoom[];
 
   @UpdateDateColumn({
     type: 'timestamp with time zone',

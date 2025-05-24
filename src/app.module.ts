@@ -22,6 +22,8 @@ import { SearchFilterController } from './search-filter/search-filter.controller
 import { SearchModule } from './search-filter/search-filter.module';
 import { ThrottlerModule, ThrottlerModuleOptions } from '@nestjs/throttler';
 import { CacheModule } from '@nestjs/cache-manager';
+import { ChatModule } from './chat/chat.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -68,6 +70,8 @@ import { CacheModule } from '@nestjs/cache-manager';
     CommentsModule,
     LocationModule,
     SearchModule,
+    ChatModule,
+    NotificationModule,
   ],
 
   controllers: [
