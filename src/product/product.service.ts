@@ -375,7 +375,7 @@ export class ProductService {
     if (districtId) {
       queryBuilder.andWhere('product.districtId = :districtId', { districtId });
     } else if (regionId) {
-      queryBuilder.andWhere('region.id = :regionId', { regionId });
+      queryBuilder.andWhere('districtRegion.id = :regionId', { regionId });
     }
 
     if (ownProduct && userId) {
