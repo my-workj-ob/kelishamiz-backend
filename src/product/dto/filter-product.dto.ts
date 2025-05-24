@@ -60,19 +60,6 @@ export class GetProductsDto {
 
   @ApiProperty({
     required: false,
-    description: "Sahifalash uchun o'tkazib yuborish",
-  })
-  @IsOptional()
-  @IsNumber()
-  skip?: number;
-
-  @ApiProperty({ required: false, description: 'Sahifadagi elementlar soni' })
-  @IsOptional()
-  @IsNumber()
-  take?: number;
-
-  @ApiProperty({
-    required: false,
     description: 'Tartiblash maydoni',
     example: 'price',
   })
@@ -85,6 +72,11 @@ export class GetProductsDto {
   @IsNumber()
   @Min(1)
   page?: number;
+  @ApiProperty({ required: false, description: 'Sahifadagi elementlar soni' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  pageSize?: number;
 
   @ApiProperty({
     required: false,
