@@ -231,7 +231,7 @@ export class ProductController {
     return this.productService.filter(filters, userId);
   }
   // 🔸 POST: Toggle like
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(JwtOptionalAuthGuard)
   @Post(':id/like')
   @ApiOkResponse({
     description: "Mahsulotga layk qo'shish/olib tashlash natijasi",
