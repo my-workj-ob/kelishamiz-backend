@@ -223,7 +223,7 @@ export class ProductService {
     });
 
     productsToLike.forEach((product) => {
-      product.likes.push(user);
+      product?.likes?.push(user);
       product.likesCount += 1;
     });
 

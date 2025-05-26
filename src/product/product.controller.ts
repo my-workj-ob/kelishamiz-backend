@@ -90,7 +90,6 @@ export class ProductController {
   }> {
     return this.productService.findAllPaginated(Number(page), Number(pageSize));
   }
-  // IDga asoslangan mahsulotni qidirish
 
   @UseGuards(JwtOptionalAuthGuard)
   @Get('liked')
@@ -107,7 +106,6 @@ export class ProductController {
 
     return this.productService.syncLikesFromLocal(userId, localIds);
   }
-  // 🔹 GET: Product like status
   @Get(':id/like/status')
   @ApiOkResponse({
     description: 'Mahsulotning layk statusini olish',
