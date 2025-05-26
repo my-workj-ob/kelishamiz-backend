@@ -226,7 +226,7 @@ export class ProductService {
 
     await this.productRepository.save(productsToLike);
 
-    return true;
+    return productsToLike;
   }
 
   async toggleLike(projectId: number, userId: number): Promise<boolean> {
