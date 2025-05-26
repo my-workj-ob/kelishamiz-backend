@@ -197,10 +197,7 @@ export class ProductService {
     });
   }
 
-  async syncLikesFromLocal(
-    userId: number,
-    localLikedProductIds: number[],
-  ): Promise<void> {
+  async syncLikesFromLocal(userId: number, localLikedProductIds?: number[]) {
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: ['likes'],
@@ -212,14 +209,14 @@ export class ProductService {
 
     const alreadyLikedProductIds = user.likes?.map((p) => p.id) || [];
 
-    const newProductIdsToLike = localLikedProductIds.filter(
+    const newProductIdsToLike = localLikedProductIds?.filter(
       (id) => !alreadyLikedProductIds.includes(id),
     );
 
-    if (newProductIdsToLike.length === 0) return;
+    if (newProductIdsToLike?.length === 0) return;
 
     const productsToLike = await this.productRepository.findBy({
-      id: In(newProductIdsToLike),
+      id: In(newProductIdsToLike ?? []),
     });
 
     productsToLike.forEach((product) => {
@@ -228,6 +225,8 @@ export class ProductService {
     });
 
     await this.productRepository.save(productsToLike);
+
+    return true;
   }
 
   async toggleLike(projectId: number, userId: number): Promise<boolean> {

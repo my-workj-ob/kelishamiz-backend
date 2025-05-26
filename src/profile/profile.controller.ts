@@ -99,7 +99,8 @@ export class ProfileController {
         break;
       case 'saqlanganlar':
         const savedProducts =
-          await this.productService.getLikedProducts(userId);
+          await this.productService.syncLikesFromLocal(userId);
+
         if (!savedProducts) {
           throw new NotFoundException('Foydalanuvchi mahsulotlari topilmadi');
         }
