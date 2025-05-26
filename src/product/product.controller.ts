@@ -231,6 +231,12 @@ export class ProductController {
 
   @UseGuards(JwtOptionalAuthGuard)
   @Post('filter')
+  @ApiQuery({
+    name: 'likedIds',
+    required: false,
+    type: String,
+    description: 'Mahsulot IDlari (vergul bilan ajratilgan)',
+  })
   @ApiOkResponse({
     description: "Filtrlangan mahsulotlar ro'yxati",
     type: [Product],
