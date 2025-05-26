@@ -41,13 +41,24 @@ export class User {
   @OneToMany(() => Comment, (comment) => comment.user, { cascade: true })
   comments: Comment[];
 
-  @OneToMany(() => Like, (like) => like.user, { cascade: true })
-  likes: Like[];
+  @ManyToMany(() => Product, (product) => product.likes)
+  @JoinTable({
+    name: 'product_likes_user',
+    joinColumn: {
+      name: 'userId',
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      name: 'productId',
+      referencedColumnName: 'id',
+    },
+  })
+  likes: Product[];
 
   @OneToMany(() => UserViewedProduct, (viewProduct) => viewProduct.user, {
     cascade: true,
   })
-  @JoinTable() // <-- BU MUHIM
+  @JoinTable()
   viewedProducts: UserViewedProduct[];
 
   @OneToMany(() => UserSearch, (search) => search.user, {

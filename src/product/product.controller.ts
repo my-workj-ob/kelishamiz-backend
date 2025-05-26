@@ -130,6 +130,7 @@ export class ProductController {
   })
   async getLikedProducts(@Req() req: any, @Query('ids') ids?: string) {
     const userId = req?.user?.userId ?? null;
+    console.log(userId);
 
     const localIds = ids
       ? ids
@@ -278,7 +279,7 @@ export class ProductController {
     return this.productService.filter(filters, userId, likedIds);
   }
 
-  @UseGuards(JwtOptionalAuthGuard)
+  @UseGuards(AuthGuard('jwt'))
   @Post(':id/like')
   @ApiOkResponse({
     description: "Mahsulotga layk qo'shish/olib tashlash natijasi",

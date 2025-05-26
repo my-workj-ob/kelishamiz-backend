@@ -216,15 +216,23 @@ export class ProductService {
     });
   }
 
-  async syncLikesFromLocal(userId: number, localLikedProductIds?: number[]) {
+  async syncLikesFromLocal(
+    userId: number | null,
+    localLikedProductIds?: number[],
+  ) {
+    if (!userId) {
+      return await this.productRepository.find({
+        where: { id: In(localLikedProductIds ?? []) },
+        relations: ['category', 'images', 'likes'],
+      });
+    }
+
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: ['likes'],
     });
 
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    if (!user) throw new NotFoundException('User not found');
 
     const alreadyLikedProductIds = user.likes?.map((p) => p.id) || [];
 
@@ -232,19 +240,29 @@ export class ProductService {
       (id) => !alreadyLikedProductIds.includes(id),
     );
 
-    if (newProductIdsToLike?.length === 0) return;
+    if (newProductIdsToLike?.length) {
+      const productsToLike = await this.productRepository.findBy({
+        id: In(newProductIdsToLike),
+      });
 
-    const productsToLike = await this.productRepository.findBy({
-      id: In(newProductIdsToLike ?? []),
+      productsToLike.forEach((product) => {
+        product.likes?.push(user);
+        product.likesCount += 1;
+      });
+
+      await this.productRepository.save(productsToLike);
+
+      return productsToLike;
+    }
+
+    const likedProducts = await this.productRepository.find({
+      where: {
+        id: In([...alreadyLikedProductIds, ...(newProductIdsToLike ?? [])]),
+      },
+      relations: ['category', 'images', 'likes'],
     });
 
-    productsToLike.forEach((product) => {
-      product?.likes?.push(user);
-      product.likesCount += 1;
-    });
-    await this.productRepository.save(productsToLike);
-
-    return productsToLike;
+    return likedProducts;
   }
 
   async toggleLike(projectId: number, userId: number): Promise<boolean> {
