@@ -79,21 +79,49 @@ export class ProductController {
     type: Number,
     description: 'Sahifadagi elementlar soni (standart: 10)',
   })
+  @UseGuards(JwtOptionalAuthGuard)
+  @Get()
+  @ApiOperation({ summary: 'Mahsulotlar ro‘yxati (isLike bilan)' })
+  @UseGuards(JwtOptionalAuthGuard)
+  @Get()
+  @ApiOperation({ summary: 'Mahsulotlar ro‘yxati (isLike bilan)' })
   async findAll(
+    @Req() req: any,
     @Query('page', new ParseIntPipe()) page = 1,
     @Query('pageSize', new ParseIntPipe()) pageSize = 10,
+    @Query('likedIds') likedIdsStr?: string, // localStorage’dan keladi
   ): Promise<{
-    data: Product[];
+    data: (Product & { isLike: boolean })[];
     total: number;
     page: number;
     pageSize: number;
   }> {
-    return this.productService.findAllPaginated(Number(page), Number(pageSize));
+    const userId = req?.user?.userId ?? null;
+
+    const likedIds = likedIdsStr
+      ? likedIdsStr
+          .split(',')
+          .map((id) => Number(id))
+          .filter((id) => !isNaN(id))
+      : [];
+
+    return this.productService.findAllPaginated(
+      userId,
+      page,
+      pageSize,
+      likedIds,
+    );
   }
 
   @UseGuards(JwtOptionalAuthGuard)
   @Get('liked')
   @ApiOperation({ summary: 'Foydalanuvchi yoqtirgan mahsulotlar (DB + Local)' })
+  @ApiQuery({
+    name: 'ids',
+    required: false,
+    type: String,
+    description: 'Mahsulot IDlari (vergul bilan ajratilgan)',
+  })
   async getLikedProducts(@Req() req: any, @Query('ids') ids?: string) {
     const userId = req?.user?.userId ?? null;
 
@@ -106,6 +134,7 @@ export class ProductController {
 
     return this.productService.syncLikesFromLocal(userId, localIds);
   }
+
   @Get(':id/like/status')
   @ApiOkResponse({
     description: 'Mahsulotning layk statusini olish',
@@ -212,8 +241,9 @@ export class ProductController {
   async getProducts(
     @Body() filters: GetProductsDto,
     @Req() req: any,
+    @Query('likedIds') likedIdsStr?: string, // localStorage’dan keladi
   ): Promise<{
-    data: Product[];
+    data: (Product & { isLike: boolean })[];
     total: number;
     page: number;
     pageSize: number;
@@ -226,9 +256,16 @@ export class ProductController {
       await this.searchService.saveSearch(user, filters.title.trim());
     }
 
-    return this.productService.filter(filters, userId);
+    const likedIds = likedIdsStr
+      ? likedIdsStr
+          .split(',')
+          .map((id) => Number(id))
+          .filter((id) => !isNaN(id))
+      : [];
+
+    return this.productService.filter(filters, userId, likedIds);
   }
-  // 🔸 POST: Toggle like
+
   @UseGuards(JwtOptionalAuthGuard)
   @Post(':id/like')
   @ApiOkResponse({

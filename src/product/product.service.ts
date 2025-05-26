@@ -40,26 +40,45 @@ export class ProductService {
   ) {}
 
   async findAllPaginated(
+    userId: number | null,
     page = 1,
     pageSize = 10,
+    likedIds: number[] = [],
   ): Promise<{
-    data: Product[];
+    data: (Product & { isLike: boolean })[];
     total: number;
     page: number;
     pageSize: number;
   }> {
     const skip = (page - 1) * pageSize;
 
-    const [data, total] = await this.productRepository.findAndCount({
+    const [products, total] = await this.productRepository.findAndCount({
       skip,
       take: pageSize,
-
-      relations: ['category', 'profile', 'district', 'images'],
+      relations: ['category', 'profile', 'district', 'images', 'likes'],
       order: { createdAt: 'DESC' },
     });
 
+    const result = products.map((product) => {
+      let isLike = false;
+
+      if (userId) {
+        // Agar login qilingan bo‘lsa, likes[] dan tekshir
+        isLike = product.likes?.some((user) => user.id === userId) ?? false;
+      } else if (likedIds.length > 0) {
+        // Agar login qilinmagan bo‘lsa, query orqali kelgan ID dan tekshir
+        isLike = likedIds.includes(product.id);
+      }
+
+      // Har bir productga isLike qo‘shamiz
+      return {
+        ...product,
+        isLike,
+      };
+    });
+
     return {
-      data,
+      data: result,
       total,
       page,
       pageSize,
@@ -223,13 +242,9 @@ export class ProductService {
       product?.likes?.push(user);
       product.likesCount += 1;
     });
-    // ok
     await this.productRepository.save(productsToLike);
 
-    return {
-      ...productsToLike,
-      isLiked: user.likes.map((item) => (item.id === userId ? true : false)),
-    };
+    return productsToLike;
   }
 
   async toggleLike(projectId: number, userId: number): Promise<boolean> {
@@ -294,8 +309,9 @@ export class ProductService {
   async filter(
     filters: GetProductsDto,
     userId?: number,
+    likedIds: number[] = [],
   ): Promise<{
-    data: Product[];
+    data: (Product & { isLike: boolean })[];
     total: number;
     page: number;
     pageSize: number;
@@ -327,7 +343,8 @@ export class ProductService {
       .leftJoinAndSelect('product.district', 'district')
       .leftJoin('district.region', 'districtRegion')
       .leftJoinAndSelect('product.region', 'productRegion')
-      .leftJoinAndSelect('product.images', 'images');
+      .leftJoinAndSelect('product.images', 'images')
+      .leftJoinAndSelect('product.likes', 'likes'); // 👈 BU MUHIM!
 
     if (categoryId) {
       queryBuilder.andWhere('product.categoryId = :categoryId', { categoryId });
@@ -398,10 +415,26 @@ export class ProductService {
 
     queryBuilder.skip(skip).take(take);
 
-    const [data, total] = await queryBuilder.getManyAndCount();
+    const [products, total] = await queryBuilder.getManyAndCount();
+
+    const result = products.map((product) => {
+      let isLike = false;
+
+      if (userId) {
+        // product.likes bo‘lmasa, uni oldindan `leftJoinAndSelect` qilish kerak
+        isLike = product.likes?.some((user) => user.id === userId) ?? false;
+      } else if (likedIds.length > 0) {
+        isLike = likedIds.includes(product.id);
+      }
+
+      return {
+        ...product,
+        isLike,
+      };
+    });
 
     return {
-      data,
+      data: result,
       total,
       page,
       pageSize: take,
