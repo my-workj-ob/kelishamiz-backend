@@ -105,7 +105,7 @@ export class ProductController {
           .filter((id) => !isNaN(id))
       : [];
 
-    return this.productService.getLikedProducts(userId, localIds);
+    return this.productService.syncLikesFromLocal(userId, localIds);
   }
   // 🔹 GET: Product like status
   @Get(':id/like/status')
