@@ -84,12 +84,18 @@ export class ProductController {
   @ApiOperation({ summary: 'Mahsulotlar ro‘yxati (isLike bilan)' })
   @UseGuards(JwtOptionalAuthGuard)
   @Get()
+  @ApiQuery({
+    name: 'likedIds',
+    required: false,
+    type: String,
+    description: 'Mahsulot IDlari (vergul bilan ajratilgan)',
+  })
   @ApiOperation({ summary: 'Mahsulotlar ro‘yxati (isLike bilan)' })
   async findAll(
     @Req() req: any,
     @Query('page', new ParseIntPipe()) page = 1,
     @Query('pageSize', new ParseIntPipe()) pageSize = 10,
-    @Query('likedIds') likedIdsStr?: string, // localStorage’dan keladi
+    @Query('likedIds') likedIdsStr?: string | null,
   ): Promise<{
     data: (Product & { isLike: boolean })[];
     total: number;
