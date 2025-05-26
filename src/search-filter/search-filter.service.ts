@@ -21,7 +21,7 @@ export class SearchService {
     return await this.userSearchRepository.save(search);
   }
 
-  async getRecentSearches(user: User, limit: number = 5): Promise<string[]> {
+  async getRecentSearches(user: User, limit: number = 10): Promise<string[]> {
     const searches = await this.userSearchRepository.find({
       where: {
         user: {
@@ -31,7 +31,7 @@ export class SearchService {
       order: { createdAt: 'DESC' },
       take: limit,
     });
-    return searches.map((search) => search.query);
+    return [...new Set(searches.map((search) => search.query))];
   }
 
   async getAllUserSearches(
