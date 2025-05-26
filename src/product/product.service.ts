@@ -223,10 +223,13 @@ export class ProductService {
       product?.likes?.push(user);
       product.likesCount += 1;
     });
-
+    // ok
     await this.productRepository.save(productsToLike);
 
-    return productsToLike;
+    return {
+      ...productsToLike,
+      isLiked: user.likes.map((item) => (item.id === userId ? true : false)),
+    };
   }
 
   async toggleLike(projectId: number, userId: number): Promise<boolean> {
