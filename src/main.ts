@@ -4,11 +4,12 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import cors from 'cors';
 
+import 'dotenv/config';
+
 import express from 'express';
 
 import { join } from 'path';
 
-import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
@@ -23,7 +24,7 @@ async function bootstrap() {
       'https://kelishamiz-backend.vercel.app',
       'https://it-experts-nine.vercel.app',
       'http://localhost:5174',
-      "https://kelishamiz-admin-panels.vercel.app"
+      'https://kelishamiz-admin-panels.vercel.app',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,

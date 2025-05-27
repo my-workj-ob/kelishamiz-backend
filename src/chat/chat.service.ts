@@ -48,11 +48,27 @@ export class ChatService {
         });
 
         // Foydalanuvchining chatdagi boshqa ishtirokchisini topish
-        const otherParticipant = room.participants.find((p) => p.id !== userId);
+        console.log(
+          'Processing room:',
+          room.id,
+          'participants:',
+          room.participants,
+        );
+        const otherParticipant =
+          room.participants.length > 0
+            ? room.participants.find((p) => p.id !== 7)
+            : null;
+        console.log('Other participant found:', otherParticipant);
+        console.log(
+          'ppp',
+          room.participants.find((p) => p?.id !== 7),
+        );
+
+        console.log(userId);
 
         return {
           id: room.id,
-          productName: room.product?.title || 'Mahsulot topilmadi', // Mahsulot nomi
+          productName: room.product?.title || 'Mahsulot topilmadi',
           otherParticipant: otherParticipant
             ? { id: otherParticipant.id, username: otherParticipant.username }
             : null,
@@ -108,7 +124,7 @@ export class ChatService {
     productId: number,
     participantIds: string[],
   ): Promise<ChatRoom> {
-    if (participantIds.length !== 2) {
+    if (participantIds?.length !== 2) {
       throw new BadRequestException(
         'Chat xonasi uchun aniq 2 ta ishtirokchi kerak.',
       );
@@ -118,7 +134,7 @@ export class ChatService {
     const participants = await this.userRepository.findBy({
       id: In(participantIds),
     });
-    if (participants.length !== 2) {
+    if (participants?.length !== 2) {
       throw new NotFoundException(
         'Ishtirokchilardan biri yoki ikkalasi ham topilmadi.',
       );

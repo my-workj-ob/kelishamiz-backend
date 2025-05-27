@@ -34,7 +34,7 @@ export class ChatController {
     const userId = req.user.userId; // Haqiqiy autentifikatsiya qilingan user ID
     return this.chatService.getUserChatRooms(userId);
   }
-
+  
   /**
    * Muayyan chat xonasidagi xabarlar tarixini olish (paginatsiya bilan).
    * Foydalanuvchi chatni ochganda chaqiriladi.
@@ -65,13 +65,29 @@ export class ChatController {
   async createOrGetChatRoom(
     @Body('productId') productId: number,
     @Body('participantIds') participantIds: string[],
-    @Req() req: any, // Hozirgi user ID sini olish uchun
+    @Req() req: any, // User ID ni olish uchun
   ) {
-    // Autentifikatsiya qilingan user ID sini participantIds ga qo'shamiz
-    const authenticatedUserId = req.user.userId; // Haqiqiy autentifikatsiya qilingan user ID
-    if (!participantIds.includes(authenticatedUserId)) {
-      participantIds.push(authenticatedUserId);
+    const authenticatedUserId = req.user.userId;
+
+    // ⚠️ Agar participantIds bo‘sh bo‘lsa yoki undefined bo‘lsa, uni array qilib olamiz
+    const participants = participantIds ?? [];
+
+    // Autentifikatsiyalangan foydalanuvchi ro‘yxatda yo‘q bo‘lsa, qo‘shamiz
+    if (!participants.includes(authenticatedUserId)) {
+      participants.push(authenticatedUserId);
     }
-    return this.chatService.findOrCreateChatRoom(productId, participantIds);
+
+    // Agar faqat bitta ishtirokchi bo‘lsa va u authenticated user bo‘lmasa, uni ham qo‘shamiz
+    if (participants.length === 1 && participants[0] !== authenticatedUserId) {
+      participants.push(authenticatedUserId);
+    }
+
+    console.log('Creating or finding chat room with:', {
+      productId,
+      participants,
+      authenticatedUserId,
+    });
+
+    return this.chatService.findOrCreateChatRoom(productId, participants);
   }
 }

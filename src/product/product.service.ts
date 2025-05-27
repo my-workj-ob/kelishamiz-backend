@@ -220,48 +220,74 @@ export class ProductService {
     userId: number | null,
     localLikedProductIds?: number[],
   ) {
+    // 🟡 Agar user login bo'lmagan bo'lsa, local IDs asosida mahsulotlarni qaytaramiz
     if (!userId) {
-      return await this.productRepository.find({
+      return this.productRepository.find({
         where: { id: In(localLikedProductIds ?? []) },
         relations: ['category', 'images', 'likes'],
       });
     }
 
+    // 🟢 User ni likes bilan birga topamiz
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: ['likes'],
     });
 
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) {
+      throw new NotFoundException('Foydalanuvchi topilmadi');
+    }
+
+    console.log('Foydalanuvchi mavjud likes:', user.likes);
 
     const alreadyLikedProductIds = user.likes?.map((p) => p.id) || [];
 
-    const newProductIdsToLike = localLikedProductIds?.filter(
-      (id) => !alreadyLikedProductIds.includes(id),
-    );
+    const newProductIdsToLike =
+      localLikedProductIds?.filter(
+        (id) => !alreadyLikedProductIds.includes(id),
+      ) ?? [];
 
-    if (newProductIdsToLike?.length) {
-      const productsToLike = await this.productRepository.findBy({
-        id: In(newProductIdsToLike),
+    console.log('Yangi like qilinadigan IDlar:', newProductIdsToLike);
+
+    if (newProductIdsToLike.length > 0) {
+      const productsToLike = await this.productRepository.find({
+        where: { id: In(newProductIdsToLike) },
+        relations: ['likes'],
       });
 
-      productsToLike.forEach((product) => {
-        product.likes?.push(user);
+      for (const product of productsToLike) {
+        if (!product.likes) {
+          product.likes = [];
+        }
+
+        product.likes.push(user);
         product.likesCount += 1;
-      });
+      }
 
       await this.productRepository.save(productsToLike);
+      console.log(
+        'Yangi mahsulotlar like qilindi va saqlandi:',
+        productsToLike,
+      );
 
-      return productsToLike;
+      // Userga yangilangan likes ni qo‘shamiz
+      user.likes = [...user.likes, ...productsToLike];
+      await this.userRepository.save(user);
+      console.log('Foydalanuvchining likes yangilandi:', user.likes);
     }
 
+    // 🔁 Hammasini qayta olib, frontendga jo‘natamiz
+    const finalLikedProductIds = [
+      ...alreadyLikedProductIds,
+      ...newProductIdsToLike,
+    ];
+
     const likedProducts = await this.productRepository.find({
-      where: {
-        id: In([...alreadyLikedProductIds, ...(newProductIdsToLike ?? [])]),
-      },
+      where: { id: In(finalLikedProductIds) },
       relations: ['category', 'images', 'likes'],
     });
 
+    console.log('Frontendga qaytariladigan liked products:', likedProducts);
     return likedProducts;
   }
 

@@ -130,7 +130,7 @@ export class ProductController {
   })
   async getLikedProducts(@Req() req: any, @Query('ids') ids?: string) {
     const userId = req?.user?.userId ?? null;
-    console.log(userId);
+    console.log('Login qilgan userId:', userId);
 
     const localIds = ids
       ? ids
@@ -138,6 +138,8 @@ export class ProductController {
           .map((id) => Number(id))
           .filter((id) => !isNaN(id))
       : [];
+
+    console.log('Local liked product IDs:', localIds);
 
     return this.productService.syncLikesFromLocal(userId, localIds);
   }
