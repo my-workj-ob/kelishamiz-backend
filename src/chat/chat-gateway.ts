@@ -11,7 +11,7 @@ import { ChatService } from './chat.service';
 
 @WebSocketGateway({
   cors: {
-    origin: 'https://kelishamiz.uz', // Ishlab chiqarishda frontend URL manziliga o'zgartiring
+    origin: '*', // Ishlab chiqarishda frontend URL manziliga o'zgartiring
     credentials: true,
   },
 })
