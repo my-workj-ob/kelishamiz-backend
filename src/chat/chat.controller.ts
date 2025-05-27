@@ -34,7 +34,7 @@ export class ChatController {
     const userId = req.user.userId; // Haqiqiy autentifikatsiya qilingan user ID
     return this.chatService.getUserChatRooms(userId);
   }
-  
+
   /**
    * Muayyan chat xonasidagi xabarlar tarixini olish (paginatsiya bilan).
    * Foydalanuvchi chatni ochganda chaqiriladi.
@@ -72,10 +72,13 @@ export class ChatController {
     // ⚠️ Agar participantIds bo‘sh bo‘lsa yoki undefined bo‘lsa, uni array qilib olamiz
     const participants = participantIds ?? [];
 
+    console.log('participants: ', participants);
+
     // Autentifikatsiyalangan foydalanuvchi ro‘yxatda yo‘q bo‘lsa, qo‘shamiz
     if (!participants.includes(authenticatedUserId)) {
       participants.push(authenticatedUserId);
     }
+    // 
 
     // Agar faqat bitta ishtirokchi bo‘lsa va u authenticated user bo‘lmasa, uni ham qo‘shamiz
     if (participants.length === 1 && participants[0] !== authenticatedUserId) {

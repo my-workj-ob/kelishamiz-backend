@@ -127,6 +127,7 @@ export class ProductService {
         'productProperties.property',
         'images',
         'category',
+        'profile.user',
       ],
     });
   }
@@ -224,14 +225,14 @@ export class ProductService {
     if (!userId) {
       return this.productRepository.find({
         where: { id: In(localLikedProductIds ?? []) },
-        relations: ['category', 'images', 'likes'],
+        relations: ['category', 'images', 'likes', 'profile'],
       });
     }
 
     // 🟢 User ni likes bilan birga topamiz
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: ['likes'],
+      relations: ['likes', 'profile'],
     });
 
     if (!user) {
@@ -246,8 +247,6 @@ export class ProductService {
       localLikedProductIds?.filter(
         (id) => !alreadyLikedProductIds.includes(id),
       ) ?? [];
-
-    console.log('Yangi like qilinadigan IDlar:', newProductIdsToLike);
 
     if (newProductIdsToLike.length > 0) {
       const productsToLike = await this.productRepository.find({
@@ -284,7 +283,7 @@ export class ProductService {
 
     const likedProducts = await this.productRepository.find({
       where: { id: In(finalLikedProductIds) },
-      relations: ['category', 'images', 'likes'],
+      relations: ['category', 'images', 'likes', 'profile'],
     });
 
     console.log('Frontendga qaytariladigan liked products:', likedProducts);

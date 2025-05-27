@@ -31,40 +31,26 @@ export class ChatService {
   async getUserChatRooms(userId: number) {
     const chatRooms = await this.chatRoomRepository
       .createQueryBuilder('chatRoom')
-      .leftJoinAndSelect('chatRoom.product', 'product') // Mahsulot ma'lumotlarini olish
-      .leftJoinAndSelect('chatRoom.participants', 'participant') // Ishtirokchilarni olish
-      .leftJoinAndSelect('chatRoom.messages', 'message') // Xabarlarni olish
-      .where('participant.id = :userId', { userId }) // Foydalanuvchi ishtirok etgan chatlarni topish
-      .orderBy('chatRoom.updatedAt', 'DESC') // Eng so'nggi xabar yuborilgan chatlar birinchi keladi
+      .leftJoinAndSelect('chatRoom.product', 'product')
+      .leftJoinAndSelect('chatRoom.participants', 'participant')
+      .leftJoinAndSelect('chatRoom.messages', 'message')
+      // Jadval va ustun nomlari to'g'rilandi
+      .where(
+        'chatRoom.id IN (SELECT "chatRoomId" FROM chat_room_participants_user WHERE "userId" = :userId)',
+        { userId },
+      )
+      .orderBy('chatRoom.updatedAt', 'DESC')
       .getMany();
 
-    // Har bir chat xonasi uchun faqat oxirgi xabarni yuklash
     const chatRoomsWithLastMessage = await Promise.all(
       chatRooms.map(async (room) => {
         const lastMessage = await this.messageRepository.findOne({
           where: { chatRoom: { id: room.id } },
           order: { createdAt: 'DESC' },
-          relations: ['sender'], // Xabar yuboruvchisini ham olamiz
+          relations: ['sender'],
         });
 
-        // Foydalanuvchining chatdagi boshqa ishtirokchisini topish
-        console.log(
-          'Processing room:',
-          room.id,
-          'participants:',
-          room.participants,
-        );
-        const otherParticipant =
-          room.participants.length > 0
-            ? room.participants.find((p) => p.id !== 7)
-            : null;
-        console.log('Other participant found:', otherParticipant);
-        console.log(
-          'ppp',
-          room.participants.find((p) => p?.id !== 7),
-        );
-
-        console.log(userId);
+        const otherParticipant = room.participants.find((p) => p.id !== userId);
 
         return {
           id: room.id,
@@ -134,6 +120,7 @@ export class ChatService {
     const participants = await this.userRepository.findBy({
       id: In(participantIds),
     });
+
     if (participants?.length !== 2) {
       throw new NotFoundException(
         'Ishtirokchilardan biri yoki ikkalasi ham topilmadi.',
