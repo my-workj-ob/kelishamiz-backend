@@ -25,6 +25,7 @@ async function bootstrap() {
       'https://it-experts-nine.vercel.app',
       'http://localhost:5174',
       'https://kelishamiz-admin-panels.vercel.app',
+      'https://kelishamiz-backend.onrender.com',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
