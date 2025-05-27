@@ -5,6 +5,7 @@ import {
   Column,
   ManyToOne,
   CreateDateColumn,
+  JoinColumn,
 } from 'typeorm';
 import { ChatRoom } from './chat-room.entity';
 import { User } from 'src/auth/entities/user.entity';
@@ -19,9 +20,9 @@ export class Message {
 
   @ManyToOne(() => ChatRoom, (chatRoom) => chatRoom.messages, {
     onDelete: 'CASCADE',
-  }) // ChatRoom o'chirilganda Message ham o'chadi
+  })
+  @JoinColumn({ name: 'chatRoomId' })
   chatRoom: ChatRoom;
-
   @Column()
   senderId: string; // Kim yuborgani (User ID)
 
