@@ -13,6 +13,7 @@ import { ChatService } from './chat.service';
   cors: {
     origin: 'https://kelishamiz.uz', // Ishlab chiqarishda frontend URL manziliga
     credentials: true,
+    transports: ['websocket', 'polling'],
   },
 })
 export class ChatGateway {
