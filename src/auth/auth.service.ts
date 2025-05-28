@@ -13,8 +13,8 @@ import { Repository } from 'typeorm';
 import { Profile } from '../profile/enities/profile.entity';
 import { User } from './entities/user.entity';
 import { OtpService } from './fake-otp.service';
-import { Region } from 'src/location/entities/region.entity';
-import { District } from 'src/location/entities/district.entity';
+import { Region } from './../location/entities/region.entity';
+import { District } from './../location/entities/district.entity';
 
 @Injectable()
 export class AuthService {

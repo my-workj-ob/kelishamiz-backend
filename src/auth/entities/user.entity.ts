@@ -14,12 +14,12 @@ import { Like } from './../../like/entities/like.entity';
 import { Product } from './../../product/entities/product.entity';
 import { Profile } from './../../profile/enities/profile.entity';
 import { UserSearch } from './../../search-filter/entities/user-search.entity';
-import { UserViewedProduct } from 'src/product/entities/product-view.entity';
-import { Region } from 'src/location/entities/region.entity';
-import { District } from 'src/location/entities/district.entity';
-import { ChatRoom } from 'src/chat/entities/chat-room.entity';
-import { Message } from 'src/chat/entities/message.entity';
-import { Notification } from 'src/notification/entities/notification.entity';
+import { UserViewedProduct } from './../../product/entities/product-view.entity';
+import { Region } from './../../location/entities/region.entity';
+import { District } from './../../location/entities/district.entity';
+import { ChatRoom } from './../../chat/entities/chat-room.entity';
+import { Message } from './../../chat/entities/message.entity';
+import { Notification } from './../../notification/entities/notification.entity';
 
 @Entity()
 export class User {

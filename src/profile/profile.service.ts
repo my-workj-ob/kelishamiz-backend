@@ -6,8 +6,8 @@ import { User } from './../auth/entities/user.entity';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { Profile } from './enities/profile.entity';
-import { Product } from 'src/product/entities/product.entity';
-import { UserSearch } from 'src/search-filter/entities/user-search.entity';
+import { Product } from './../product/entities/product.entity';
+import { UserSearch } from './../search-filter/entities/user-search.entity';
 import { Like } from './../like/entities/like.entity';
 import { Comment } from './../comments/entities/comments.entity';
 

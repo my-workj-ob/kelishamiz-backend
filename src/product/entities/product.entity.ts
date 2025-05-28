@@ -20,7 +20,7 @@ import { Region } from './../../location/entities/region.entity';
 import { Profile } from './../../profile/enities/profile.entity';
 import { ProductProperty } from './product-property-entity';
 import { ProductImage } from './Product-Image.entity';
-import { ChatRoom } from 'src/chat/entities/chat-room.entity';
+import { ChatRoom } from './../../chat/entities/chat-room.entity';
 @Entity()
 export class Product {
   @ApiProperty({ example: 1, description: 'Mahsulotning noyob identifikatori' })

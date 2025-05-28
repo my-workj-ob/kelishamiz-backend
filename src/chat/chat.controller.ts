@@ -84,6 +84,7 @@ export class ChatController {
     if (participants.length === 1 && participants[0] !== authenticatedUserId) {
       participants.push(authenticatedUserId);
     }
+    
 
     console.log('Creating or finding chat room with:', {
       productId,

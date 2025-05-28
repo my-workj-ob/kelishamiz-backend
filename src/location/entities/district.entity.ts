@@ -8,7 +8,7 @@ import {
 } from 'typeorm';
 import { Product } from './../../product/entities/product.entity';
 import { Region } from './region.entity';
-import { Profile } from 'src/profile/enities/profile.entity';
+import { Profile } from './../../profile/enities/profile.entity';
 
 @Entity()
 export class District {

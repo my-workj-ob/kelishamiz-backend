@@ -26,9 +26,9 @@ import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { Profile } from './enities/profile.entity';
 import { ProfileService } from './profile.service';
-import { ProductService } from 'src/product/product.service';
-import { SearchService } from 'src/search-filter/search-filter.service';
-import { User } from 'src/auth/entities/user.entity';
+import { ProductService } from './../product/product.service';
+import { SearchService } from './../search-filter/search-filter.service';
+import { User } from './../auth/entities/user.entity';
 
 @ApiTags('Profiles')
 @ApiBearerAuth()

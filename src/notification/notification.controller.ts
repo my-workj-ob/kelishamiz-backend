@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { JwtOptionalAuthGuard } from 'src/common/jwt/guards/jwt-optional-auth.guard';
+import { JwtOptionalAuthGuard } from './../common/jwt/guards/jwt-optional-auth.guard';
 import { NotificationService } from './notification.service';
 
 @ApiTags('Notifications')

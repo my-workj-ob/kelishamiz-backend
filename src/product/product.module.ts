@@ -10,9 +10,9 @@ import { ProductProperty } from './entities/product-property-entity';
 import { Product } from './entities/product.entity';
 import { ProductController } from './product.controller';
 import { ProductService } from './product.service';
-import { FileService } from 'src/file/file.service';
-import { UploadService } from 'src/file/uploadService';
-import { FileModule } from 'src/file/file.module';
+import { FileService } from './../file/file.service';
+import { UploadService } from './../file/uploadService';
+import { FileModule } from './../file/file.module';
 import { ProductImage } from './entities/Product-Image.entity';
 import { UserViewedProduct } from './entities/product-view.entity';
 

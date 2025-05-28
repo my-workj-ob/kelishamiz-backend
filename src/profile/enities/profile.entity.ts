@@ -12,9 +12,9 @@ import { User } from './../../auth/entities/user.entity';
 import { Comment } from './../../comments/entities/comments.entity';
 import { Like } from './../../like/entities/like.entity';
 import { Product } from './../../product/entities/product.entity';
-import { Region } from 'src/location/entities/region.entity';
-import { District } from 'src/location/entities/district.entity';
-import { Notification } from 'src/notification/entities/notification.entity';
+import { Region } from './../../location/entities/region.entity';
+import { District } from './../../location/entities/district.entity';
+import { Notification } from './../../notification/entities/notification.entity';
 
 @Entity()
 export class Profile {
