@@ -554,7 +554,7 @@ export class ProductService {
   async deleteOneById(productId: number): Promise<DeleteResult> {
     const product = await this.productRepository.findOne({
       where: { id: productId },
-      relations: ['profile', 'images', 'chat_rooms'],
+      relations: ['profile', 'images', 'chatRooms'],
     });
 
     if (!product) {
