@@ -1,0 +1,30 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H 185.191.141.159 >> ~/.ssh/known_hosts
+
+      - name: Deploy to VPS
+        run: |
+          ssh root@185.191.141.159 << 'EOF'
+            cd ~/kelishamiz-backend
+            git pull origin main
+            npm install
+            pm2 restart all
+          EOF
