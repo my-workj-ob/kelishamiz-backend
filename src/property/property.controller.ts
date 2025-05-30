@@ -12,7 +12,7 @@ export class PropertyController {
   constructor(private readonly propertyService: PropertyService) {}
 
   @Post()
-  @ApiOperation({ summary: "Property qushish" })
+  @ApiOperation({ summary: "Property qo'shish" })
   create(@Body() createPropertyDto: CreatePropertyDto) {
     return this.propertyService.create(createPropertyDto);
   }
