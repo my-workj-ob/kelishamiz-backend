@@ -22,7 +22,7 @@ jobs:
 
       - name: Deploy to VPS
         run: |
-          ssh root@185.191.141.159 << 'EOF'
+          ssh -o StrictHostKeyChecking=no root@185.191.141.159 << 'EOF'
             cd ~/kelishamiz-backend
             git pull origin main
             npm install
