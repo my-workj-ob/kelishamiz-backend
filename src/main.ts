@@ -27,6 +27,7 @@ async function bootstrap() {
       'https://kelishamiz-admin-panels.vercel.app',
       'https://kelishamiz-backend.onrender.com',
       'http://185.191.141.159',
+      'https://api.kelishamiz.uz',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,

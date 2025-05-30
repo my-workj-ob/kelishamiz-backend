@@ -23,7 +23,9 @@ export class ChatRoom {
   @Column()
   productId: string;
 
-  @ManyToOne(() => Product, (product) => product.chatRooms)
+  @ManyToOne(() => Product, (product) => product.chatRooms, {
+    onDelete: 'CASCADE',
+  })
   product: Product;
 
   // Bu chat xonasida qatnashuvchi foydalanuvchilar (ko'pincha 2ta bo'ladi: mahsulot egasi va sotib oluvchi)
