@@ -121,7 +121,6 @@ export class Product {
   commentsCount: number;
 
   @ManyToMany(() => User, (user) => user.likes)
- 
   likes: User[];
 
   @ManyToOne(() => Region, (region) => region.products, { eager: true })

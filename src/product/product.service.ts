@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityNotFoundError, ILike, In, Repository } from 'typeorm';
+import { DeleteResult, EntityNotFoundError, ILike, In, Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
 import { Category } from '../category/entities/category.entity';
 import { Property } from './../category/entities/property.entity';
@@ -549,5 +549,18 @@ export class ProductService {
       where: { id: product.id },
       relations: ['category', 'images', 'region', 'district'],
     });
+  }
+
+  async deleteOneById(productId: number): Promise<DeleteResult> {
+    const product = await this.productRepository.findOne({
+      where: { id: productId },
+      relations: ['profile', 'images', 'chat_rooms'],
+    });
+
+    if (!product) {
+      throw new NotFoundException('Mahsulot topilmadi');
+    }
+
+    return await this.productRepository.delete(productId);
   }
 }

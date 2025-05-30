@@ -4,6 +4,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Inject,
   NotFoundException,
@@ -39,6 +40,7 @@ import { ProductService } from './product.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { DeleteResult } from 'typeorm';
 @ApiTags('Products')
 @ApiBearerAuth()
 @Controller('products')
@@ -318,5 +320,13 @@ export class ProductController {
     const product = await this.productService.findById(id);
     if (!product) throw new NotFoundException('topilmadi');
     return product;
+  }
+  @Delete('by-id/:id') // universal route emas!
+  async deleteOneById(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<DeleteResult> {
+    const isDeleted = await this.productService.deleteOneById(id);
+    if (isDeleted) throw new NotFoundException('topilmadi');
+    return isDeleted;
   }
 }
