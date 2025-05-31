@@ -237,6 +237,9 @@ export class ProductController {
       imageIndex: body.imageIndex || 0,
     };
 
+    console.log(body);
+    
+
     return this.productService.create(files, createProductDto, req.user.userId);
   }
 
