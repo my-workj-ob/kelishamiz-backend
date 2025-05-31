@@ -292,9 +292,9 @@ export class ProductService {
       relations: ['category', 'images', 'likes', 'profile'],
     });
 
-    const likedProducts = finalLikedProductIds.map((id) =>
-      products.find((p) => p.id === id),
-    );
+    const likedProducts = finalLikedProductIds
+      .map((id) => products.find((p) => p.id === id))
+      .filter((p) => p !== undefined); // faqat mavjud productlar
 
     console.log('Frontendga qaytariladigan liked products:', likedProducts);
     return likedProducts;
