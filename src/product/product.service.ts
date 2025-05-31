@@ -7,7 +7,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeleteResult, EntityNotFoundError, ILike, In, Repository } from 'typeorm';
+import {
+  DeleteResult,
+  EntityNotFoundError,
+  ILike,
+  In,
+  Repository,
+} from 'typeorm';
 import { User } from '../auth/entities/user.entity';
 import { Category } from '../category/entities/category.entity';
 import { Property } from './../category/entities/property.entity';
