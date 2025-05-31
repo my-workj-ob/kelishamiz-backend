@@ -287,10 +287,14 @@ export class ProductService {
       ...newProductIdsToLike,
     ];
 
-    const likedProducts = await this.productRepository.find({
+    const products = await this.productRepository.find({
       where: { id: In(finalLikedProductIds) },
       relations: ['category', 'images', 'likes', 'profile'],
     });
+
+    const likedProducts = finalLikedProductIds.map((id) =>
+      products.find((p) => p.id === id),
+    );
 
     console.log('Frontendga qaytariladigan liked products:', likedProducts);
     return likedProducts;
