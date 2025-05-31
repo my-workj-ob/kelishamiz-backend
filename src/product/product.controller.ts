@@ -230,7 +230,7 @@ export class ProductController {
       location: body.location,
       paymentType: body.paymentType,
       currencyType: body.currencyType,
-      negotiable: Boolean(body.negotiable),
+      negotiable: body.negotiable,
       regionId: Number(body.regionId),
       districtId: Number(body.districtId),
       properties: body.properties || [],
