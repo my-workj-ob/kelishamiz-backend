@@ -229,10 +229,17 @@ export class ProductService {
   ) {
     // 🟡 Agar user login bo'lmagan bo'lsa, local IDs asosida mahsulotlarni qaytaramiz
     if (!userId) {
-      return this.productRepository.find({
+      const products = await this.productRepository.find({
         where: { id: In(localLikedProductIds ?? []) },
         relations: ['category', 'images', 'likes', 'profile'],
       });
+
+      // Sort the products to match the order of localLikedProductIds
+      const orderedProducts = (localLikedProductIds ?? [])
+        .map((id) => products.find((p) => p.id === id))
+        .filter((p) => p !== undefined); // filter out any products not found
+
+      return orderedProducts;
     }
 
     // 🟢 User ni likes bilan birga topamiz
@@ -288,16 +295,16 @@ export class ProductService {
     ];
 
     const products = await this.productRepository.find({
-      where: { id: In(finalLikedProductIds) },
+      where: { id: In(localLikedProductIds ?? []) },
       relations: ['category', 'images', 'likes', 'profile'],
     });
 
-    const likedProducts = finalLikedProductIds
+    // Sort the products to match the order of localLikedProductIds
+    const orderedProducts = (localLikedProductIds ?? [])
       .map((id) => products.find((p) => p.id === id))
-      .filter((p) => p !== undefined); // faqat mavjud productlar
+      .filter((p) => p !== undefined); // filter out any products not found
 
-    console.log('Frontendga qaytariladigan liked products:', likedProducts);
-    return likedProducts;
+    return orderedProducts;
   }
 
   async toggleLike(projectId: number, userId: number): Promise<boolean> {
