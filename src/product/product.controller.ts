@@ -230,7 +230,9 @@ export class ProductController {
       location: body.location,
       paymentType: body.paymentType,
       currencyType: body.currencyType,
-      negotiable: body.negotiable,
+      negotiable:
+        (body.negotiable === 'true' && true) ||
+        (body.negotiable === 'false' && false),
       regionId: Number(body.regionId),
       districtId: Number(body.districtId),
       properties: body.properties || [],
@@ -238,7 +240,6 @@ export class ProductController {
     };
 
     console.log(body);
-    
 
     return this.productService.create(files, createProductDto, req.user.userId);
   }
