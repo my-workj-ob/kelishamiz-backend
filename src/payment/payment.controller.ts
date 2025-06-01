@@ -37,8 +37,12 @@ export class PaymentController {
     private profileService: ProfileService,
     private readonly configService: ConfigService, // Inject qilingan
   ) {
-    this.merchantId = this.configService.get<string>('PAYME_MERCHANT_ID') ?? '';
-    this.apiKey = this.configService.get<string>('PAYME_API_KEY') ?? ''; // Shu yerda API_KEY olinadi
+    this.merchantId =
+      this.configService.get<string>('683c3f4c70e3dcbc596bd119') ??
+      '683c3f4c70e3dcbc596bd119';
+    this.apiKey =
+      this.configService.get<string>('asot9Zhnv23Knw3x4YwXk%bhQWaNGJSwTxK4') ??
+      'asot9Zhnv23Knw3x4YwXk%bhQWaNGJSwTxK4'; // Shu yerda API_KEY olinadi
     console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey);
   }
 
