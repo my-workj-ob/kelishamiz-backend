@@ -71,25 +71,25 @@ export class PaymentService {
       // Agar hali `Announcement` entity'ingiz yo'q bo'lsa va faqat kelajakda ishlatish uchun joylashtirayotgan bo'lsangiz,
       // bu tekshiruvni vaqtincha izohda qoldirish yoki soddaroq tekshirish mumkin.
       // Hozircha sizning original kodingizni qoldiraman, lekin to'g'riroq yondashuv - bu alohida repositorydan foydalanish.
-    //   try {
-    //     const announcementExists = await this.paymentRepository.query(
-    //       `SELECT 1 FROM announcement WHERE id = $1`,
-    //       [announcement_id],
-    //     );
-    //     if (!announcementExists || announcementExists.length === 0) {
-    //       this.logger.warn(
-    //         `Announcement with ID ${announcement_id} not found via direct query.`,
-    //       );
-    //       throw new NotFoundException(
-    //         `Announcement with ID ${announcement_id} not found`,
-    //       );
-    //     }
-    //   } catch (error) {
-    //     this.logger.error(
-    //       `Error checking announcement with ID ${announcement_id}: ${error.message}`,
-    //     );
-    //     throw new Error(`Failed to verify announcement: ${error.message}`);
-    //   }
+      //   try {
+      //     const announcementExists = await this.paymentRepository.query(
+      //       `SELECT 1 FROM announcement WHERE id = $1`,
+      //       [announcement_id],
+      //     );
+      //     if (!announcementExists || announcementExists.length === 0) {
+      //       this.logger.warn(
+      //         `Announcement with ID ${announcement_id} not found via direct query.`,
+      //       );
+      //       throw new NotFoundException(
+      //         `Announcement with ID ${announcement_id} not found`,
+      //       );
+      //     }
+      //   } catch (error) {
+      //     this.logger.error(
+      //       `Error checking announcement with ID ${announcement_id}: ${error.message}`,
+      //     );
+      //     throw new Error(`Failed to verify announcement: ${error.message}`);
+      //   }
     }
 
     // ✅ Optional: Check Profile (if exists)
