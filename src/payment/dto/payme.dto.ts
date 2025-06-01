@@ -83,6 +83,8 @@ export class CreatePaymentDto {
   payment_method?: 'payme_card' | 'click_uzcard' | 'humo';
 }
 export class WebhookDto {
+  id: string; // Add the 'id' property to match the usage in the controller
+  // Define other properties here
   @ApiProperty({
     description: 'Payme metod nomi',
     example: 'CheckPerformTransaction',
