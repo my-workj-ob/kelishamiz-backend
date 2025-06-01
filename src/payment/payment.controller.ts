@@ -39,8 +39,8 @@ export class PaymentController {
   ) {
     this.merchantId = this.configService.get<string>('PAYME_MERCHANT_ID') ?? '';
     this.apiKey = this.configService.get<string>('PAYME_API_KEY') ?? ''; // Shu yerda API_KEY olinadi
+    console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey);
   }
-
 
   @Get('balance/:userId')
   @ApiOperation({
@@ -98,10 +98,10 @@ export class PaymentController {
     @Req() req: Request,
   ): Promise<any> {
     const authHeader = req.headers['authorization'];
-     console.log("merchantId: ", this.merchantId, "api key :", this.apiKey);;
+    console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey);
     if (!authHeader || !authHeader.startsWith('Basic ')) {
-      this.logger.warn('Webhook: Missing or invalid Authorization header.')
-      console.log("merchantId: ", this.merchantId, "api key :", this.apiKey);;
+      this.logger.warn('Webhook: Missing or invalid Authorization header.');
+      console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey);
       throw new UnauthorizedException('Unauthorized'); // Yoki Payme ning -32504 xato kodi
     }
 
@@ -113,15 +113,12 @@ export class PaymentController {
 
     // Bu yerda sizning merchantId va apiKey o'zgaruvchilaringiz Payme'dan olingan
     // Sandbox kalitlariga mos kelishi kerak.
-     console.log("merchantId: ", this.merchantId, "api key :", this.apiKey);;
-    this.logger.log(
-      `Webhook: Received credentials - ID: ${id}, Key: ${key}`,
-    );
+    console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey);
+    this.logger.log(`Webhook: Received credentials - ID: ${id}, Key: ${key}`);
     this.logger.log(
       `Webhook: Configured credentials - Merchant ID: ${this.merchantId}, API Key: ${this.apiKey}`,
     );
-    
-    
+
     if (id !== this.merchantId || key !== this.apiKey) {
       this.logger.error(
         `Webhook: Invalid credentials. Provided ID: ${id}, Key: ${key}`,
