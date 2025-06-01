@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import axios from 'axios'; // Agar hali ham ishlatilsa
 import { Payment } from './entities/payme.entity';
-import { User } from 'src/auth/entities/user.entity';
+import { User } from './../auth/entities/user.entity';
 import { CreatePaymentDto } from './dto/payme.dto';
 import { Logger } from '@nestjs/common'; // Logger qo'shish
 
@@ -184,7 +184,7 @@ export class PaymentService {
       .reduce((sum, p) => sum + p.amount, 0);
     return totalIn - totalOut;
   }
-//   
+  //
 
   private async generatePayLink(
     paymentId: string,
