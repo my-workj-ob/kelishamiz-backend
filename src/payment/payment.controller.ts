@@ -43,7 +43,6 @@ export class PaymentController {
     this.apiKey =
       this.configService.get<string>('asot9Zhnv23Knw3x4YwXk%bhQWaNGJSwTxK4') ??
       'asot9Zhnv23Knw3x4YwXk%bhQWaNGJSwTxK4'; // Shu yerda API_KEY olinadi
-    console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey);
   }
 
   @Get('balance/:userId')
@@ -99,14 +98,16 @@ export class PaymentController {
   @ApiResponse({ status: 400, description: 'Noto‘g‘ri webhook so‘rovi' })
   async handleWebhook(
     @Body() data: WebhookDto,
-    @Req() req: Request,
+    @Req() req: Request, // Request obyektini qabul qilish
   ): Promise<any> {
+    // JSON-RPC javobini qaytarish uchun Promise<any>
     const authHeader = req.headers['authorization'];
-    console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey);
+    // console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey); // Bu loglarni o'chirish yoki debug rejimida qoldirish
+
     if (!authHeader || !authHeader.startsWith('Basic ')) {
       this.logger.warn('Webhook: Missing or invalid Authorization header.');
-      console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey);
-      throw new UnauthorizedException('Unauthorized'); // Yoki Payme ning -32504 xato kodi
+      // console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey); // Takroriy log
+      throw new UnauthorizedException('Unauthorized'); // Payme ning -32504 xato kodi
     }
 
     const base64Credentials = authHeader.split(' ')[1];
@@ -115,9 +116,6 @@ export class PaymentController {
     );
     const [id, key] = credentials.split(':');
 
-    // Bu yerda sizning merchantId va apiKey o'zgaruvchilaringiz Payme'dan olingan
-    // Sandbox kalitlariga mos kelishi kerak.
-    console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey);
     this.logger.log(`Webhook: Received credentials - ID: ${id}, Key: ${key}`);
     this.logger.log(
       `Webhook: Configured credentials - Merchant ID: ${this.merchantId}, API Key: ${this.apiKey}`,
@@ -127,8 +125,37 @@ export class PaymentController {
       this.logger.error(
         `Webhook: Invalid credentials. Provided ID: ${id}, Key: ${key}`,
       );
-      throw new UnauthorizedException('Unauthorized'); // Yoki Payme ning -32504 xato kodi
+      // Payme kutadigan RPC formatidagi xato javobini qaytaring
+      return {
+        jsonrpc: '2.0',
+        id: data.id, // Payme so'rovining ID'si
+        error: {
+          code: -32504, // Noto'g'ri avtorizatsiya xato kodi
+          message: 'Unauthorized',
+          data: 'Invalid credentials', // Qo'shimcha ma'lumot
+        },
+      };
     }
-    // ... qolgan logika
+
+    // Autentifikatsiya muvaffaqiyatli o'tgandan so'ng, so'rovni service'ga yuboring
+    try {
+      const result = await this.paymentService.handleWebhook(data);
+      return result; // Service'dan kelgan JSON-RPC javobini qaytaring
+    } catch (error) {
+      this.logger.error(
+        `Error processing webhook in service: ${error.message}`,
+        error.stack,
+      );
+      // Service'dan kelgan xatolarni Payme kutadigan RPC formatiga o'tkazing
+      return {
+        jsonrpc: '2.0',
+        id: data.id,
+        error: {
+          code: error.response?.error?.code || -32000, // Service'dan kelgan xato kodini ishlatish
+          message: error.response?.error?.message || 'Internal error',
+          data: error.message, // Qo'shimcha ma'lumot
+        },
+      };
+    }
   }
 }
