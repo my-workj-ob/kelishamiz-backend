@@ -24,6 +24,11 @@ import { ThrottlerModule, ThrottlerModuleOptions } from '@nestjs/throttler';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ChatModule } from './chat/chat.module';
 import { NotificationModule } from './notification/notification.module';
+import { PaymentController } from './payment/payment.controller';
+import { PaymentModule } from './payment/payment.module';
+import { PaymentService } from './payment/payment.service';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { Payment } from './payment/entities/payme.entity';
 
 @Module({
   imports: [
@@ -49,7 +54,15 @@ import { NotificationModule } from './notification/notification.module';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       autoLoadEntities: true,
-      entities: [Category, Product, User, FileEntity, Comment, UserSearch],
+      entities: [
+        Category,
+        Product,
+        User,
+        FileEntity,
+        Comment,
+        UserSearch,
+        Payment,
+      ],
       synchronize: true,
     }),
 
@@ -72,6 +85,8 @@ import { NotificationModule } from './notification/notification.module';
     SearchModule,
     ChatModule,
     NotificationModule,
+    PaymentModule,
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
   ],
 
   controllers: [
@@ -79,6 +94,7 @@ import { NotificationModule } from './notification/notification.module';
     CategoryController,
     FileController,
     SearchFilterController,
+    PaymentController,
   ],
   providers: [AppService],
 })

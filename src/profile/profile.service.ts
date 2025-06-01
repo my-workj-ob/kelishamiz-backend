@@ -138,14 +138,22 @@ export class ProfileService {
   }
 
   async findByUser(userId: number): Promise<Profile | any> {
-    console.log('userId: ', userId);
     const existUser = await this.profileRepository.findOne({
       where: { user: { id: userId } },
+    });
+
+    
+
+    if (!existUser) {
+      throw new NotFoundException(`Foydalanuvchi ${userId} bilan topilmadi`);
+    }
+    // Agar kerak bo'lsa, user bilan bog'liq boshqa ma'lumotlarni ham qo'shishingiz mumkin
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+
       relations: ['region', 'district', 'user'],
     });
 
-    console.log('existUser ', existUser);
-
-    return existUser;
+    return user;
   }
 }

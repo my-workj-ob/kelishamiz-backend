@@ -20,6 +20,8 @@ import { District } from './../../location/entities/district.entity';
 import { ChatRoom } from './../../chat/entities/chat-room.entity';
 import { Message } from './../../chat/entities/message.entity';
 import { Notification } from './../../notification/entities/notification.entity';
+import { ApiProperty } from '@nestjs/swagger';
+import { Payment } from './../../payment/entities/payme.entity';
 
 @Entity()
 export class User {
@@ -87,7 +89,10 @@ export class User {
   // Foydalanuvchi yuborgan xabarlar
   @OneToMany(() => Message, (message) => message.sender)
   messages: Message[];
-  // Foydalanuvchi yuborgan xabarlar
+
+  @Column({ type: 'numeric', default: 0 })
+  @ApiProperty({ description: 'Umumiy balans (so‘m)', example: 6658900 })
+  balance?: number;
   @OneToMany(() => Notification, (message) => message.user)
   notifications: Notification[];
 }

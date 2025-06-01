@@ -3,7 +3,7 @@ import { IsNotEmpty, IsString, Length } from 'class-validator';
 
 export class CreateAccountDto {
   @ApiProperty({
-    example: '+998901234567',
+    example: '+998992584880',
     description: 'Foydalanuvchi telefon raqami',
   })
   @IsNotEmpty()

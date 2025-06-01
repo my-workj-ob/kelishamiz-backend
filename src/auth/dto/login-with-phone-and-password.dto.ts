@@ -5,7 +5,7 @@ export class LoginWithPhoneAndPasswordDto {
   @ApiProperty({
     description:
       'Telefon raqami +998 bilan boshlanishi va 12 ta belgidan iborat bo‘lishi kerak.',
-    example: '+998901234567',
+    example: '+998992584880',
   })
   @IsNotEmpty({ message: 'Telefon raqami kiritilishi kerak.' })
   @IsString({ message: 'Telefon raqami satr bo‘lishi kerak.' })
