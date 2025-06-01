@@ -21,7 +21,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { CreatePaymentDto, WebhookDto } from './dto/payme.dto';
-import { ProfileService } from 'src/profile/profile.service';
+import { ProfileService } from './../profile/profile.service';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 
