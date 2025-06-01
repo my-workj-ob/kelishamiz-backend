@@ -10,6 +10,7 @@ import {
   Req,
   NotFoundException,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import {
@@ -91,7 +92,31 @@ export class PaymentController {
     description: 'Webhook muvaffaqiyatli qayta ishlandi',
   })
   @ApiResponse({ status: 400, description: 'Noto‘g‘ri webhook so‘rovi' })
-  async handleWebhook(@Body() data: WebhookDto): Promise<void> {
-    return this.paymentService.handleWebhook(data);
+  async handleWebhook(
+    @Body() data: WebhookDto,
+    @Req() req: Request,
+  ): Promise<any> {
+    const authHeader = req.headers['authorization'];
+
+    if (!authHeader || !authHeader.startsWith('Basic ')) {
+      this.logger.warn('Webhook: Missing or invalid Authorization header.');
+      throw new UnauthorizedException('Unauthorized'); // Yoki Payme ning -32504 xato kodi
+    }
+
+    const base64Credentials = authHeader.split(' ')[1];
+    const credentials = Buffer.from(base64Credentials, 'base64').toString(
+      'utf8',
+    );
+    const [id, key] = credentials.split(':');
+
+    // Bu yerda sizning merchantId va apiKey o'zgaruvchilaringiz Payme'dan olingan
+    // Sandbox kalitlariga mos kelishi kerak.
+    if (id !== this.merchantId || key !== this.apiKey) {
+      this.logger.error(
+        `Webhook: Invalid credentials. Provided ID: ${id}, Key: ${key}`,
+      );
+      throw new UnauthorizedException('Unauthorized'); // Yoki Payme ning -32504 xato kodi
+    }
+    // ... qolgan logika
   }
 }
