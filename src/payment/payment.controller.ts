@@ -54,7 +54,7 @@ export class PaymentController {
   @ApiResponse({ status: 404, description: 'Foydalanuvchi topilmadi' })
   async getBalance(@Param('userId') userId: number): Promise<number> {
     const existUser = await this.profileService.findByUser(userId);
-    if (existUser) {
+    if (!existUser) {
       throw new Error('Foydalanuvchi ID kiritilmagan');
     }
     return this.paymentService.getBalance(userId);
