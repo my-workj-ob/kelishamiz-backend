@@ -98,10 +98,10 @@ export class PaymentController {
     @Req() req: Request,
   ): Promise<any> {
     const authHeader = req.headers['authorization'];
-    console.log(this.merchantId, this.apiKey);
+     console.log("merchantId: ", this.merchantId, "api key :", this.apiKey);;
     if (!authHeader || !authHeader.startsWith('Basic ')) {
       this.logger.warn('Webhook: Missing or invalid Authorization header.')
-      console.log(this.merchantId, this.apiKey);;
+      console.log("merchantId: ", this.merchantId, "api key :", this.apiKey);;
       throw new UnauthorizedException('Unauthorized'); // Yoki Payme ning -32504 xato kodi
     }
 
@@ -113,7 +113,7 @@ export class PaymentController {
 
     // Bu yerda sizning merchantId va apiKey o'zgaruvchilaringiz Payme'dan olingan
     // Sandbox kalitlariga mos kelishi kerak.
-    console.log(this.merchantId, this.apiKey);
+     console.log("merchantId: ", this.merchantId, "api key :", this.apiKey);;
     this.logger.log(
       `Webhook: Received credentials - ID: ${id}, Key: ${key}`,
     );
