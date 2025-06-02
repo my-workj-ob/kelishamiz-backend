@@ -3,6 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsDateString,
   IsNotEmpty,
   isNumber,
   IsNumber,
@@ -109,4 +110,19 @@ export class ProductDto {
 
   @ApiProperty({ example: 5, description: 'Tuman IDsi' })
   districtId: number;
+}
+
+export class TopProductDto {
+  @ApiProperty({ example: true, description: 'Topga chiqarilganmi' })
+  @IsOptional()
+  @IsBoolean()
+  isTop?: boolean;
+
+  @ApiProperty({
+    example: '2025-06-10T00:00:00Z',
+    description: 'Top holatining tugash vaqti',
+  })
+  @IsOptional()
+  @IsDateString()
+  topExpiresAt?: string;
 }

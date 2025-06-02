@@ -1,12 +1,29 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import axios from 'axios'; // Agar hali ham ishlatilsa
 import { Payment } from './entities/payme.entity';
 import { User } from './../auth/entities/user.entity';
 import { CreatePaymentDto } from './dto/payme.dto';
 import { Logger } from '@nestjs/common'; // Logger qo'shish
+
+enum PaymeErrorCodes {
+  InvalidParams = -31050,
+  TransactionNotFound = -31003,
+  InvalidState = -31008,
+  MethodNotFound = -32601,
+  SystemError = -32400, // Custom error code for internal system issues
+}
+enum PaymentStatus {
+  Pending = 'pending',
+  Created = 'created',
+  Completed = 'completed',
+  ToppedUp = 'topped_up', // Assuming this is a valid status for balance top-ups
+  Withdrawn = 'withdrawn', // When cancelled after completion
+  Review = 'review', // When cancelled before completion or for other reasons
+  Cancelled = 'cancelled', // A general cancellation status if 'review' isn't specific enough
+}
 
 @Injectable()
 export class PaymentService {
@@ -20,6 +37,7 @@ export class PaymentService {
     private paymentRepository: Repository<Payment>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private readonly dataSource: DataSource,
     // Agar announcement yoki profile repository'lari bilan tekshiruv qilishni istasangiz, ularni ham qo'shing:
     // @InjectRepository(Announcement) private announcementRepository: Repository<Announcement>,
     // @InjectRepository(Profile) private profileRepository: Repository<Profile>,
@@ -123,7 +141,7 @@ export class PaymentService {
       profile_id: profile_id ?? null,
       amount,
       amount_in_tiyin: amount * 100,
-      status: 'pending',
+      status: PaymentStatus.Pending,
       transaction_type: transaction_type === 'balance_topup' ? 'in' : 'out',
       payment_method,
       callback_url,
@@ -174,7 +192,7 @@ export class PaymentService {
 
   async getBalance(userId: number): Promise<number> {
     const payments = await this.paymentRepository.find({
-      where: { user_id: userId, status: 'completed' }, // Faqat "completed" to'lovlarni hisoblash
+      where: { user_id: userId, status: PaymentStatus.Completed }, // Faqat "completed" to'lovlarni hisoblash
     });
     const totalIn = payments
       .filter((p) => p.transaction_type === 'in')
@@ -233,366 +251,574 @@ export class PaymentService {
     const { method, params, id } = data;
     this.logger.log(`Received Payme webhook: Method=${method}, ID=${id}`);
 
-    switch (method) {
-      case 'CheckPerformTransaction':
-        const orderIdCheck = params.account.order_id;
-        const amountCheck = params.amount;
+    // Centralized helper for creating error responses
+    const createErrorResponse = (
+      code: PaymeErrorCodes,
+      message: string,
+      additionalInfo?: object,
+    ) => {
+      this.logger.error(
+        `Payme Webhook Error (ID: ${id}, Method: ${method}): Code=${code}, Message=${message}`,
+        additionalInfo,
+      );
+      return {
+        id: id,
+        error: {
+          code: code,
+          message: message,
+          ...(additionalInfo && { data: additionalInfo }), // Include additional debug info
+        },
+      };
+    };
 
-        if (!orderIdCheck) {
-          this.logger.error(
-            'CheckPerformTransaction: order_id is missing in params.account',
-          );
-          return {
-            id: id,
-            error: {
-              code: -31050,
-              message: 'Invalid params: order_id missing',
-            },
-          };
-        }
+    // --- Input Validation: Check essential top-level parameters ---
+    if (!method || !id || typeof params !== 'object' || params === null) {
+      return createErrorResponse(
+        PaymeErrorCodes.InvalidParams,
+        'Invalid request structure: Missing method, ID, or params.',
+        { receivedData: data },
+      );
+    }
 
-        const paymentCheck = await this.paymentRepository.findOne({
-          where: { id: orderIdCheck },
-        });
-
-        if (!paymentCheck || paymentCheck.amount_in_tiyin !== amountCheck) {
-          this.logger.warn(
-            `CheckPerformTransaction: Payment not found or amount mismatch for orderId: ${orderIdCheck}`,
-          );
-          return {
-            id: id,
-            error: {
-              code: -31003, // Order not found or invalid amount
-              message: 'Order not found or invalid amount',
-            },
-          };
-        }
-        return {
-          id: id,
-          result: { allow: true },
-        };
-
-      case 'CreateTransaction':
-        const orderIdCreate = params.account.order_id;
-        const paymeTransactionId = params.id;
-        const transactionTime = params.time;
-
-        if (!orderIdCreate || !paymeTransactionId || !transactionTime) {
-          this.logger.error(
-            'CreateTransaction: Missing required parameters in webhook.',
-          );
-          return {
-            id: id,
-            error: {
-              code: -31050,
-              message: 'Invalid params: missing required fields',
-            },
-          };
-        }
-
-        const paymentCreate = await this.paymentRepository.findOne({
-          where: { id: orderIdCreate },
-        });
-
-        if (!paymentCreate) {
-          this.logger.warn(
-            `CreateTransaction: Payment not found for orderId: ${orderIdCreate}`,
-          );
-          return {
-            id: id,
-            error: { code: -31003, message: 'Order not found' },
-          };
-        }
-
-        if (paymentCreate.status !== 'pending') {
-          // Tranzaksiya allaqachon yaratilgan yoki bajarilgan bo'lsa
-          if (paymentCreate.payme_transaction_id === paymeTransactionId) {
-            // Agar bir xil tranzaksiya ID bilan qayta kelgan bo'lsa, xato emas, tasdiqlaymiz
-            this.logger.log(
-              `CreateTransaction: Duplicate request for existing transaction ${paymeTransactionId}`,
+    try {
+      switch (method) {
+        case 'CheckPerformTransaction': {
+          // --- Input Validation for CheckPerformTransaction ---
+          if (
+            !params.account ||
+            !params.account.order_id ||
+            typeof params.amount === 'undefined'
+          ) {
+            return createErrorResponse(
+              PaymeErrorCodes.InvalidParams,
+              'Invalid params: order_id or amount missing for CheckPerformTransaction.',
+              { receivedParams: params },
             );
+          }
+
+          const orderIdCheck = params.account.order_id;
+          const amountCheck = params.amount;
+
+          const paymentCheck = await this.paymentRepository.findOne({
+            where: { id: orderIdCheck },
+          });
+
+          if (
+            !paymentCheck ||
+            paymentCheck.amount_in_tiyin !== amountCheck ||
+            paymentCheck.status !== PaymentStatus.Pending // Only allow pending payments to be checked
+          ) {
+            this.logger.warn(
+              `CheckPerformTransaction: Payment not found, amount mismatch, or invalid status for orderId: ${orderIdCheck}. Current status: ${paymentCheck?.status}`,
+            );
+            return createErrorResponse(
+              PaymeErrorCodes.TransactionNotFound, // Using a generic code as per Payme spec for this case
+              'Order not found or invalid amount/status.',
+              {
+                orderId: orderIdCheck,
+                expectedAmount: amountCheck,
+                foundPayment: paymentCheck
+                  ? {
+                      id: paymentCheck.id,
+                      amount_in_tiyin: paymentCheck.amount_in_tiyin,
+                      status: paymentCheck.status,
+                    }
+                  : null,
+              },
+            );
+          }
+          return {
+            id: id,
+            result: { allow: true },
+          };
+        }
+
+        case 'CreateTransaction': {
+          // --- Input Validation for CreateTransaction ---
+          if (
+            !params.account ||
+            !params.account.order_id ||
+            !params.id ||
+            typeof params.time === 'undefined'
+          ) {
+            return createErrorResponse(
+              PaymeErrorCodes.InvalidParams,
+              'Missing required parameters for CreateTransaction.',
+              { receivedParams: params },
+            );
+          }
+
+          const orderIdCreate = params.account.order_id;
+          const paymeTransactionId = params.id;
+          const transactionTime = params.time; // Unix timestamp in milliseconds
+
+          const queryRunner = this.dataSource.createQueryRunner();
+          await queryRunner.connect();
+          await queryRunner.startTransaction();
+
+          try {
+            const paymentCreate = await queryRunner.manager.findOne(
+              Payment, // Use the entity class directly
+              {
+                where: { id: orderIdCreate },
+                lock: { mode: 'pessimistic_write' }, // Apply pessimistic write lock
+              },
+            );
+
+            if (!paymentCreate) {
+              await queryRunner.rollbackTransaction();
+              return createErrorResponse(
+                PaymeErrorCodes.TransactionNotFound,
+                'Order not found.',
+                { orderId: orderIdCreate },
+              );
+            }
+
+            if (paymentCreate.status !== PaymentStatus.Pending) {
+              // Handle idempotency: If the same Payme transaction ID is sent again, return success
+              if (paymentCreate.payme_transaction_id === paymeTransactionId) {
+                this.logger.log(
+                  `CreateTransaction: Duplicate request for existing transaction ${paymeTransactionId}. Returning existing details.`,
+                );
+                await queryRunner.rollbackTransaction(); // No changes made, so rollback is safe
+                return {
+                  id: id,
+                  result: {
+                    create_time: paymentCreate.created_at.getTime(),
+                    transaction: paymentCreate.payme_transaction_id,
+                    state:
+                      paymentCreate.status === PaymentStatus.Completed ||
+                      paymentCreate.status === PaymentStatus.ToppedUp
+                        ? 2
+                        : 1, // Payme state: 1 for created, 2 for completed
+                  },
+                };
+              } else {
+                // Payment is not pending and Payme transaction ID doesn't match
+                await queryRunner.rollbackTransaction();
+                return createErrorResponse(
+                  PaymeErrorCodes.InvalidState,
+                  'Unable to create transaction: Invalid state for payment.',
+                  {
+                    orderId: orderIdCreate,
+                    currentStatus: paymentCreate.status,
+                    paymeTransactionId: paymeTransactionId,
+                  },
+                );
+              }
+            }
+
+            paymentCreate.payme_transaction_id = paymeTransactionId;
+            paymentCreate.status = PaymentStatus.Created;
+            paymentCreate.created_at = new Date(transactionTime); // Payme `time` is milliseconds
+
+            await queryRunner.manager.save(paymentCreate);
+            await queryRunner.commitTransaction();
+
+            this.logger.log(
+              `Payment ${orderIdCreate} status updated to '${PaymentStatus.Created}'. Payme Transaction ID: ${paymeTransactionId}`,
+            );
+
             return {
               id: id,
               result: {
-                create_time: paymentCreate.created_at.getTime(),
-                transaction: paymentCreate.payme_transaction_id,
-                state: paymentCreate.status === 'completed' ? 2 : 1, // Agar bajarilgan bo'lsa 2, aks holda 1
+                create_time: transactionTime,
+                transaction: paymeTransactionId,
+                state: 1, // Created
               },
             };
-          } else {
-            this.logger.warn(
-              `CreateTransaction: Invalid state for payment ${orderIdCreate}. Current status: ${paymentCreate.status}`,
+          } catch (error) {
+            await queryRunner.rollbackTransaction();
+            this.logger.error(
+              `Error during CreateTransaction for orderId: ${orderIdCreate}`,
+              error.stack,
             );
-            return {
-              id: id,
-              error: {
-                code: -31008,
-                message: 'Unable to create transaction: invalid state',
-              },
-            };
+            return createErrorResponse(
+              PaymeErrorCodes.SystemError,
+              'System error during transaction creation.',
+              { message: error.message },
+            );
+          } finally {
+            await queryRunner.release();
           }
         }
 
-        paymentCreate.payme_transaction_id = paymeTransactionId;
-        paymentCreate.status = 'created';
-        // Payme'dan kelgan `time` unix timestamp millisekundlarda, `Date` obyekti uni qabul qiladi
-        paymentCreate.created_at = new Date(transactionTime);
-        await this.paymentRepository.save(paymentCreate);
-        this.logger.log(
-          `Payment ${orderIdCreate} status updated to 'created'. Payme Transaction ID: ${paymeTransactionId}`,
-        );
+        case 'PerformTransaction': {
+          // --- Input Validation for PerformTransaction ---
+          if (!params.id || typeof params.time === 'undefined') {
+            return createErrorResponse(
+              PaymeErrorCodes.InvalidParams,
+              'Missing required parameters for PerformTransaction.',
+              { receivedParams: params },
+            );
+          }
 
-        return {
-          id: id,
-          result: {
-            create_time: transactionTime,
-            transaction: paymeTransactionId,
-            state: 1, // Yaratilgan
-          },
-        };
+          const paymeTransactionIdPerform = params.id;
+          const transactionPerformTime = params.time;
 
-      case 'PerformTransaction':
-        const paymeTransactionIdPerform = params.id;
-        const transactionPerformTime = params.time;
+          const queryRunner = this.dataSource.createQueryRunner();
+          await queryRunner.connect();
+          await queryRunner.startTransaction();
 
-        if (!paymeTransactionIdPerform || !transactionPerformTime) {
-          this.logger.error(
-            'PerformTransaction: Missing required parameters in webhook.',
-          );
-          return {
-            id: id,
-            error: {
-              code: -31050,
-              message: 'Invalid params: missing required fields',
-            },
-          };
+          try {
+            const paymentPerform = await queryRunner.manager.findOne(Payment, {
+              where: { payme_transaction_id: paymeTransactionIdPerform },
+              lock: { mode: 'pessimistic_write' },
+            });
+
+            if (!paymentPerform) {
+              await queryRunner.rollbackTransaction();
+              return createErrorResponse(
+                PaymeErrorCodes.TransactionNotFound,
+                'Transaction not found.',
+                { paymeTransactionId: paymeTransactionIdPerform },
+              );
+            }
+
+            if (
+              paymentPerform.status === PaymentStatus.Completed ||
+              paymentPerform.status === PaymentStatus.ToppedUp
+            ) {
+              this.logger.log(
+                `PerformTransaction: Transaction ${paymeTransactionIdPerform} already completed.`,
+              );
+              await queryRunner.rollbackTransaction(); // No changes, safe rollback
+              return {
+                id: id,
+                result: {
+                  perform_time: paymentPerform.created_at.getTime(), // Use actual created time or stored perform_time
+                  transaction: paymeTransactionIdPerform,
+                  state: 2, // Completed
+                },
+              };
+            }
+
+            if (paymentPerform.status !== PaymentStatus.Created) {
+              await queryRunner.rollbackTransaction();
+              return createErrorResponse(
+                PaymeErrorCodes.InvalidState,
+                'Transaction cannot be performed: invalid state.',
+                {
+                  paymeTransactionId: paymeTransactionIdPerform,
+                  currentStatus: paymentPerform.status,
+                },
+              );
+            }
+
+            // Update payment status
+            paymentPerform.status = PaymentStatus.Completed; // Or PaymentStatus.ToppedUp
+            // You might want to save a `performed_at` timestamp here if different from `created_at`
+            // paymentPerform.performed_at = new Date(transactionPerformTime);
+            await queryRunner.manager.save(paymentPerform);
+
+            this.logger.log(
+              `Payment ${paymentPerform.id} status updated to '${PaymentStatus.Completed}'.`,
+            );
+
+            // --- CRITICAL: Update User Balance within the same transaction ---
+            if (paymentPerform.user_id) {
+              const user = await this.userRepository.findOne({
+                where: { id: paymentPerform.user_id },
+              });
+
+              if (!user) {
+                // This is a data inconsistency if a user_id is present but the user doesn't exist.
+                throw new Error(
+                  `User not found for payment ${paymentPerform.id} (user_id: ${paymentPerform.user_id}). Balance update failed.`,
+                );
+              }
+              if (!user) throw new Error('User not found');
+
+              if (typeof user.balance === 'number') {
+                user.balance += paymentPerform.amount;
+              } else {
+                throw new Error(
+                  `User balance is not a number for user ID: ${paymentPerform.user_id}.`,
+                );
+              }
+
+              await queryRunner.manager.save(user);
+              this.logger.log(
+                `Balance for user ${paymentPerform.user_id} increased by ${paymentPerform.amount}.`,
+              );
+            } else {
+              this.logger.warn(
+                `PerformTransaction: user_id is missing for payment ${paymentPerform.id}. Balance not updated.`,
+              );
+              // Decide if this should be an error returned to Payme based on your business logic.
+              // If user_id is mandatory for all top-ups, then throw an error.
+            }
+
+            await queryRunner.commitTransaction();
+
+            return {
+              id: id,
+              result: {
+                perform_time: transactionPerformTime,
+                transaction: paymeTransactionIdPerform,
+                state: 2,
+              },
+            };
+          } catch (error) {
+            await queryRunner.rollbackTransaction();
+            this.logger.error(
+              `Error during PerformTransaction for Payme ID: ${paymeTransactionIdPerform}`,
+              error.stack,
+            );
+            return createErrorResponse(
+              PaymeErrorCodes.SystemError,
+              'System error during transaction performance.',
+              { message: error.message },
+            );
+          } finally {
+            await queryRunner.release();
+          }
         }
 
-        const paymentPerform = await this.paymentRepository.findOne({
-          where: { payme_transaction_id: paymeTransactionIdPerform },
-        });
+        case 'CancelTransaction': {
+          // --- Input Validation for CancelTransaction ---
+          if (!params.id || typeof params.reason === 'undefined') {
+            return createErrorResponse(
+              PaymeErrorCodes.InvalidParams,
+              'Missing required parameters for CancelTransaction.',
+              { receivedParams: params },
+            );
+          }
 
-        if (!paymentPerform) {
-          this.logger.warn(
-            `PerformTransaction: Payment not found for Payme ID: ${paymeTransactionIdPerform}`,
-          );
-          return {
-            id: id,
-            error: { code: -31003, message: 'Transaction not found' },
-          };
+          const paymeTransactionIdCancel = params.id;
+          const reasonCode = params.reason; // Payme sends an integer code
+
+          const queryRunner = this.dataSource.createQueryRunner();
+          await queryRunner.connect();
+          await queryRunner.startTransaction();
+
+          try {
+            const paymentCancel = await queryRunner.manager.findOne(Payment, {
+              where: { payme_transaction_id: paymeTransactionIdCancel },
+              lock: { mode: 'pessimistic_write' },
+            });
+
+            if (!paymentCancel) {
+              await queryRunner.rollbackTransaction();
+              return createErrorResponse(
+                PaymeErrorCodes.TransactionNotFound,
+                'Transaction not found.',
+                { paymeTransactionId: paymeTransactionIdCancel },
+              );
+            }
+
+            let newStateForCancel: number; // Payme state for cancellation
+
+            // Idempotency: If already cancelled/withdrawn, just return its current state
+            if (
+              paymentCancel.status === PaymentStatus.Withdrawn ||
+              paymentCancel.status === PaymentStatus.Review
+            ) {
+              this.logger.log(
+                `CancelTransaction: Transaction ${paymeTransactionIdCancel} already in a cancelled/review state.`,
+              );
+              await queryRunner.rollbackTransaction(); // No changes, safe rollback
+              newStateForCancel =
+                paymentCancel.status === PaymentStatus.Withdrawn ? -2 : -1;
+              return {
+                id: id,
+                result: {
+                  cancel_time: Date.now(), // Or paymentCancel.cancelled_at.getTime() if stored
+                  transaction: paymeTransactionIdCancel,
+                  state: newStateForCancel,
+                },
+              };
+            }
+
+            if (
+              paymentCancel.status === PaymentStatus.Completed ||
+              paymentCancel.status === PaymentStatus.ToppedUp
+            ) {
+              newStateForCancel = -2; // Cancelled after completion
+              paymentCancel.status = PaymentStatus.Withdrawn;
+
+              // --- CRITICAL: Deduct balance if it was previously topped up ---
+              if (
+                paymentCancel.user_id &&
+                paymentCancel.transaction_type === 'in'
+              ) {
+                const user = await this.userRepository.findOne({
+                  where: { id: paymentCancel.user_id },
+                });
+
+                if (!user) {
+                  throw new Error(
+                    `User not found for payment ${paymentCancel.id} during cancellation (user_id: ${paymentCancel.user_id}).`,
+                  );
+                }
+
+                if (typeof user.balance === 'number') {
+                  // Ensure amount is in the correct currency unit (e.g., UZS)
+                  if (user.balance < paymentCancel.amount) {
+                    this.logger.error(
+                      `CancelTransaction: Insufficient user balance (${user.balance}) to deduct ${paymentCancel.amount} for user ${paymentCancel.user_id}.`,
+                    );
+                    // This is a serious issue; decide if it should result in a system error or partial success
+                    // For now, we'll throw to indicate a critical failure.
+                    throw new Error(
+                      'Insufficient balance to cancel transaction.',
+                    );
+                  }
+                  user.balance -= paymentCancel.amount;
+                } else {
+                  throw new Error(
+                    `User balance is not a number for user ID: ${paymentCancel.user_id}.`,
+                  );
+                }
+                await queryRunner.manager.save(user);
+                this.logger.log(
+                  `Balance for user ${paymentCancel.user_id} decreased by ${paymentCancel.amount} due to cancellation.`,
+                );
+              } else {
+                this.logger.warn(
+                  `CancelTransaction: No balance adjustment needed for payment ${paymentCancel.id} (user_id: ${paymentCancel.user_id}, type: ${paymentCancel.transaction_type}).`,
+                );
+              }
+            } else if (
+              paymentCancel.status === PaymentStatus.Created ||
+              paymentCancel.status === PaymentStatus.Pending
+            ) {
+              // If transaction was created or pending, simply cancel it
+              newStateForCancel = -1; // Cancelled before completion
+              paymentCancel.status = PaymentStatus.Cancelled; // Or PaymentStatus.Review
+            } else {
+              // Any other status that shouldn't be cancelled (e.g., already refunded by other means)
+              await queryRunner.rollbackTransaction();
+              return createErrorResponse(
+                PaymeErrorCodes.InvalidState,
+                'Transaction cannot be cancelled: invalid state.',
+                {
+                  paymeTransactionId: paymeTransactionIdCancel,
+                  currentStatus: paymentCancel.status,
+                },
+              );
+            }
+
+            paymentCancel.reason = String(reasonCode); // Store the reason code
+            // paymentCancel.cancelled_at = new Date(); // Store cancellation time
+            await queryRunner.manager.save(paymentCancel);
+
+            await queryRunner.commitTransaction();
+
+            this.logger.log(
+              `Payment ${paymentCancel.id} status updated to '${paymentCancel.status}' due to cancellation.`,
+            );
+
+            return {
+              id: id,
+              result: {
+                cancel_time: Date.now(),
+                transaction: paymeTransactionIdCancel,
+                state: newStateForCancel,
+              },
+            };
+          } catch (error) {
+            await queryRunner.rollbackTransaction();
+            this.logger.error(
+              `Error during CancelTransaction for Payme ID: ${paymeTransactionIdCancel}`,
+              error.stack,
+            );
+            return createErrorResponse(
+              PaymeErrorCodes.SystemError,
+              'System error during transaction cancellation.',
+              { message: error.message },
+            );
+          } finally {
+            await queryRunner.release();
+          }
         }
 
-        if (paymentPerform.status === 'completed') {
-          this.logger.log(
-            `PerformTransaction: Transaction ${paymeTransactionIdPerform} already completed.`,
-          );
+        case 'CheckTransaction': {
+          // --- Input Validation for CheckTransaction ---
+          if (!params.id) {
+            return createErrorResponse(
+              PaymeErrorCodes.InvalidParams,
+              'Missing required parameter: transaction ID for CheckTransaction.',
+              { receivedParams: params },
+            );
+          }
+
+          const paymeTransactionIdCheck = params.id;
+
+          const paymentCheckStatus = await this.paymentRepository.findOne({
+            where: { payme_transaction_id: paymeTransactionIdCheck },
+          });
+
+          if (!paymentCheckStatus) {
+            return createErrorResponse(
+              PaymeErrorCodes.TransactionNotFound,
+              'Transaction not found.',
+              { paymeTransactionId: paymeTransactionIdCheck },
+            );
+          }
+
+          let state = 0; // Default: Unknown/Not found (though we found it, but no match to Payme state yet)
+          let performTime = 0;
+          let cancelTime = 0;
+
+          if (
+            paymentCheckStatus.status === PaymentStatus.Created ||
+            paymentCheckStatus.status === PaymentStatus.Pending
+          ) {
+            state = 1; // Created
+          } else if (
+            paymentCheckStatus.status === PaymentStatus.Completed ||
+            paymentCheckStatus.status === PaymentStatus.ToppedUp
+          ) {
+            state = 2; // Completed
+            // Use the actual completion time if stored, otherwise creation time
+            performTime = paymentCheckStatus.created_at.getTime(); // Assuming created_at serves as perform_time if separate not exists
+            // Or better: paymentCheckStatus.performed_at?.getTime() || 0;
+          } else if (
+            paymentCheckStatus.status === PaymentStatus.Withdrawn // Cancelled after completion
+          ) {
+            state = -2;
+            cancelTime = Date.now(); // Or paymentCheckStatus.cancelled_at?.getTime() || 0;
+          } else if (
+            paymentCheckStatus.status === PaymentStatus.Cancelled || // Cancelled before completion
+            paymentCheckStatus.status === PaymentStatus.Review // Or any other review state
+          ) {
+            state = -1;
+            cancelTime = Date.now(); // Or paymentCheckStatus.cancelled_at?.getTime() || 0;
+          }
+          // Note: Payme's `state` values are strict. Ensure your internal statuses map correctly.
+
           return {
             id: id,
             result: {
-              perform_time: transactionPerformTime, // Yoki paymentPerform.created_at.getTime() agar saqlagan bo'lsangiz
-              transaction: paymeTransactionIdPerform,
-              state: 2, // Bajarilgan
+              create_time: paymentCheckStatus.created_at.getTime(),
+              perform_time: performTime,
+              cancel_time: cancelTime,
+              transaction: paymeTransactionIdCheck,
+              state: state,
+              reason: paymentCheckStatus.reason || null, // Ensure reason is stored as string/number and retrieved
             },
           };
         }
 
-        if (paymentPerform.status !== 'created') {
-          this.logger.warn(
-            `PerformTransaction: Invalid state for transaction ${paymeTransactionIdPerform}. Current status: ${paymentPerform.status}`,
+        default:
+          return createErrorResponse(
+            PaymeErrorCodes.MethodNotFound,
+            `Unknown method received: ${method}.`,
+            { receivedMethod: method },
           );
-          return {
-            id: id,
-            error: {
-              code: -31008,
-              message: 'Transaction cannot be performed: invalid state',
-            },
-          };
-        }
-
-        paymentPerform.status = 'completed'; // Yoki 'topped_up' agar balansni to'ldirish bo'lsa
-        await this.paymentRepository.save(paymentPerform);
-        this.logger.log(
-          `Payment ${paymentPerform.id} status updated to 'completed'.`,
-        );
-
-        // BALANSNI YANGILASH FAQAT SHU YERDA BO'LISHI KERAK!
-        if (paymentPerform.user_id) {
-          // Agar user_id mavjud bo'lsa
-          await this.updateBalance(paymentPerform.user_id);
-        } else {
-          this.logger.error(
-            `PerformTransaction: user_id is missing for payment ${paymentPerform.id}. Balance not updated.`,
-          );
-          // Bu holatda sizning logikangizga qarab xato qaytarishingiz yoki ogohlantirish berishingiz mumkin.
-        }
-
-        return {
-          id: id,
-          result: {
-            perform_time: transactionPerformTime,
-            transaction: paymeTransactionIdPerform,
-            state: 2, // Bajarilgan
-          },
-        };
-
-      case 'CancelTransaction':
-        const paymeTransactionIdCancel = params.id;
-        const reasonCode = params.reason; // Payme hujjatlarida int kod bo'lishi kerak
-
-        if (!paymeTransactionIdCancel || typeof reasonCode === 'undefined') {
-          this.logger.error(
-            'CancelTransaction: Missing required parameters in webhook.',
-          );
-          return {
-            id: id,
-            error: {
-              code: -31050,
-              message: 'Invalid params: missing required fields',
-            },
-          };
-        }
-
-        const paymentCancel = await this.paymentRepository.findOne({
-          where: { payme_transaction_id: paymeTransactionIdCancel },
-        });
-
-        if (!paymentCancel) {
-          this.logger.warn(
-            `CancelTransaction: Payment not found for Payme ID: ${paymeTransactionIdCancel}`,
-          );
-          return {
-            id: id,
-            error: { code: -31003, message: 'Transaction not found' },
-          };
-        }
-
-        let newStateForCancel = -1; // Default -1 (Bekor qilingan)
-        if (
-          paymentCancel.status === 'completed' ||
-          paymentCancel.status === 'topped_up'
-        ) {
-          newStateForCancel = -2; // 2 - bajarilganidan keyin bekor qilingan
-          // Balansdan summani olib tashlash logikasi:
-          // Agar balansga pul qo'shilgan bo'lsa, uni qaytarib olish kerak.
-          // Misol: user.balance -= paymentCancel.amount
-          // Bu juda muhim qadam!
-          if (
-            paymentCancel.user_id &&
-            paymentCancel.transaction_type === 'in'
-          ) {
-            const user = await this.userRepository.findOne({
-              where: { id: paymentCancel.user_id },
-            });
-            if (user) {
-              if (typeof user.balance === 'number') {
-                user.balance -= paymentCancel.amount; // Asosiy summa (so'mda)
-              } else {
-                this.logger.error(
-                  `User balance is undefined for user ID: ${paymentCancel.user_id}`,
-                );
-                throw new Error(
-                  `User balance is undefined for user ID: ${paymentCancel.user_id}`,
-                );
-              }
-              await this.userRepository.save(user);
-              this.logger.log(
-                `Balance for user ${paymentCancel.user_id} decreased by ${paymentCancel.amount} due to cancellation.`,
-              );
-            }
-          }
-          paymentCancel.status = 'withdrawn'; // statusni o'zgartirish
-        } else {
-          paymentCancel.status = 'review'; // Yoki 'cancelled'
-        }
-
-        paymentCancel.reason = String(reasonCode); // Payme dan kelgan sabab kodini saqlash
-        await this.paymentRepository.save(paymentCancel);
-        this.logger.log(
-          `Payment ${paymentCancel.id} status updated to '${paymentCancel.status}' due to cancellation.`,
-        );
-
-        return {
-          id: id,
-          result: {
-            cancel_time: Date.now(),
-            transaction: paymeTransactionIdCancel,
-            state: newStateForCancel,
-          },
-        };
-
-      case 'CheckTransaction':
-        const paymeTransactionIdCheck = params.id;
-
-        if (!paymeTransactionIdCheck) {
-          this.logger.error(
-            'CheckTransaction: Missing required parameters in webhook.',
-          );
-          return {
-            id: id,
-            error: {
-              code: -31050,
-              message: 'Invalid params: transaction ID missing',
-            },
-          };
-        }
-
-        const paymentCheckStatus = await this.paymentRepository.findOne({
-          where: { payme_transaction_id: paymeTransactionIdCheck },
-        });
-
-        if (!paymentCheckStatus) {
-          this.logger.warn(
-            `CheckTransaction: Payment not found for Payme ID: ${paymeTransactionIdCheck}`,
-          );
-          return {
-            id: id,
-            error: { code: -31003, message: 'Transaction not found' },
-          };
-        }
-
-        let state = 0; // Default holat (topilmadi yoki boshqa)
-        let performTime = 0;
-        let cancelTime = 0;
-
-        if (
-          paymentCheckStatus.status === 'created' ||
-          paymentCheckStatus.status === 'pending'
-        ) {
-          // Pending ham 1 holat
-          state = 1;
-        } else if (
-          paymentCheckStatus.status === 'completed' ||
-          paymentCheckStatus.status === 'topped_up'
-        ) {
-          state = 2;
-          performTime = paymentCheckStatus.created_at.getTime(); // Yoki `performed_at` ustunini saqlang
-        } else if (
-          paymentCheckStatus.status === 'withdrawn' ||
-          paymentCheckStatus.status === 'review'
-        ) {
-          state = -1; // Yoki -2 agar bajarilganidan keyin bekor qilingan bo'lsa
-          cancelTime = Date.now(); // Yoki `cancelled_at` ustunini saqlang
-        }
-        // Payme hujjatlarida `state` qiymatlari aniq berilgan, ularga amal qiling.
-
-        return {
-          id: id,
-          result: {
-            create_time: paymentCheckStatus.created_at.getTime(),
-            perform_time: performTime,
-            cancel_time: cancelTime,
-            transaction: paymeTransactionIdCheck,
-            state: state,
-            reason: paymentCheckStatus.reason || null,
-          },
-        };
-
-      default:
-        this.logger.error(`Unknown method received in webhook: ${method}`);
-        return {
-          id: id,
-          error: { code: -32601, message: 'Method not found' },
-        };
+      }
+    } catch (error) {
+      // Catch any unexpected errors that were not caught by specific method handlers
+      this.logger.error(
+        `An unexpected error occurred in handleWebhook for method ${method} (ID: ${id}):`,
+        error.stack,
+      );
+      return createErrorResponse(
+        PaymeErrorCodes.SystemError,
+        'An unexpected internal system error occurred.',
+        { message: error.message },
+      );
     }
   }
 }

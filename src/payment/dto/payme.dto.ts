@@ -72,7 +72,9 @@ export class CreatePaymentDto {
     | 'completed'
     | 'topped_up'
     | 'withdrawn'
-    | 'review';
+    | 'review'
+    | 'cancelled'
+    | undefined;
 
   @ApiProperty({
     description: 'To‘lov usuli',

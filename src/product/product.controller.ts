@@ -10,6 +10,7 @@ import {
   NotFoundException,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -33,7 +34,7 @@ import {
 import { User } from './../auth/entities/user.entity';
 import { JwtOptionalAuthGuard } from './../common/jwt/guards/jwt-optional-auth.guard';
 import { SearchService } from './../search-filter/search-filter.service';
-import { ProductDto } from './dto/create-product.dto';
+import { ProductDto, TopProductDto } from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
 import { Product } from './entities/product.entity';
 import { ProductService } from './product.service';
@@ -85,14 +86,12 @@ export class ProductController {
   @Get()
   @ApiOperation({ summary: 'Mahsulotlar ro‘yxati (isLike bilan)' })
   @UseGuards(JwtOptionalAuthGuard)
-  @Get()
   @ApiQuery({
     name: 'likedIds',
     required: false,
     type: String,
     description: 'Mahsulot IDlari (vergul bilan ajratilgan)',
   })
-  @ApiOperation({ summary: 'Mahsulotlar ro‘yxati (isLike bilan)' })
   async findAll(
     @Req() req: any,
     @Query('page', new ParseIntPipe()) page = 1,
@@ -121,6 +120,34 @@ export class ProductController {
     );
   }
 
+  @Get('top')
+  @ApiOperation({ summary: 'Topga chiqarilgan mahsulotlar ro‘yxati' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+    example: 10,
+  })
+  async findAllTop(
+    @Req() req: any,
+    @Query('page', new ParseIntPipe()) page = 1,
+    @Query('pageSize', new ParseIntPipe()) pageSize = 10,
+  ): Promise<{
+    data: (Product & { isLike: boolean })[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    const userId = req?.user?.userId ?? null;
+    return this.productService.findAllTopPaginated(userId, page, pageSize);
+  }
+
   @UseGuards(JwtOptionalAuthGuard)
   @Get('liked')
   @ApiOperation({ summary: 'Foydalanuvchi yoqtirgan mahsulotlar (DB + Local)' })
@@ -132,7 +159,6 @@ export class ProductController {
   })
   async getLikedProducts(@Req() req: any, @Query('ids') ids?: string) {
     const userId = req?.user?.userId ?? null;
-    console.log('Login qilgan userId:', userId);
 
     const localIds = ids
       ? ids
@@ -325,6 +351,14 @@ export class ProductController {
     if (!product) throw new NotFoundException('topilmadi');
     return product;
   }
+
+  @Patch(':id/top')
+  async updateTopStatus(
+    @Param('id') id: number,
+    @Body() topData: TopProductDto,
+  ) {
+    return this.productService.updateTopStatus(id, topData);
+  }
   @Delete('by-id/:id') // universal route emas!
   async deleteOneById(
     @Param('id', ParseIntPipe) id: number,
@@ -336,4 +370,6 @@ export class ProductController {
       message: 'Product successfully deleted',
     };
   }
+
+  // ... constructor va service injection
 }
