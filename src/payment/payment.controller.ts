@@ -106,7 +106,7 @@ export class PaymentController {
 
     if (!authHeader || !authHeader.startsWith('Basic ')) {
       this.logger.warn('Webhook: Missing or invalid Authorization header.');
-      // console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey); // Takroriy log
+      console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey); // Takroriy log
       throw new UnauthorizedException('Unauthorized'); // Payme ning -32504 xato kodi
     }
 
