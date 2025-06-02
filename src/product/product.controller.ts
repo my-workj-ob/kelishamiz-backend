@@ -328,9 +328,12 @@ export class ProductController {
   @Delete('by-id/:id') // universal route emas!
   async deleteOneById(
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<DeleteResult> {
-    const isDeleted = await this.productService.deleteOneById(id);
-    if (isDeleted) throw new NotFoundException('topilmadi');
-    return isDeleted;
+  ): Promise<{ statusCode: number; message: string }> {
+    await this.productService.deleteOneById(id);
+
+    return {
+      statusCode: 200,
+      message: 'Product successfully deleted',
+    };
   }
 }
