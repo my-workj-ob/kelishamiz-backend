@@ -26,6 +26,8 @@ import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 
 @ApiTags('Payments') // Swaggerda "Payments" bo‘limi sifatida ko‘rinadi
+@ApiBearerAuth()
+@UseGuards(AuthGuard('jwt'))
 @Controller('payment')
 export class PaymentController {
   private readonly logger = new Logger(PaymentController.name);
@@ -60,8 +62,6 @@ export class PaymentController {
     return this.paymentService.getBalance(userId);
   }
 
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'))
   @Post('create')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

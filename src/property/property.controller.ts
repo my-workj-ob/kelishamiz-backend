@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreatePropertyDto } from './../category/dto/create-property.dto';
@@ -21,5 +29,10 @@ export class PropertyController {
   @ApiOperation({ summary: 'Barcha propertiesni olish' })
   findAll() {
     return this.propertyService.findAll();
+  }
+  @Delete(':id')
+  @ApiOperation({ summary: 'Barcha propertiesni olish' })
+  async deletePropertyById(@Param('id') id: number) {
+    return this.propertyService.deleteProperty(id);
   }
 }
