@@ -32,7 +32,10 @@ export class LocationService {
   }
 
   getDistrictsByRegion(regionId: number) {
-    return this.districtRepo.find({ where: { regionId } });
+    return this.districtRepo.find({
+      where: { regionId },
+      relations: ['region'],
+    });
   }
 
   async deleteDistrictRepo(id: number): Promise<DeleteResult | void> {
