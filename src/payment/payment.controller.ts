@@ -102,7 +102,7 @@ export class PaymentController {
   ): Promise<any> {
     // JSON-RPC javobini qaytarish uchun Promise<any>
     const authHeader = req.headers['authorization'];
-    // console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey); // Bu loglarni o'chirish yoki debug rejimida qoldirish
+    console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey); // Bu loglarni o'chirish yoki debug rejimida qoldirish
 
     if (!authHeader || !authHeader.startsWith('Basic ')) {
       this.logger.warn('Webhook: Missing or invalid Authorization header.');
