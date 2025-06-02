@@ -26,6 +26,11 @@ export class LocationController {
   getRegions() {
     return this.service.getAllRegions();
   }
+  @Get('districts')
+  @ApiOperation({ summary: 'Barcha tumanlarni  olish' })
+  getAllDistricts() {
+    return this.service.getAllDistricts();
+  }
 
   @Get('districts/:regionId')
   @ApiOperation({ summary: "Viloyat IDsi orqali tumanlar ro'yxatini olish" })
