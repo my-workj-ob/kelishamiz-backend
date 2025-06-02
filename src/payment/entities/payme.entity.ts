@@ -1,11 +1,31 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  OneToMany,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-
+import { User } from 'src/auth/entities/user.entity';
+export enum PaymentStatus {
+  Pending = 'pending',
+  Created = 'created',
+  Completed = 'completed',
+  ToppedUp = 'topped_up',
+  Withdrawn = 'withdrawn',
+  Review = 'review',
+  Cancelled = 'cancelled',
+}
 @Entity()
 export class Payment {
   @PrimaryGeneratedColumn('uuid')
   @ApiProperty({ description: 'To‘lov ID', example: 'uuid-1234-5678' })
   id: string; // UUID bo'lsa string
+
+  @ManyToOne(() => User, (user) => user.payments)
+  @JoinColumn({ name: 'user_id' })
+  user: User;
 
   @Column({ nullable: true })
   user_id: number; // Number bo'lsa number
@@ -34,27 +54,17 @@ export class Payment {
   @ApiProperty({ description: 'To‘lov summasi (tiyinda)', example: 10000000 })
   amount_in_tiyin: number;
 
-  @Column()
+  @Column({
+    type: 'enum',
+    enum: PaymentStatus,
+    nullable: true,
+  })
   @ApiProperty({
     description: 'To‘lov holati',
-    example: 'pending',
-    enum: [
-      'pending',
-      'created',
-      'completed',
-      'topped_up',
-      'review',
-      'withdrawn',
-    ],
+    example: PaymentStatus.Pending,
+    enum: PaymentStatus,
   })
-  status?:
-    | 'pending'
-    | 'created'
-    | 'completed'
-    | 'topped_up'
-    | 'withdrawn'
-    | 'review';
-
+  status?: PaymentStatus;
   @Column({ nullable: true })
   @ApiProperty({ description: 'Payme tranzaksiya ID', example: 'trans123' })
   payme_transaction_id?: string; // String bo'lsa string (bu to'g'ri)

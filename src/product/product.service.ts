@@ -12,13 +12,14 @@ import {
   EntityNotFoundError,
   ILike,
   In,
+  MoreThan,
   Repository,
 } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
 import { Category } from '../category/entities/category.entity';
 import { Property } from './../category/entities/property.entity';
 import { Profile } from './../profile/enities/profile.entity';
-import { ProductDto } from './dto/create-product.dto';
+import { ProductDto, TopProductDto } from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
 import { ProductProperty } from './entities/product-property-entity';
 import { Product } from './entities/product.entity';
@@ -58,11 +59,12 @@ export class ProductService {
   }> {
     const skip = (page - 1) * pageSize;
 
+    // products ni isTop bo‘yicha birinchi, keyin createdAt bo‘yicha tartiblash
     const [products, total] = await this.productRepository.findAndCount({
       skip,
       take: pageSize,
       relations: ['category', 'profile', 'district', 'images', 'likes'],
-      order: { createdAt: 'DESC' },
+      order: { isTop: 'DESC', createdAt: 'DESC' },
     });
 
     const result = products.map((product) => {
@@ -77,6 +79,49 @@ export class ProductService {
       }
 
       // Har bir productga isLike qo‘shamiz
+      return {
+        ...product,
+        isLike,
+      };
+    });
+
+    return {
+      data: result,
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  async findAllTopPaginated(
+    userId: number | null,
+    page = 1,
+    pageSize = 10,
+  ): Promise<{
+    data: (Product & { isLike: boolean })[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    const skip = (page - 1) * pageSize;
+    const now = new Date();
+
+    const [products, total] = await this.productRepository.findAndCount({
+      skip,
+      take: pageSize,
+      relations: ['category', 'profile', 'district', 'images', 'likes'],
+      where: {
+        isTop: true,
+        topExpiresAt: MoreThan(now), // Faqat hali amal qilayotgan top e'lonlar
+      },
+      order: { topExpiresAt: 'DESC' }, // Avval muddati yaqinlashayotganlar chiqadi
+    });
+
+    const result = products.map((product) => {
+      let isLike = false;
+      if (userId) {
+        isLike = product.likes?.some((user) => user.id === userId) ?? false;
+      }
       return {
         ...product,
         isLike,
@@ -579,5 +624,20 @@ export class ProductService {
     }
 
     return await this.productRepository.delete(productId);
+  }
+
+  async updateTopStatus(id: number, topData: TopProductDto) {
+    const product = await this.productRepository.findOneBy({ id });
+    if (!product) throw new NotFoundException('Product not found');
+
+    if (topData.isTop !== undefined) {
+      product.isTop = topData.isTop;
+    }
+
+    if (topData.topExpiresAt) {
+      product.topExpiresAt = new Date(topData.topExpiresAt);
+    }
+
+    return this.productRepository.save(product);
   }
 }

@@ -92,7 +92,10 @@ export class User {
 
   @Column({ type: 'numeric', default: 0 })
   @ApiProperty({ description: 'Umumiy balans (so‘m)', example: 6658900 })
-  balance?: number;
+  balance: number;
+
+  @OneToMany(() => Payment, (payment) => payment.user)
+  payments: Payment[];
   @OneToMany(() => Notification, (message) => message.user)
   notifications: Notification[];
 }

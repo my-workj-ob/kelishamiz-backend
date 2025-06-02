@@ -147,6 +147,12 @@ export class Product {
   @OneToMany(() => ChatRoom, (chatRoom) => chatRoom.product)
   chatRooms: ChatRoom[];
 
+  @Column({ default: false })
+  isTop: boolean;
+
+  @Column({ type: 'timestamp with time zone', nullable: true })
+  topExpiresAt: Date | null;
+
   @UpdateDateColumn({
     type: 'timestamp with time zone',
     default: () => 'CURRENT_TIMESTAMP',
