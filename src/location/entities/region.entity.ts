@@ -12,7 +12,9 @@ export class Region {
   @Column({ unique: true })
   name: string;
 
-  @OneToMany(() => District, (district) => district.region)
+  @OneToMany(() => District, (district) => district.region, {
+    onDelete: 'CASCADE',
+  })
   districts: District[];
   @OneToMany(() => Product, (product) => product.region)
   products: Product[];
