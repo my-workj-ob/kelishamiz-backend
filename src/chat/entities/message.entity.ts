@@ -26,7 +26,8 @@ export class Message {
   @Column()
   senderId: string; // Kim yuborgani (User ID)
 
-  @ManyToOne(() => User, (user) => user.messages)
+  @ManyToOne(() => User, (user) => user.messages, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'senderId' }) 
   sender: User;
 
   @Column('text') // Katta matnlar uchun 'text' tipi yaxshiroq
