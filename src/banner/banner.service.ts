@@ -29,6 +29,7 @@ export class BannerService {
     }
     // UploadService orqali faylni yuklaymiz
     const imageUrl = await this.uploadService.uploadFile(file); // Faqat URL ni qaytaradi
+    console.log(imageUrl);
 
     const banner = this.bannerRepository.create({
       ...createBannerDto,

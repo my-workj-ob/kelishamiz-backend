@@ -2,8 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm'; // <-- Buni qo'shing
 import { BannerController } from './banner.controller';
 import { BannerService } from './banner.service';
-import { Banner } from './entities/banner.entity'; // <-- Banner entitysini qo'shing
-import { CloudinaryService } from './cloudinary.service';
+import { Banner } from './entities/banner.entity';
 import { UploadService } from './../file/uploadService';
 
 @Module({
