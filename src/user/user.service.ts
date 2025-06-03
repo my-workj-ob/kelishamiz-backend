@@ -89,7 +89,8 @@ export class UserService {
    * @param userId O'chiriladigan foydalanuvchining ID'si.
    */
   async deleteUser(id: number): Promise<void> {
-    console.log('Deleting user with ID:', id); // 👈 qo‘shing
+    console.log('Deleting user with ID:', id);
+
     const user = await this.userRepository.findOne({
       where: { id },
       relations: [
@@ -106,40 +107,48 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
+    // 1. Remove from many-to-many join tables
     await this.dataSource
       .createQueryBuilder()
       .delete()
-      .from('product_likes_user') // Many-to-Many join table name
+      .from('product_likes_user')
       .where('userId = :userId', { userId: id })
       .execute();
 
-    // 3. Remove searches (agar bogʻlangan bo‘lsa)
+    await this.dataSource
+      .createQueryBuilder()
+      .delete()
+      .from('chat_room_participants_user')
+      .where('userId = :userId', { userId: id }) // ✅ to‘g‘ri id ishlatildi
+      .execute();
+
+    // 2. Remove related searches
     await this.searchRepository.delete({ user: { id } });
 
-    // 4. Remove profile’s products
+    // 3. Remove profile’s products
     if (user.profile?.products?.length) {
       const productIds = user.profile.products.map((p) => p.id);
       await this.productRepository.delete(productIds);
     }
 
-    // 5. Remove profile's comments and likes
+    // 4. Remove profile's comments
     if (user.profile?.comments?.length) {
       const commentIds = user.profile.comments.map((c) => c.id);
       await this.commentRepository.delete(commentIds);
     }
 
+    // 5. Remove profile's likes
     if (user.profile?.likes?.length) {
       const likeIds = user.profile.likes.map((l) => l.id);
       await this.likeRepository.delete(likeIds);
     }
 
-    if (user.profile) {
-      if (user.profile?.id !== undefined) {
-        console.log(user.profile);
-        await this.profileRepository.delete(user.profile.id);
-      }
+    // 6. Remove profile
+    if (user.profile?.id !== undefined) {
+      await this.profileRepository.delete(user.profile.id);
     }
 
+    // 7. Finally, delete the user
     await this.userRepository.delete(id);
   }
 }
