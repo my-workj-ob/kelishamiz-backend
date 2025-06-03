@@ -100,6 +100,11 @@ export class ProductDto {
   @IsBoolean()
   negotiable?: boolean;
 
+  @ApiProperty({ example: false, description: 'publishga chiqishi ' })
+  @IsOptional()
+  @IsBoolean()
+  isPublish?: boolean;
+
   @ApiProperty({ example: 1, description: 'main image' })
   @IsOptional()
   @IsNumber()
@@ -117,6 +122,11 @@ export class TopProductDto {
   @IsOptional()
   @IsBoolean()
   isTop?: boolean;
+
+  @ApiProperty({ example: true, description: 'saytga  chiqarish' })
+  @IsOptional()
+  @IsBoolean()
+  isPublish?: boolean;
 
   @ApiProperty({
     example: '2025-06-10T00:00:00Z',

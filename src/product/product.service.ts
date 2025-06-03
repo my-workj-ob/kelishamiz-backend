@@ -63,6 +63,7 @@ export class ProductService {
     const [products, total] = await this.productRepository.findAndCount({
       skip,
       take: pageSize,
+      where: { isPublish: true }, // Faqat publish qilingan mahsulotlarni olish
       relations: ['category', 'profile', 'district', 'images', 'likes'],
       order: { isTop: 'DESC', createdAt: 'DESC' },
     });
@@ -113,6 +114,7 @@ export class ProductService {
       where: {
         isTop: true,
         topExpiresAt: MoreThan(now), // Faqat hali amal qilayotgan top e'lonlar
+        isPublish: true, // Faqat publish qilingan top e'lonlar
       },
       order: { topExpiresAt: 'DESC' }, // Avval muddati yaqinlashayotganlar chiqadi
     });
@@ -296,8 +298,6 @@ export class ProductService {
     if (!user) {
       throw new NotFoundException('Foydalanuvchi topilmadi');
     }
-
-    console.log('Foydalanuvchi mavjud likes:', user.likes);
 
     const alreadyLikedProductIds = user.likes?.map((p) => p.id) || [];
 
@@ -552,9 +552,6 @@ export class ProductService {
     userId: number,
   ): Promise<Product> {
     const { categoryId, properties, ...productData } = createProductDto;
-    console.log('Fayllar:', files);
-    console.log("Mahsulot ma'lumotlari:", createProductDto);
-    console.log('Foydalanuvchi IDsi:', userId);
 
     const category = await this.categoryRepository.findOne({
       where: { id: categoryId },
@@ -566,7 +563,6 @@ export class ProductService {
       where: { user: { id: userId } },
     });
     if (!user) throw new NotFoundException(`Foydalanuvchi topilmadi`);
-    console.log('Topilgan foydalanuvchi profili:', user);
 
     const productImages: ProductImage[] = [];
     for (let i = 0; i < files.length; i++) {
@@ -590,7 +586,6 @@ export class ProductService {
         );
       }
     }
-    console.log('Yaratilgan mahsulot rasmlari:', productImages);
 
     const product = this.productRepository.create({
       ...productData,
@@ -601,6 +596,7 @@ export class ProductService {
       districtId: Number(createProductDto.districtId),
       imageIndex: Number(createProductDto.imageIndex),
       propertyValues: properties || [], // propertyValues ni qo'shamiz
+      isPublish: createProductDto.isPublish ?? false,
     });
     console.log('Yaratilgan mahsulot obyekti:', product);
 
@@ -629,6 +625,18 @@ export class ProductService {
   async updateTopStatus(id: number, topData: TopProductDto) {
     const product = await this.productRepository.findOneBy({ id });
     if (!product) throw new NotFoundException('Product not found');
+
+    // Birinchi update qilamiz
+    if (topData.isPublish !== undefined) {
+      product.isPublish = topData.isPublish;
+    }
+
+    // Agar top qilish istalgan bo‘lsa, lekin publish bo‘lmasa — error
+    if (topData.isTop && !product.isPublish && topData.isPublish !== true) {
+      throw new BadRequestException(
+        'Top statusini faqat publish bo‘lganda o‘zgartirish mumkin',
+      );
+    }
 
     if (topData.isTop !== undefined) {
       product.isTop = topData.isTop;
