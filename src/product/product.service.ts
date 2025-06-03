@@ -45,7 +45,7 @@ export class ProductService {
     @InjectRepository(ProductImage)
     private productImageRepository: Repository<ProductImage>,
   ) {}
-
+// ok
   async findAllPaginated(
     userId: number | null,
     page = 1,
