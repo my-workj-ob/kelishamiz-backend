@@ -150,6 +150,9 @@ export class Product {
   @Column({ default: false })
   isTop: boolean;
 
+  @Column({ default: false })
+  isPublish: boolean;
+
   @Column({ type: 'timestamp with time zone', nullable: true })
   topExpiresAt: Date | null;
 
