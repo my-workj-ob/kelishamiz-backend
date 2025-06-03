@@ -30,6 +30,7 @@ import { PaymentService } from './payment/payment.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Payment } from './payment/entities/payme.entity';
 import { UserModule } from './user/user.module';
+import { BannerModule } from './banner/banner.module';
 
 @Module({
   imports: [
@@ -89,6 +90,7 @@ import { UserModule } from './user/user.module';
     PaymentModule,
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     UserModule,
+    BannerModule,
   ],
 
   controllers: [
