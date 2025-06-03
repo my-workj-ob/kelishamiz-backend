@@ -1,3 +1,4 @@
+// src/product/product.controller.ts
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
@@ -31,10 +32,8 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import { User, UserRole } from './../auth/entities/user.entity'; // Import UserRole
+import { User, UserRole } from './../auth/entities/user.entity'; // User va UserRole ni import qilish
 import { JwtOptionalAuthGuard } from './../common/jwt/guards/jwt-optional-auth.guard';
-import { RolesGuard } from './../common/interceptors/roles/roles.guard';
-import { Roles } from './../common/interceptors/roles/role.decorator';
 import { SearchService } from './../search-filter/search-filter.service';
 import { ProductDto, TopProductDto } from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
@@ -44,6 +43,19 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { DeleteResult } from 'typeorm';
+import { RolesGuard } from './../common/interceptors/roles/roles.guard'; // RolesGuard ni import qilish
+import { Roles } from './../common/interceptors/roles/role.decorator'; // Roles decoratorini import qilish
+
+// Foydalanuvchi obyektining tipini aniqlash (sizning autentifikatsiya tizimingizga mos ravishda)
+// Agar sizning JWT strategiyangiz req.user ga userId, phone, username, role kabi ma'lumotlarni qo'shsa
+interface AuthenticatedRequest extends Request {
+  user?: {
+    userId: number; // Sizning JWT payloadingizdagi user ID
+    phone: string;
+    username: string;
+    role: UserRole; // Foydalanuvchi rolini bu yerda kutamiz
+  };
+}
 
 @ApiTags('Products')
 @ApiBearerAuth()
@@ -85,17 +97,17 @@ export class ProductController {
     type: Number,
     description: 'Sahifadagi elementlar soni (standart: 10)',
   })
-  @UseGuards(JwtOptionalAuthGuard) // Allows access even if no JWT is provided
   @ApiQuery({
     name: 'likedIds',
     required: false,
     type: String,
     description: 'Mahsulot IDlari (vergul bilan ajratilgan)',
   })
+  @UseGuards(JwtOptionalAuthGuard) // Ixtiyoriy autentifikatsiya, chunki ba'zida user bo'lmasligi mumkin
   async findAll(
-    @Req() req: any,
-    @Query('page', new ParseIntPipe({ optional: true })) page = 1,
-    @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize = 10,
+    @Req() req: AuthenticatedRequest, // Tipto'g'ri request
+    @Query('page', new ParseIntPipe({ optional: true })) page = 1, // optional true qilib qo'shish
+    @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize = 10, // optional true qilib qo'shish
     @Query('likedIds') likedIdsStr?: string | null,
   ): Promise<{
     data: (Product & { isLike: boolean })[];
@@ -103,7 +115,8 @@ export class ProductController {
     page: number;
     pageSize: number;
   }> {
-    const userId = req?.user?.userId ?? null;
+    const userId = req.user?.userId ?? null;
+    const isAdmin = req.user?.role === UserRole.ADMIN; // ADMIN rolini tekshirish
 
     const likedIds = likedIdsStr
       ? likedIdsStr
@@ -117,11 +130,15 @@ export class ProductController {
       page,
       pageSize,
       likedIds,
+      isAdmin, // isAdmin parametrini uzatish
     );
   }
 
   @Get('top')
-  @ApiOperation({ summary: 'Topga chiqarilgan mahsulotlar ro‘yxati' })
+  @ApiOperation({
+    summary:
+      'Topga chiqarilgan mahsulotlar ro‘yxati (Adminlar unpublished top mahsulotlarni ham ko`ra oladi)',
+  })
   @ApiQuery({
     name: 'page',
     required: false,
@@ -134,9 +151,9 @@ export class ProductController {
     type: Number,
     example: 10,
   })
-  @UseGuards(JwtOptionalAuthGuard) // Top products can be viewed by anyone
+  @UseGuards(JwtOptionalAuthGuard) // Bu yerda ham ixtiyoriy autentifikatsiya
   async findAllTop(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Query('page', new ParseIntPipe({ optional: true })) page = 1,
     @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize = 10,
   ): Promise<{
@@ -145,8 +162,15 @@ export class ProductController {
     page: number;
     pageSize: number;
   }> {
-    const userId = req?.user?.userId ?? null;
-    return this.productService.findAllTopPaginated(userId, page, pageSize);
+    const userId = req.user?.userId ?? null;
+    const isAdmin = req.user?.role === UserRole.ADMIN; // ADMIN rolini tekshirish
+
+    return this.productService.findAllTopPaginated(
+      userId,
+      page,
+      pageSize,
+      isAdmin,
+    ); // isAdmin parametrini uzatish
   }
 
   @UseGuards(JwtOptionalAuthGuard)
@@ -158,8 +182,11 @@ export class ProductController {
     type: String,
     description: 'Mahsulot IDlari (vergul bilan ajratilgan)',
   })
-  async getLikedProducts(@Req() req: any, @Query('ids') ids?: string) {
-    const userId = req?.user?.userId ?? null;
+  async getLikedProducts(
+    @Req() req: AuthenticatedRequest,
+    @Query('ids') ids?: string,
+  ) {
+    const userId = req.user?.userId ?? null;
 
     const localIds = ids
       ? ids
@@ -173,27 +200,32 @@ export class ProductController {
     return this.productService.syncLikesFromLocal(userId, localIds);
   }
 
-  @UseGuards(JwtOptionalAuthGuard) // Anyone can check like status, but userId will determine the result
   @Get(':id/like/status')
   @ApiOkResponse({
     description: 'Mahsulotning layk statusini olish',
   })
   @ApiOperation({ summary: 'user like status ' })
+  @UseGuards(JwtOptionalAuthGuard) // Agar userId querydan kelmasa, req.user dan olish uchun
   async getLikeStatus(
     @Param('id', ParseIntPipe) projectId: number,
-    @Req() req: any, // Get userId from request for authenticated users
+    @Req() req: AuthenticatedRequest, // userId ni req.user dan olish uchun
+    @Query('userId', new ParseIntPipe({ optional: true }))
+    userIdFromQuery?: number, // Qo'shimcha option
   ): Promise<{ liked: boolean }> {
-    const userId = req?.user?.userId ?? null; // Null if not authenticated
+    const userId = userIdFromQuery ?? req.user?.userId ?? null; // Avval querydan, keyin req.user dan
+    if (!userId) {
+      throw new BadRequestException(
+        'User ID is required to check like status.',
+      );
+    }
     const liked = await this.productService.checkLikeStatus(projectId, userId);
     return { liked };
   }
 
-  // 🔸 POST: Create product - Only for authenticated users (USER or ADMIN)
-  @UseGuards(AuthGuard('jwt')) // Requires a valid JWT
-  @Roles(UserRole.USER, UserRole.ADMIN) // Only users with 'USER' or 'ADMIN' role can create products
-  @UseGuards(RolesGuard) // Apply the RolesGuard
+  // 🔸 POST: Create product
+  // @UseGuards(AuthGuard('jwt')) // Authentication shart
+  @Post() // Ikkita @Post decorator bir xil yo'lda bo'lmasligi kerak
   @ApiConsumes('multipart/form-data')
-  @Post()
   @ApiBody({
     schema: {
       type: 'object',
@@ -205,10 +237,16 @@ export class ProductController {
         location: { type: 'string' },
         paymentType: { type: 'string' },
         currencyType: { type: 'string' },
-        mainImage: { type: 'number' }, // Renamed from mainImage to imageIndex
+        mainImage: { type: 'number' },
         negotiable: { type: 'boolean', default: false },
-        regionId: { type: 'number' },
+        regionId: { type: 'number' }, // districtId bilan birga kelishi kerak
         districtId: { type: 'number' },
+        imageIndex: { type: 'number' },
+        isPublish: {
+          type: 'boolean',
+          default: false,
+          description: 'Adminlar uchun publish statusini o`rnatish',
+        }, // isPublish ni qo'shish
         properties: {
           type: 'array',
           items: {
@@ -221,11 +259,10 @@ export class ProductController {
           },
           nullable: true,
         },
-        files: {
-          // Corrected from 'images' to 'files' to match FilesInterceptor
+        images: {
           type: 'array',
           items: {
-            type: 'string',
+            type: 'string', // 'binary' format, lekin swagger schema da 'string'
             format: 'binary',
           },
         },
@@ -239,18 +276,20 @@ export class ProductController {
         'paymentType',
         'currencyType',
         'districtId',
-        'files', // Rasmlar majburiy bo'lishi kerak
+        'images', // Rasmlar majburiy bo'lishi kerak
       ],
     },
   })
   @ApiBadRequestResponse({ description: "Yaroqsiz ma'lumotlar kiritildi" })
   @ApiOperation({ summary: "Mahsulot qo'shish" })
-  @UseInterceptors(FilesInterceptor('files')) // Frontendda yuborilgan 'files' nomi bilan moslashtirilgan
+  @UseInterceptors(FilesInterceptor('images')) // files o'rniga images bo'lishi kerak, chunki ApiBody da images deb ko'rsatilgan
+  @UseGuards(AuthGuard('jwt')) // Post create metodi Authenticated bo'lishi kerak
   async create(
     @UploadedFiles() files: Express.Multer.File[],
-    @Body() body: any,
-    @Req() req: any,
+    @Body() body: any, // To'g'ridan-to'g'ri ProductDto ni ishlatish maqsadga muvofiq
+    @Req() req: AuthenticatedRequest,
   ): Promise<Product> {
+    // Body'dagi barcha qiymatlarni to'g'ri tiplarga o'girish
     const createProductDto: Omit<ProductDto, 'images'> = {
       title: body.title,
       description: body.description,
@@ -268,8 +307,12 @@ export class ProductController {
       imageIndex: Number(body.imageIndex || 0),
     };
 
-    console.log(body);
+    console.log('Qabul qilingan body:', body); // Debugging uchun
+    console.log('Parsed createProductDto:', createProductDto); // Debugging uchun
 
+    if (!req.user) {
+      throw new BadRequestException('User not authenticated.');
+    }
     return this.productService.create(files, createProductDto, req.user.userId);
   }
 
@@ -287,10 +330,10 @@ export class ProductController {
   })
   @ApiBadRequestResponse({ description: "Yaroqsiz filtrlash ma'lumotlari" })
   @ApiOperation({ summary: 'filterlash' })
-  @UsePipes(new ValidationPipe({ transform: true, whitelist: true })) // Add transform and whitelist for DTO validation
+  @UsePipes(new ValidationPipe({ transform: true })) // ValidationPipe bilan transform: true
   async getProducts(
     @Body() filters: GetProductsDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Query('likedIds') likedIdsStr?: string, // localStorage’dan keladi
   ): Promise<{
     data: (Product & { isLike: boolean })[];
@@ -302,7 +345,7 @@ export class ProductController {
       filters.ownProduct && req?.user?.userId ? req.user.userId : undefined;
 
     if (req?.user?.userId && filters.title?.trim()) {
-      const user = req.user as User;
+      const user = req.user as unknown as User; // User tipini to'g'rilash
       await this.searchService.saveSearch(user, filters.title.trim());
     }
 
@@ -313,12 +356,12 @@ export class ProductController {
           .filter((id) => !isNaN(id))
       : [];
 
-    return this.productService.filter(filters, userId, likedIds);
+    const isAdmin = req.user?.role === UserRole.ADMIN; // ADMIN rolini tekshirish
+
+    return this.productService.filter(filters, userId, likedIds, isAdmin); // isAdmin parametrini uzatish
   }
 
   @UseGuards(AuthGuard('jwt'))
-  @Roles(UserRole.USER, UserRole.ADMIN) // Both USER and ADMIN can like/unlike
-  @UseGuards(RolesGuard)
   @Post(':id/like')
   @ApiOkResponse({
     description: "Mahsulotga layk qo'shish/olib tashlash natijasi",
@@ -329,59 +372,81 @@ export class ProductController {
   })
   async toggleLike(
     @Param('id', ParseIntPipe) id: number,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ): Promise<{ liked: boolean; likesCount: number }> {
-    const userId = req?.user?.userId;
+    const userId = req.user?.userId; // Optional bo'lishi mumkin, chunki req.user ba'zida bo'lmasligi mumkin
     if (!userId) {
       throw new BadRequestException('User not authenticated.');
     }
-    const isLiked = await this.productService.toggleLike(Number(id), userId);
+    const isLiked = await this.productService.toggleLike(id, userId);
 
-    const project = await this.productService.findById(Number(id));
-    if (!project) {
+    const product = await this.productService.findById(id); // findById endi isAdmin ni ham qabul qiladi.
+    if (!product) {
       throw new NotFoundException('Product not found');
     }
 
-    return { liked: isLiked, likesCount: project.likesCount };
+    return { liked: isLiked, likesCount: product.likesCount };
   }
 
   @Get('search-by-id-and-category/:title')
-  @ApiOperation({ summary: 'Mahsulotlarni ID va kategoriyaga ko‘ra qidirish' })
+  @UseGuards(JwtOptionalAuthGuard) // Agar isAdmin tekshiruvi bo'lsa, JWT optional
+  @ApiOperation({
+    summary:
+      'Mahsulotni title va categoryId bo`yicha aqlli qidirish (Adminlar unpublished ni ham ko`ra oladi)',
+  })
   async searchByIdAndCategory(
     @Param('title') title: string,
     @Query('categoryId', ParseIntPipe) categoryId: number,
+    @Req() req: AuthenticatedRequest,
   ) {
-    return this.productService.getSmartSearchByIdAndCategory(title, categoryId);
+    const isAdmin = req.user?.role === UserRole.ADMIN; // ADMIN rolini tekshirish
+    return this.productService.getSmartSearchByIdAndCategory(
+      title,
+      categoryId,
+      isAdmin,
+    ); // isAdmin parametrini uzatish
   }
 
   @Get('by-id/:id') // universal route emas!
-  @ApiOperation({ summary: 'Mahsulotni ID bo‘yicha olish' })
-  async findOneById(@Param('id', ParseIntPipe) id: number) {
-    const product = await this.productService.findById(id);
+  @UseGuards(JwtOptionalAuthGuard) // Agar isAdmin tekshiruvi bo'lsa, JWT optional
+  @ApiOperation({
+    summary:
+      'Mahsulotni ID bo`yicha olish (Adminlar unpublished ni ham ko`ra oladi)',
+  })
+  async findOneById(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const isAdmin = req.user?.role === UserRole.ADMIN; // ADMIN rolini tekshirish
+    const product = await this.productService.findById(id, isAdmin); // isAdmin parametrini uzatish
     if (!product) throw new NotFoundException('topilmadi');
     return product;
   }
 
-  // Admin-specific routes
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN) // Only ADMIN can update top status
   @Patch(':id/top')
+  @UseGuards(AuthGuard('jwt'), RolesGuard) // Faqat authenticated va role tekshiruvi bo'lsin
+  @Roles(UserRole.ADMIN) // Faqat ADMINlarga ruxsat
   @ApiOperation({
-    summary: 'Mahsulotning top statusini yangilash (faqat admin uchun)',
+    summary:
+      'Mahsulotning TOP statusini va Publish statusini yangilash (faqat admin)',
+  })
+  @ApiBody({
+    type: TopProductDto,
+    description: 'TOP statusini yangilash ma`lumotlari',
   })
   async updateTopStatus(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIntPipe) id: number, // Paramni ParseIntPipe bilan to'g'ri o'girish
     @Body() topData: TopProductDto,
+    @Req() req: AuthenticatedRequest, // isAdmin uchun req.user ni olish
   ) {
-    return this.productService.updateTopStatus(id, topData);
+    const isAdmin = req.user?.role === UserRole.ADMIN;
+    return this.productService.updateTopStatus(id, topData, isAdmin); // isAdmin parametrini uzatish
   }
 
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN) // Only ADMIN can delete products
   @Delete('by-id/:id') // universal route emas!
-  @ApiOperation({
-    summary: 'Mahsulotni ID bo‘yicha o‘chirish (faqat admin uchun)',
-  })
+  @UseGuards(AuthGuard('jwt'), RolesGuard) // O'chirish ham faqat adminlarga ruxsat berish
+  @Roles(UserRole.ADMIN) // Faqat ADMINlarga ruxsat
+  @ApiOperation({ summary: 'Mahsulotni ID bo`yicha o`chirish (faqat admin)' })
   async deleteOneById(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<{ statusCode: number; message: string }> {
@@ -392,4 +457,6 @@ export class ProductController {
       message: 'Product successfully deleted',
     };
   }
+
+  // ... constructor va service injection
 }
