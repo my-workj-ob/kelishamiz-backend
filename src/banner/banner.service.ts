@@ -11,6 +11,7 @@ import { CreateBannerDto } from './dto/create-banner.dto';
 import { UpdateBannerDto } from './dto/update-banner.dto';
 import { del } from '@vercel/blob'; // Rasmni o'chirish uchun Vercel Blob dan del funksiyasini import qilish
 import { UploadService } from './../file/uploadService';
+import { FileService } from 'src/file/file.service';
 
 @Injectable()
 export class BannerService {
@@ -18,6 +19,7 @@ export class BannerService {
     @InjectRepository(Banner)
     private bannerRepository: Repository<Banner>,
     private uploadService: UploadService, // CloudinaryService o'rniga UploadService ni inject qilish
+    private fileService: FileService, // CloudinaryService o'rniga UploadService ni inject qilish
   ) {}
 
   async create(
@@ -29,7 +31,12 @@ export class BannerService {
     }
     // UploadService orqali faylni yuklaymiz
     const imageUrl = await this.uploadService.uploadFile(file); // Faqat URL ni qaytaradi
-    console.log(imageUrl);
+
+    await this.fileService.saveFile(imageUrl); // Fayl URL'ini bazaga saqlash
+    if (!imageUrl) {
+      throw new BadRequestException('Rasmni yuklashda xatolik yuz berdi.');
+    }
+    // Banner yaratish uchun DTO va yuklangan rasm URLini birlashtiramiz
 
     const banner = this.bannerRepository.create({
       ...createBannerDto,
