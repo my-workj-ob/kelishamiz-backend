@@ -41,7 +41,7 @@ export class User {
   @Column({ nullable: true })
   password?: string;
 
-  @OneToOne(() => Profile, (profile) => profile.user)
+  @OneToOne(() => Profile, (profile) => profile.user, { onDelete: 'CASCADE' })
   profile: Profile;
 
   @OneToMany(() => Comment, (comment) => comment.user, { cascade: true })
@@ -91,7 +91,9 @@ export class User {
   chatRooms: ChatRoom[];
 
   // Foydalanuvchi yuborgan xabarlar
-  @OneToMany(() => Message, (message) => message.sender)
+  @OneToMany(() => Message, (message) => message.sender, {
+    onDelete: 'CASCADE',
+  })
   messages: Message[];
 
   @Column({ type: 'numeric', default: 0 })
