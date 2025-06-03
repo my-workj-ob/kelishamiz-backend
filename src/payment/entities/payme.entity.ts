@@ -23,7 +23,7 @@ export class Payment {
   @ApiProperty({ description: 'To‘lov ID', example: 'uuid-1234-5678' })
   id: string; // UUID bo'lsa string
 
-  @ManyToOne(() => User, (user) => user.payments)
+  @ManyToOne(() => User, (user) => user.payments, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
