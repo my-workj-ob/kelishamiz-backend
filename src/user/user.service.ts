@@ -56,15 +56,27 @@ export class UserService {
     const [users, total] = await this.usersRepository.findAndCount({
       skip: skip,
       take: pageSize,
-      select: ['id', 'phone', 'username', 'role', 'regionId', 'districtId'], // Faqat kerakli maydonlarni olish, parolni qaytarmaslik
+      select: ['id', 'phone', 'username', 'role', 'regionId', 'districtId'],
     });
 
-    // Parolni qaytarmaslik uchun to'liq User ob'ektidan kerakli qismini ajratib olish
     const usersWithoutPassword: Partial<User>[] = users.map((user) => {
-      const { password, ...rest } = user; // 'password' maydoni mavjud bo'lsa, uni olib tashlash
+      const { password, ...rest } = user;
       return rest;
     });
 
     return { users: usersWithoutPassword, total };
+  }
+
+  /**
+   * Foydalanuvchini ID bo'yicha o'chiradi.
+   * @param userId O'chiriladigan foydalanuvchining ID'si.
+   */
+  async deleteUser(userId: number): Promise<void> {
+    const result = await this.usersRepository.delete(userId); // delete usulini chaqirish
+
+    if (result.affected === 0) {
+      // Agar ta'sirlangan qatorlar soni 0 bo'lsa, foydalanuvchi topilmagan
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
   }
 }

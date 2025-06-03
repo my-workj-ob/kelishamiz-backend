@@ -7,9 +7,12 @@ import {
   UseGuards,
   ParseIntPipe,
   BadRequestException,
-  Get, // Get dekoratorini import qiling
-  Query, // Query dekoratorini import qiling
-  DefaultValuePipe, // DefaultValuePipe ni import qiling
+  Get,
+  Query,
+  DefaultValuePipe,
+  Delete, // <-- Delete dekoratorini import qiling
+  HttpCode, // <-- HttpCode dekoratorini import qiling
+  HttpStatus, // <-- HttpStatus ni import qiling
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -17,8 +20,8 @@ import {
   ApiOperation,
   ApiBody,
   ApiParam,
-  ApiQuery, // ApiQuery ni import qiling
-  ApiResponse, // ApiResponse ni import qiling
+  ApiQuery,
+  ApiResponse,
 } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -38,7 +41,7 @@ export class UserController {
 
   @Patch(':id/role')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.USER) // Faqat ADMINlar bu endpointga kirishi mumkin
+  @Roles(UserRole.ADMIN) // FAQAT ADMINLAR rolini yangilashi mumkin
   @ApiOperation({
     summary: 'Foydalanuvchining rolini yangilash (faqat admin uchun)',
   })
@@ -49,7 +52,7 @@ export class UserController {
       properties: {
         role: {
           type: 'string',
-          enum: [UserRole.USER, UserRole.ADMIN],
+          enum: [UserRole.USER, UserRole.ADMIN], // SUPER_ADMIN ni ham qo'shing agar mavjud bo'lsa
           example: UserRole.ADMIN,
         },
       },
@@ -61,6 +64,7 @@ export class UserController {
     @Param('id', ParseIntPipe) userId: number,
     @Body() updateUserRoleDto: UpdateUserRoleDto,
   ) {
+    // SUPER_ADMIN roliga o'zgartirishni cheklashingiz mumkin, agar kerak bo'lsa
     if (!Object.values(UserRole).includes(updateUserRoleDto.role)) {
       throw new BadRequestException('Invalid user role provided.');
     }
@@ -77,8 +81,8 @@ export class UserController {
   }
 
   @Get()
-  @UseGuards(AuthGuard('jwt'), RolesGuard) // Autentifikatsiya va Rolni tekshirish
-  @Roles(UserRole.ADMIN, UserRole.USER) // Faqat ADMINlar bu endpointga kirishi mumkin
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN) // FAQAT ADMINLAR barcha foydalanuvchilarni ko'rishi mumkin
   @ApiOperation({
     summary: 'Barcha foydalanuvchilar roʻyxatini olish (faqat admin uchun)',
   })
@@ -102,8 +106,12 @@ export class UserController {
     schema: {
       type: 'object',
       properties: {
-        users: { type: 'array', items: { $ref: '#/components/schemas/User' } }, // User schemasini ko'rsatish
+        users: { type: 'array', items: { $ref: '#/components/schemas/User' } },
         total: { type: 'number' },
+        page: { type: 'number' }, // Qo'shildi
+        pageSize: { type: 'number' }, // Qo'shildi
+        totalPages: { type: 'number' }, // Qo'shildi
+        message: { type: 'string' }, // Qo'shildi
       },
     },
   })
@@ -135,5 +143,32 @@ export class UserController {
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     };
+  }
+
+  @Delete(':id') // <-- Yangi DELETE endpoint
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN) // FAQAT ADMINLAR foydalanuvchini o'chirishi mumkin
+  @ApiOperation({
+    summary: 'Foydalanuvchini oʻchirish (faqat admin uchun)',
+    description: 'Berilgan ID boʻyicha foydalanuvchini oʻchiradi.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Oʻchiriladigan foydalanuvchi IDsi',
+  })
+  @ApiResponse({
+    status: 204,
+    description: 'Foydalanuvchi muvaffaqiyatli oʻchirildi.',
+  })
+  @ApiResponse({ status: 404, description: 'Foydalanuvchi topilmadi.' })
+  @ApiResponse({ status: 401, description: 'Ruxsatsiz kirish.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Ruxsat yoʻq (faqat adminlar uchun).',
+  })
+  @HttpCode(HttpStatus.NO_CONTENT) // Muvaffaqiyatli o'chirilganda 204 No Content statusini qaytaradi
+  async deleteUser(@Param('id', ParseIntPipe) userId: number): Promise<void> {
+    await this.userService.deleteUser(userId);
   }
 }
