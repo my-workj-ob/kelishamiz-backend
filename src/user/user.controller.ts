@@ -38,7 +38,7 @@ export class UserController {
 
   @Patch(':id/role')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.USER) // Faqat ADMINlar bu endpointga kirishi mumkin
   @ApiOperation({
     summary: 'Foydalanuvchining rolini yangilash (faqat admin uchun)',
   })
