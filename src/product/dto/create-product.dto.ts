@@ -136,3 +136,7 @@ export class TopProductDto {
   @IsDateString()
   topExpiresAt?: string;
 }
+export class PublishProductDto {
+  @IsBoolean()
+  isPublish: boolean;
+}

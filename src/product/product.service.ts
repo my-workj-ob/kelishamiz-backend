@@ -20,7 +20,11 @@ import { User } from '../auth/entities/user.entity';
 import { Category } from '../category/entities/category.entity';
 import { Property } from './../category/entities/property.entity';
 import { Profile } from './../profile/enities/profile.entity';
-import { ProductDto, TopProductDto } from './dto/create-product.dto';
+import {
+  ProductDto,
+  PublishProductDto,
+  TopProductDto,
+} from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
 import { ProductProperty } from './entities/product-property-entity';
 import { Product } from './entities/product.entity';
@@ -671,7 +675,6 @@ export class ProductService {
     const product = await this.productRepository.findOneBy({ id });
     if (!product) throw new NotFoundException('Product not found');
 
-    // Agar isPublish ni o'zgartirish so'ralgan bo'lsa va bu admin bo'lmasa, ruxsat bermaslik
     if (topData.isPublish !== undefined && !isAdmin) {
       throw new BadRequestException(
         'Sizning isPublish statusini o`zgartirishga ruxsatingiz yo`q.',
@@ -679,8 +682,8 @@ export class ProductService {
     }
 
     // Agar isPublish ni o'zgartirish so'ralgan bo'lsa (faqat adminlar uchun)
-    if (topData.isPublish !== undefined) {
-      product.isPublish = topData.isPublish;
+    if (product.isPublish !== undefined) {
+      product.isPublish = topData.isPublish ?? product.isPublish;
     }
 
     // Agar top qilish istalgan bo‘lsa, lekin publish bo‘lmasa — error
@@ -700,6 +703,27 @@ export class ProductService {
     } else if (topData.isTop === false) {
       // Agar isTop false bo'lsa, topExpiresAt ni null qilish
       product.topExpiresAt = null;
+    }
+
+    return this.productRepository.save(product);
+  }
+  async updatePublish(
+    id: number,
+    isPublish: PublishProductDto,
+    isAdmin: boolean,
+  ): Promise<Product> {
+    const product = await this.productRepository.findOneBy({ id });
+    if (!product) throw new NotFoundException('Product not found');
+
+    // Agar isPublish ni o'zgartirish so'ralgan bo'lsa va bu admin bo'lmasa, ruxsat bermaslik
+    if (isPublish.isPublish !== undefined && !isAdmin) {
+      throw new BadRequestException(
+        'Sizning isPublish statusini o`zgartirishga ruxsatingiz yo`q.',
+      );
+    }
+
+    if (isPublish.isPublish !== undefined) {
+      product.isPublish = isPublish.isPublish;
     }
 
     return this.productRepository.save(product);

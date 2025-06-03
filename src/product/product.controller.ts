@@ -35,7 +35,11 @@ import {
 import { User, UserRole } from './../auth/entities/user.entity'; // User va UserRole ni import qilish
 import { JwtOptionalAuthGuard } from './../common/jwt/guards/jwt-optional-auth.guard';
 import { SearchService } from './../search-filter/search-filter.service';
-import { ProductDto, TopProductDto } from './dto/create-product.dto';
+import {
+  ProductDto,
+  PublishProductDto,
+  TopProductDto,
+} from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
 import { Product } from './entities/product.entity';
 import { ProductService } from './product.service';
@@ -441,6 +445,26 @@ export class ProductController {
   ) {
     const isAdmin = req.user?.role === UserRole.ADMIN;
     return this.productService.updateTopStatus(id, topData, isAdmin); // isAdmin parametrini uzatish
+  }
+
+  @Patch(':id/publish')
+  @UseGuards(AuthGuard('jwt'), RolesGuard) // Faqat authenticated va role tekshiruvi bo'lsin
+  @Roles(UserRole.ADMIN) // Faqat ADMINlarga ruxsat
+  @ApiOperation({
+    summary:
+      'Mahsulotning TOP statusini va Publish statusini yangilash (faqat admin)',
+  })
+  @ApiBody({
+    type: TopProductDto,
+    description: 'TOP statusini yangilash ma`lumotlari',
+  })
+  async updatePublish(
+    @Param('id', ParseIntPipe) id: number, // Paramni ParseIntPipe bilan to'g'ri o'girish
+    @Body() isPublish: PublishProductDto,
+    @Req() req: AuthenticatedRequest, // isAdmin uchun req.user ni olish
+  ) {
+    const isAdmin = req.user?.role === UserRole.ADMIN;
+    return this.productService.updatePublish(id, isPublish, isAdmin); // isAdmin parametrini uzatish
   }
 
   @Delete('by-id/:id') // universal route emas!
