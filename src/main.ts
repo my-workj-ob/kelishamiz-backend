@@ -20,6 +20,7 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'http://localhost:5173',
+
       'https://kelishamiz.uz',
       'https://kelishamiz-backend.vercel.app',
       'https://it-experts-nine.vercel.app',
