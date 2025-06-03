@@ -78,7 +78,7 @@ export class UserController {
 
   @Get()
   @UseGuards(AuthGuard('jwt'), RolesGuard) // Autentifikatsiya va Rolni tekshirish
-  @Roles(UserRole.ADMIN) // Faqat ADMINlar bu endpointga kirishi mumkin
+  @Roles(UserRole.ADMIN, UserRole.USER) // Faqat ADMINlar bu endpointga kirishi mumkin
   @ApiOperation({
     summary: 'Barcha foydalanuvchilar roʻyxatini olish (faqat admin uchun)',
   })
