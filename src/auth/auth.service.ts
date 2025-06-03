@@ -11,7 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Profile } from '../profile/enities/profile.entity';
-import { User } from './entities/user.entity';
+import { User, UserRole } from './entities/user.entity';
 import { OtpService } from './fake-otp.service';
 import { Region } from './../location/entities/region.entity';
 import { District } from './../location/entities/district.entity';
@@ -68,6 +68,7 @@ export class AuthService {
       sub: user.id,
       phone: user.phone,
       username: user.username,
+      role: user.role,
     };
     const accessToken = await this.jwtService.signAsync(payload, {
       expiresIn: '12h', // Access token 12 soatdan keyin tugaydi
@@ -92,12 +93,6 @@ export class AuthService {
 
     // OTP tugash vaqtini daqiqalarda hisoblaymiz (butun son)
     const expiresInMinutes = Math.ceil(this.otpExpiryTimeMs / (1000 * 60)); // Millisekundlarni daqiqaga aylantiramiz
-
-    // OTP kodi va tugash vaqtini konsolga chiqarish
-    console.log(
-      `Telefon: ${phone}, Yuborilgan OTP kodi: ${otpCode}, OTP tugash vaqti: ${expiresAt.toLocaleString()}`,
-    );
-    console.log(`OTP ${expiresInMinutes} daqiqadan keyin tugaydi.`); // Yangi qo'shilgan log
 
     return {
       otp: otpCode,
@@ -240,6 +235,7 @@ export class AuthService {
       username,
       regionId,
       districtId,
+      role: UserRole.USER,
     });
 
     const savedUser = await this.userRepo.save(newUser);
@@ -255,11 +251,13 @@ export class AuthService {
 
     if (!existingProfile) {
       const newProfile = this.profileRepo.create({
+        userId: savedUser.id,
         user: savedUser,
         phoneNumber: phone,
         fullName: username,
         region,
         district,
+        role: savedUser.role, // Foydalanuvchi roli
       } as Partial<Profile>); // `as Partial<Profile>` is used here because `region` and `district` might be null/undefined if not found.
 
       await this.profileRepo.save(newProfile);
@@ -268,6 +266,9 @@ export class AuthService {
       existingProfile.fullName = username;
       existingProfile.region = region ?? undefined; // If region is null, set to undefined to avoid TypeORM issues with null relations
       existingProfile.district = district ?? undefined; // If district is null, set to undefined
+      if (existingProfile.user) {
+        existingProfile.user.role = savedUser.role ?? undefined; // ✅ to‘g‘rilandi
+      }
 
       await this.profileRepo.save(existingProfile);
     }
