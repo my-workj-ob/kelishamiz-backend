@@ -7,6 +7,9 @@ import {
   UseGuards,
   ParseIntPipe,
   BadRequestException,
+  Get, // Get dekoratorini import qiling
+  Query, // Query dekoratorini import qiling
+  DefaultValuePipe, // DefaultValuePipe ni import qiling
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -14,26 +17,28 @@ import {
   ApiOperation,
   ApiBody,
   ApiParam,
+  ApiQuery, // ApiQuery ni import qiling
+  ApiResponse, // ApiResponse ni import qiling
 } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { AuthGuard } from '@nestjs/passport';
-import { UserRole } from './../auth/entities/user.entity'; // UserRole enum yo'li
+import { UserRole } from './../auth/entities/user.entity';
 import { Roles } from './../common/interceptors/roles/role.decorator';
 import { RolesGuard } from './../common/interceptors/roles/roles.guard';
 
 class UpdateUserRoleDto {
-  role: UserRole; // Yangi rol
+  role: UserRole;
 }
 
-@ApiTags('Users') // Swagger hujjatlarida Userlar kategoriyasi
-@ApiBearerAuth() // Bu controllerdagi endpointlar JWT token talab qilishini bildiradi
-@Controller('users') // Endpoint prefiksi 'users' bo'ladi (user emas, ko'plik odatiy hol)
+@ApiTags('Users')
+@ApiBearerAuth()
+@Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Patch(':id/role')
-  @UseGuards(AuthGuard('jwt'), RolesGuard) // Autentifikatsiya va Rolni tekshirish
-  @Roles(UserRole.ADMIN) // Faqat ADMINlar bu endpointga kirishi mumkin
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: 'Foydalanuvchining rolini yangilash (faqat admin uchun)',
   })
@@ -53,15 +58,13 @@ export class UserController {
     description: 'Yangi foydalanuvchi roli',
   })
   async updateRole(
-    @Param('id', ParseIntPipe) userId: number, // URL dagi ID ni number ga o'tkazish
-    @Body() updateUserRoleDto: UpdateUserRoleDto, // So'rov body'sidan yangi rolni olish
+    @Param('id', ParseIntPipe) userId: number,
+    @Body() updateUserRoleDto: UpdateUserRoleDto,
   ) {
-    // Kelgan rolni tekshirish, UserRole enumida mavjudligiga ishonch hosil qilish
     if (!Object.values(UserRole).includes(updateUserRoleDto.role)) {
       throw new BadRequestException('Invalid user role provided.');
     }
 
-    // Rolni yangilash service metodini chaqirish
     const updatedUser = await this.userService.updateUserRole(
       userId,
       updateUserRoleDto.role,
@@ -70,6 +73,67 @@ export class UserController {
     return {
       message: 'User role updated successfully',
       user: updatedUser,
+    };
+  }
+
+  @Get()
+  @UseGuards(AuthGuard('jwt'), RolesGuard) // Autentifikatsiya va Rolni tekshirish
+  @Roles(UserRole.ADMIN) // Faqat ADMINlar bu endpointga kirishi mumkin
+  @ApiOperation({
+    summary: 'Barcha foydalanuvchilar roʻyxatini olish (faqat admin uchun)',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Sahifa raqami',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+    description: 'Sahifadagi elementlar soni',
+    example: 10,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Foydalanuvchilar roʻyxati muvaffaqiyatli olindi.',
+    schema: {
+      type: 'object',
+      properties: {
+        users: { type: 'array', items: { $ref: '#/components/schemas/User' } }, // User schemasini ko'rsatish
+        total: { type: 'number' },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Ruxsatsiz kirish.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Ruxsat yoʻq (faqat adminlar uchun).',
+  })
+  async getAllUsers(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
+  ) {
+    if (page <= 0 || pageSize <= 0) {
+      throw new BadRequestException(
+        'Sahifa va sahifa hajmi musbat sonlar boʻlishi kerak.',
+      );
+    }
+
+    const { users, total } = await this.userService.findAllUsers(
+      page,
+      pageSize,
+    );
+
+    return {
+      message: 'Users retrieved successfully',
+      users,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
     };
   }
 }
