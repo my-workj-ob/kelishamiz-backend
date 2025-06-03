@@ -29,6 +29,7 @@ import { PaymentModule } from './payment/payment.module';
 import { PaymentService } from './payment/payment.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Payment } from './payment/entities/payme.entity';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -87,6 +88,7 @@ import { Payment } from './payment/entities/payme.entity';
     NotificationModule,
     PaymentModule,
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    UserModule,
   ],
 
   controllers: [

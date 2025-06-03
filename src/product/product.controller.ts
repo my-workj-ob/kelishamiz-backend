@@ -31,8 +31,10 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import { User } from './../auth/entities/user.entity';
+import { User, UserRole } from './../auth/entities/user.entity'; // Import UserRole
 import { JwtOptionalAuthGuard } from './../common/jwt/guards/jwt-optional-auth.guard';
+import { RolesGuard } from './../common/interceptors/roles/roles.guard';
+import { Roles } from './../common/interceptors/roles/role.decorator';
 import { SearchService } from './../search-filter/search-filter.service';
 import { ProductDto, TopProductDto } from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
@@ -42,6 +44,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { DeleteResult } from 'typeorm';
+
 @ApiTags('Products')
 @ApiBearerAuth()
 @Controller('products')
@@ -82,10 +85,7 @@ export class ProductController {
     type: Number,
     description: 'Sahifadagi elementlar soni (standart: 10)',
   })
-  @UseGuards(JwtOptionalAuthGuard)
-  @Get()
-  @ApiOperation({ summary: 'Mahsulotlar ro‘yxati (isLike bilan)' })
-  @UseGuards(JwtOptionalAuthGuard)
+  @UseGuards(JwtOptionalAuthGuard) // Allows access even if no JWT is provided
   @ApiQuery({
     name: 'likedIds',
     required: false,
@@ -94,8 +94,8 @@ export class ProductController {
   })
   async findAll(
     @Req() req: any,
-    @Query('page', new ParseIntPipe()) page = 1,
-    @Query('pageSize', new ParseIntPipe()) pageSize = 10,
+    @Query('page', new ParseIntPipe({ optional: true })) page = 1,
+    @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize = 10,
     @Query('likedIds') likedIdsStr?: string | null,
   ): Promise<{
     data: (Product & { isLike: boolean })[];
@@ -134,10 +134,11 @@ export class ProductController {
     type: Number,
     example: 10,
   })
+  @UseGuards(JwtOptionalAuthGuard) // Top products can be viewed by anyone
   async findAllTop(
     @Req() req: any,
-    @Query('page', new ParseIntPipe()) page = 1,
-    @Query('pageSize', new ParseIntPipe()) pageSize = 10,
+    @Query('page', new ParseIntPipe({ optional: true })) page = 1,
+    @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize = 10,
   ): Promise<{
     data: (Product & { isLike: boolean })[];
     total: number;
@@ -172,21 +173,25 @@ export class ProductController {
     return this.productService.syncLikesFromLocal(userId, localIds);
   }
 
+  @UseGuards(JwtOptionalAuthGuard) // Anyone can check like status, but userId will determine the result
   @Get(':id/like/status')
   @ApiOkResponse({
     description: 'Mahsulotning layk statusini olish',
   })
   @ApiOperation({ summary: 'user like status ' })
   async getLikeStatus(
-    @Param('id') projectId: number,
-    @Query('userId') userId: number,
+    @Param('id', ParseIntPipe) projectId: number,
+    @Req() req: any, // Get userId from request for authenticated users
   ): Promise<{ liked: boolean }> {
+    const userId = req?.user?.userId ?? null; // Null if not authenticated
     const liked = await this.productService.checkLikeStatus(projectId, userId);
     return { liked };
   }
-  // 🔸 POST: Create product
 
-  @UseGuards(AuthGuard('jwt'))
+  // 🔸 POST: Create product - Only for authenticated users (USER or ADMIN)
+  @UseGuards(AuthGuard('jwt')) // Requires a valid JWT
+  @Roles(UserRole.USER, UserRole.ADMIN) // Only users with 'USER' or 'ADMIN' role can create products
+  @UseGuards(RolesGuard) // Apply the RolesGuard
   @ApiConsumes('multipart/form-data')
   @Post()
   @ApiBody({
@@ -200,10 +205,10 @@ export class ProductController {
         location: { type: 'string' },
         paymentType: { type: 'string' },
         currencyType: { type: 'string' },
-        mainImage: { type: 'number' },
+        mainImage: { type: 'number' }, // Renamed from mainImage to imageIndex
         negotiable: { type: 'boolean', default: false },
-        // regionId: { type: 'number' },
-        // districtId: { type: 'number' },
+        regionId: { type: 'number' },
+        districtId: { type: 'number' },
         properties: {
           type: 'array',
           items: {
@@ -216,13 +221,12 @@ export class ProductController {
           },
           nullable: true,
         },
-        images: {
+        files: {
+          // Corrected from 'images' to 'files' to match FilesInterceptor
           type: 'array',
           items: {
-            type: 'object',
-            properties: {
-              file: { type: 'string', format: 'binary' },
-            },
+            type: 'string',
+            format: 'binary',
           },
         },
       },
@@ -235,14 +239,13 @@ export class ProductController {
         'paymentType',
         'currencyType',
         'districtId',
-        'images', // Rasmlar majburiy bo'lishi kerak
+        'files', // Rasmlar majburiy bo'lishi kerak
       ],
     },
   })
   @ApiBadRequestResponse({ description: "Yaroqsiz ma'lumotlar kiritildi" })
   @ApiOperation({ summary: "Mahsulot qo'shish" })
   @UseInterceptors(FilesInterceptor('files')) // Frontendda yuborilgan 'files' nomi bilan moslashtirilgan
-  @Post()
   async create(
     @UploadedFiles() files: Express.Multer.File[],
     @Body() body: any,
@@ -261,8 +264,8 @@ export class ProductController {
         (body.negotiable === 'false' && false),
       regionId: Number(body.regionId),
       districtId: Number(body.districtId),
-      properties: body.properties || [],
-      imageIndex: body.imageIndex || 0,
+      properties: JSON.parse(body.properties || '[]'), // Parse properties if it's a string
+      imageIndex: Number(body.imageIndex || 0),
     };
 
     console.log(body);
@@ -284,7 +287,7 @@ export class ProductController {
   })
   @ApiBadRequestResponse({ description: "Yaroqsiz filtrlash ma'lumotlari" })
   @ApiOperation({ summary: 'filterlash' })
-  @UsePipes(new ValidationPipe())
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true })) // Add transform and whitelist for DTO validation
   async getProducts(
     @Body() filters: GetProductsDto,
     @Req() req: any,
@@ -314,6 +317,8 @@ export class ProductController {
   }
 
   @UseGuards(AuthGuard('jwt'))
+  @Roles(UserRole.USER, UserRole.ADMIN) // Both USER and ADMIN can like/unlike
+  @UseGuards(RolesGuard)
   @Post(':id/like')
   @ApiOkResponse({
     description: "Mahsulotga layk qo'shish/olib tashlash natijasi",
@@ -323,10 +328,13 @@ export class ProductController {
     summary: "Mahsulotga layk qo'shish/olib tashlash  ya'ni toggle",
   })
   async toggleLike(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Req() req: any,
   ): Promise<{ liked: boolean; likesCount: number }> {
     const userId = req?.user?.userId;
+    if (!userId) {
+      throw new BadRequestException('User not authenticated.');
+    }
     const isLiked = await this.productService.toggleLike(Number(id), userId);
 
     const project = await this.productService.findById(Number(id));
@@ -338,6 +346,7 @@ export class ProductController {
   }
 
   @Get('search-by-id-and-category/:title')
+  @ApiOperation({ summary: 'Mahsulotlarni ID va kategoriyaga ko‘ra qidirish' })
   async searchByIdAndCategory(
     @Param('title') title: string,
     @Query('categoryId', ParseIntPipe) categoryId: number,
@@ -346,20 +355,33 @@ export class ProductController {
   }
 
   @Get('by-id/:id') // universal route emas!
+  @ApiOperation({ summary: 'Mahsulotni ID bo‘yicha olish' })
   async findOneById(@Param('id', ParseIntPipe) id: number) {
     const product = await this.productService.findById(id);
     if (!product) throw new NotFoundException('topilmadi');
     return product;
   }
 
+  // Admin-specific routes
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN) // Only ADMIN can update top status
   @Patch(':id/top')
+  @ApiOperation({
+    summary: 'Mahsulotning top statusini yangilash (faqat admin uchun)',
+  })
   async updateTopStatus(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Body() topData: TopProductDto,
   ) {
     return this.productService.updateTopStatus(id, topData);
   }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN) // Only ADMIN can delete products
   @Delete('by-id/:id') // universal route emas!
+  @ApiOperation({
+    summary: 'Mahsulotni ID bo‘yicha o‘chirish (faqat admin uchun)',
+  })
   async deleteOneById(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<{ statusCode: number; message: string }> {
@@ -370,6 +392,4 @@ export class ProductController {
       message: 'Product successfully deleted',
     };
   }
-
-  // ... constructor va service injection
 }

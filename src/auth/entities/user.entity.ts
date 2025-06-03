@@ -22,7 +22,11 @@ import { Message } from './../../chat/entities/message.entity';
 import { Notification } from './../../notification/entities/notification.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { Payment } from './../../payment/entities/payme.entity';
-
+// user.entity.ts
+export enum UserRole {
+  USER = 'USER',
+  ADMIN = 'ADMIN',
+}
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
@@ -98,4 +102,7 @@ export class User {
   payments: Payment[];
   @OneToMany(() => Notification, (message) => message.user)
   notifications: Notification[];
+
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
+  role: UserRole;
 }
