@@ -11,10 +11,10 @@ export class UploadService {
     try {
       const blob = await put(file.originalname, file.buffer, {
         access: 'public',
-        addRandomSuffix: true, 
+        addRandomSuffix: true,
       });
 
-      return blob.url; 
+      return blob.url;
     } catch (error) {
       console.error('Vercel Blob yuklashda xatolik:', error);
       throw new Error('Vercel Blob-ga fayl yuklashda muammo yuz berdi!');

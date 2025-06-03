@@ -9,14 +9,15 @@ import { Repository } from 'typeorm';
 import { Banner } from './entities/banner.entity';
 import { CreateBannerDto } from './dto/create-banner.dto';
 import { UpdateBannerDto } from './dto/update-banner.dto';
-import { CloudinaryService } from './cloudinary.service';
+import { del } from '@vercel/blob'; // Rasmni o'chirish uchun Vercel Blob dan del funksiyasini import qilish
+import { UploadService } from './../file/uploadService';
 
 @Injectable()
 export class BannerService {
   constructor(
     @InjectRepository(Banner)
     private bannerRepository: Repository<Banner>,
-    private cloudinaryService: CloudinaryService, // Cloudinary service injeckt qilish
+    private uploadService: UploadService, // CloudinaryService o'rniga UploadService ni inject qilish
   ) {}
 
   async create(
@@ -26,13 +27,12 @@ export class BannerService {
     if (!file) {
       throw new BadRequestException('Rasm fayli yuklanmagan.');
     }
-    const uploadResult = await this.cloudinaryService.uploadFile(
-      file,
-      'banners',
-    ); // 'banners' papkasiga yuklash
+    // UploadService orqali faylni yuklaymiz
+    const imageUrl = await this.uploadService.uploadFile(file); // Faqat URL ni qaytaradi
+
     const banner = this.bannerRepository.create({
       ...createBannerDto,
-      imageUrl: uploadResult.secure_url,
+      imageUrl: imageUrl, // Yuklangan rasmni URLini saqlaymiz
     });
     return this.bannerRepository.save(banner);
   }
@@ -42,7 +42,7 @@ export class BannerService {
     if (placement) {
       query.andWhere('banner.placement = :placement', { placement });
     }
-    query.orderBy('banner.order', 'ASC'); // Tartib bo'yicha saralash
+    query.orderBy('banner.order', 'ASC');
     return query.getMany();
   }
 
@@ -62,15 +62,20 @@ export class BannerService {
     const banner = await this.findOne(id);
 
     if (file) {
-      // Eski rasmni o'chirish (ixtiyoriy, lekin tavsiya etiladi)
+      // Agar yangi rasm yuklangan bo'lsa, eskisini Vercel Blob-dan o'chiramiz
       if (banner.imageUrl) {
-        await this.cloudinaryService.deleteFile(banner.imageUrl);
+        try {
+          await del(banner.imageUrl); // Eski rasmni o'chirish
+        } catch (deleteError) {
+          console.warn(
+            `Eski rasmni o'chirishda xatolik yuz berdi: ${banner.imageUrl}`,
+            deleteError,
+          );
+          // O'chirish xatosi jarayonni to'xtatmasligi kerak, shuning uchun faqat ogohlantiramiz
+        }
       }
-      const uploadResult = await this.cloudinaryService.uploadFile(
-        file,
-        'banners',
-      );
-      banner.imageUrl = uploadResult.secure_url;
+      const newImageUrl = await this.uploadService.uploadFile(file);
+      banner.imageUrl = newImageUrl;
     }
 
     Object.assign(banner, updateBannerDto);
@@ -80,7 +85,15 @@ export class BannerService {
   async remove(id: number): Promise<void> {
     const banner = await this.findOne(id);
     if (banner.imageUrl) {
-      await this.cloudinaryService.deleteFile(banner.imageUrl); // Rasmni Cloudinarydan o'chirish
+      try {
+        await del(banner.imageUrl); // Vercel Blob-dan rasmni o'chirish
+      } catch (deleteError) {
+        console.error(
+          `Rasmni o'chirishda xatolik yuz berdi: ${banner.imageUrl}`,
+          deleteError,
+        );
+        throw new Error("Banner rasmini o'chirishda muammo yuz berdi!");
+      }
     }
     await this.bannerRepository.delete(id);
   }
