@@ -1,3 +1,4 @@
+// src/product/product.service.ts
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
@@ -45,12 +46,13 @@ export class ProductService {
     @InjectRepository(ProductImage)
     private productImageRepository: Repository<ProductImage>,
   ) {}
-// ok
+
   async findAllPaginated(
     userId: number | null,
     page = 1,
     pageSize = 10,
     likedIds: number[] = [],
+    isAdmin: boolean = false, // <-- Yangi parametr
   ): Promise<{
     data: (Product & { isLike: boolean })[];
     total: number;
@@ -59,11 +61,15 @@ export class ProductService {
   }> {
     const skip = (page - 1) * pageSize;
 
-    // products ni isTop bo‘yicha birinchi, keyin createdAt bo‘yicha tartiblash
+    const whereCondition: any = {};
+    if (!isAdmin) {
+      whereCondition.isPublish = true; // Faqat ADMIN bo'lmaganda publish qilinganlarni ko'rsatish
+    }
+
     const [products, total] = await this.productRepository.findAndCount({
       skip,
       take: pageSize,
-      where: { isPublish: true }, // Faqat publish qilingan mahsulotlarni olish
+      where: whereCondition, // <-- isPublish shartini shu yerga qo'ydik
       relations: ['category', 'profile', 'district', 'images', 'likes'],
       order: { isTop: 'DESC', createdAt: 'DESC' },
     });
@@ -72,14 +78,11 @@ export class ProductService {
       let isLike = false;
 
       if (userId) {
-        // Agar login qilingan bo‘lsa, likes[] dan tekshir
         isLike = product.likes?.some((user) => user.id === userId) ?? false;
       } else if (likedIds.length > 0) {
-        // Agar login qilinmagan bo‘lsa, query orqali kelgan ID dan tekshir
         isLike = likedIds.includes(product.id);
       }
 
-      // Har bir productga isLike qo‘shamiz
       return {
         ...product,
         isLike,
@@ -98,6 +101,7 @@ export class ProductService {
     userId: number | null,
     page = 1,
     pageSize = 10,
+    isAdmin: boolean = false, // <-- Yangi parametr
   ): Promise<{
     data: (Product & { isLike: boolean })[];
     total: number;
@@ -107,16 +111,20 @@ export class ProductService {
     const skip = (page - 1) * pageSize;
     const now = new Date();
 
+    const whereCondition: any = {
+      isTop: true,
+      topExpiresAt: MoreThan(now),
+    };
+    if (!isAdmin) {
+      whereCondition.isPublish = true; // Faqat ADMIN bo'lmaganda publish qilingan top e'lonlar
+    }
+
     const [products, total] = await this.productRepository.findAndCount({
       skip,
       take: pageSize,
       relations: ['category', 'profile', 'district', 'images', 'likes'],
-      where: {
-        isTop: true,
-        topExpiresAt: MoreThan(now), // Faqat hali amal qilayotgan top e'lonlar
-        isPublish: true, // Faqat publish qilingan top e'lonlar
-      },
-      order: { topExpiresAt: 'DESC' }, // Avval muddati yaqinlashayotganlar chiqadi
+      where: whereCondition, // <-- isPublish shartini shu yerga qo'ydik
+      order: { topExpiresAt: 'DESC' },
     });
 
     const result = products.map((product) => {
@@ -169,8 +177,16 @@ export class ProductService {
       ],
     });
   }
-  async findById(id: number): Promise<Product | null> {
+
+  async findById(
+    id: number,
+    isAdmin: boolean = false,
+  ): Promise<Product | null> {
+    // <-- Yangi parametr
     const where: any = { id };
+    if (!isAdmin) {
+      where.isPublish = true; // Faqat ADMIN bo'lmaganda publish qilingan bo'lishi kerak
+    }
 
     return this.productRepository.findOne({
       where,
@@ -189,16 +205,15 @@ export class ProductService {
     query: string,
     categoryId: number,
     location?: string,
+    isAdmin: boolean = false, // <-- Yangi parametr
   ): Promise<Product[]> {
     try {
       const qb = this.productRepository.createQueryBuilder('product');
 
-      // SIMILARITY ni oldindan hisoblash va alias berish
       qb.addSelect('SIMILARITY(product.title, :query)', 'title_similarity')
         .addSelect('SIMILARITY(product.description, :query)', 'desc_similarity')
         .setParameter('query', query);
 
-      // Order by aliaslar
       qb.orderBy('title_similarity', 'DESC').addOrderBy(
         'desc_similarity',
         'DESC',
@@ -211,7 +226,6 @@ export class ProductService {
 
       const queryString = words.join(' ');
 
-      // WHERE
       qb.where(
         '(product.title % :queryString OR product.description % :queryString)',
         { queryString },
@@ -219,13 +233,16 @@ export class ProductService {
 
       qb.andWhere('product.categoryId = :categoryId', { categoryId });
 
+      if (!isAdmin) {
+        qb.andWhere('product.isPublish = :isPublish', { isPublish: true }); // Faqat ADMIN bo'lmaganda publish qilinganlarni tekshirish
+      }
+
       if (location) {
         qb.andWhere('LOWER(product.location) ILIKE LOWER(:location)', {
           location: `%${location}%`,
         });
       }
 
-      // JOINlar
       qb.leftJoinAndSelect('product.profile', 'profile')
         .leftJoinAndSelect('product.productProperties', 'productProperties')
         .leftJoinAndSelect('productProperties.property', 'property')
@@ -247,23 +264,34 @@ export class ProductService {
   async getSmartSearchByIdAndCategory(
     title: string,
     categoryId: number,
+    isAdmin: boolean = false, // <-- Yangi parametr
   ): Promise<Product[]> {
     if (!title || !categoryId) {
       throw new NotFoundException('title va categoryId talab qilinadi');
     }
 
-    const product = await this.findOne(title, categoryId);
+    const product = await this.findOne(title, categoryId); // findOne metodi isPublish ni tekshirmaydi
 
     if (!product) {
       throw new NotFoundException('Mahsulot topilmadi');
     }
 
+    // Agar product topilsa, lekin u publish qilinmagan bo'lsa va bu admin bo'lmasa, uni qaytarmaymiz.
+    // getFullTextSearchByCategory ichida isPublish tekshiruvi bor.
     const combinedQuery = `${product.title} ${product.description || ''}`;
 
-    return this.getFullTextSearchByCategory(combinedQuery.trim(), categoryId);
+    return this.getFullTextSearchByCategory(
+      combinedQuery.trim(),
+      categoryId,
+      undefined,
+      isAdmin,
+    );
   }
 
-  async getUserProducts(id: number) {
+  async getUserProducts(id: number): Promise<Profile | null> {
+    // Bu metodni User Products ni olib kelishda ishlatish uchun
+    // Agar bu faqat foydalanuvchining o'z mahsulotlari bo'lsa, isPublish ni tekshirmaslik kerak
+    // Agar buni boshqa foydalanuvchi ko'radigan bo'lsa, isPublish ni tekshirish kerak
     return this.profileRepository.findOne({
       where: { id },
       relations: ['products'],
@@ -274,22 +302,21 @@ export class ProductService {
     userId: number | null,
     localLikedProductIds?: number[],
   ) {
-    // 🟡 Agar user login bo'lmagan bo'lsa, local IDs asosida mahsulotlarni qaytaramiz
+    // isPublish tekshiruvini bu yerda qo'shmadim, chunki bu foydalanuvchining like qilganlari.
+    // Agar faqat publish qilinganlarni like qilishga ruxsat bermoqchi bo'lsangiz, qo'shish mumkin.
     if (!userId) {
       const products = await this.productRepository.find({
         where: { id: In(localLikedProductIds ?? []) },
         relations: ['category', 'images', 'likes', 'profile'],
       });
 
-      // Sort the products to match the order of localLikedProductIds
       const orderedProducts = (localLikedProductIds ?? [])
         .map((id) => products.find((p) => p.id === id))
-        .filter((p) => p !== undefined); // filter out any products not found
+        .filter((p) => p !== undefined);
 
       return orderedProducts;
     }
 
-    // 🟢 User ni likes bilan birga topamiz
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: ['likes', 'profile'],
@@ -327,13 +354,11 @@ export class ProductService {
         productsToLike,
       );
 
-      // Userga yangilangan likes ni qo‘shamiz
       user.likes = [...user.likes, ...productsToLike];
       await this.userRepository.save(user);
       console.log('Foydalanuvchining likes yangilandi:', user.likes);
     }
 
-    // 🔁 Hammasini qayta olib, frontendga jo‘natamiz
     const finalLikedProductIds = [
       ...alreadyLikedProductIds,
       ...newProductIdsToLike,
@@ -344,10 +369,9 @@ export class ProductService {
       relations: ['category', 'images', 'likes', 'profile'],
     });
 
-    // Sort the products to match the order of localLikedProductIds
     const orderedProducts = (localLikedProductIds ?? [])
       .map((id) => products.find((p) => p.id === id))
-      .filter((p) => p !== undefined); // filter out any products not found
+      .filter((p) => p !== undefined);
 
     return orderedProducts;
   }
@@ -368,21 +392,20 @@ export class ProductService {
       throw new NotFoundException('User not found');
     }
 
-    // User oldin like bosganmi?
     const hasLiked = project.likes.some((likeUser) => likeUser.id === userId);
 
     if (hasLiked) {
       project.likes = project.likes.filter(
         (likeUser) => likeUser.id !== userId,
       );
-      project.likesCount -= 1; // ✅ Like olib tashlanganda kamaytirish
+      project.likesCount -= 1;
     } else {
       project.likes.push(user);
-      project.likesCount += 1; // ✅ Like qo‘shilganda oshirish
+      project.likesCount += 1;
     }
 
     await this.productRepository.save(project);
-    return !hasLiked; // True → Liked, False → Unliked
+    return !hasLiked;
   }
 
   async checkLikeStatus(projectId: number, userId: number): Promise<boolean> {
@@ -390,9 +413,6 @@ export class ProductService {
       where: { id: projectId },
       relations: ['likes'],
     });
-    console.log(project);
-
-    console.log(project?.likes);
 
     if (!project) throw new NotFoundException('Product not found');
 
@@ -415,6 +435,7 @@ export class ProductService {
     filters: GetProductsDto,
     userId?: number,
     likedIds: number[] = [],
+    isAdmin: boolean = false, // <-- Yangi parametr
   ): Promise<{
     data: (Product & { isLike: boolean })[];
     total: number;
@@ -435,8 +456,8 @@ export class ProductService {
       negotiable,
       regionId,
       districtId,
-      page = 1, // page ni olish, default 1
-      pageSize = 10, // pageSize ni olish, default 10
+      page = 1,
+      pageSize = 10,
       ...otherFilters
     } = filters;
 
@@ -449,7 +470,7 @@ export class ProductService {
       .leftJoin('district.region', 'districtRegion')
       .leftJoinAndSelect('product.region', 'productRegion')
       .leftJoinAndSelect('product.images', 'images')
-      .leftJoinAndSelect('product.likes', 'likes'); // 👈 BU MUHIM!
+      .leftJoinAndSelect('product.likes', 'likes');
 
     if (categoryId) {
       queryBuilder.andWhere('product.categoryId = :categoryId', { categoryId });
@@ -491,8 +512,16 @@ export class ProductService {
       queryBuilder.andWhere('districtRegion.id = :regionId', { regionId });
     }
 
+    // ADMIN bo'lmasa, faqat o'z mahsulotlarini ko'rsatish shartini qo'shamiz
     if (ownProduct && userId) {
-      queryBuilder.andWhere('product.profileId = :userId', { userId });
+      queryBuilder.andWhere('product.profile.user.id = :userId', { userId }); // Foydalanuvchining ID'si bo'yicha
+    }
+
+    if (!isAdmin) {
+      // Faqat ADMIN bo'lmaganda publish qilinganlarni ko'rsatish
+      queryBuilder.andWhere('product.isPublish = :isPublish', {
+        isPublish: true,
+      });
     }
 
     if (properties && Array.isArray(properties) && properties.length > 0) {
@@ -514,7 +543,6 @@ export class ProductService {
 
     queryBuilder.orderBy(`product.${safeSortBy}`, safeSortOrder);
 
-    // pagination: skip va take ni page va pageSize ga asoslab hisoblash
     const skip = (page - 1) * pageSize;
     const take = pageSize;
 
@@ -526,7 +554,6 @@ export class ProductService {
       let isLike = false;
 
       if (userId) {
-        // product.likes bo‘lmasa, uni oldindan `leftJoinAndSelect` qilish kerak
         isLike = product.likes?.some((user) => user.id === userId) ?? false;
       } else if (likedIds.length > 0) {
         isLike = likedIds.includes(product.id);
@@ -559,10 +586,12 @@ export class ProductService {
     if (!category) throw new NotFoundException(`Kategoriya topilmadi`);
     console.log('Topilgan kategoriya:', category);
 
-    const user = await this.profileRepository.findOne({
+    // Profile orqali userni topish, chunki product profilega bog'langan
+    const profile = await this.profileRepository.findOne({
       where: { user: { id: userId } },
     });
-    if (!user) throw new NotFoundException(`Foydalanuvchi topilmadi`);
+    if (!profile)
+      throw new NotFoundException(`Foydalanuvchi profili topilmadi`);
 
     const productImages: ProductImage[] = [];
     for (let i = 0; i < files.length; i++) {
@@ -571,7 +600,7 @@ export class ProductService {
       try {
         const vercelFileUrl = await this.uploadService.uploadFile(file);
 
-        await this.fileService.saveFile(vercelFileUrl);
+        await this.fileService.saveFile(vercelFileUrl); // Faylni DBga saqlash
 
         const newProductImage = this.productImageRepository.create({
           url: vercelFileUrl,
@@ -590,13 +619,13 @@ export class ProductService {
     const product = this.productRepository.create({
       ...productData,
       category,
-      profile: user,
+      profile: profile, // User emas, Profile obyektini bog'laymiz
       images: productImages,
       regionId: Number(createProductDto.regionId),
       districtId: Number(createProductDto.districtId),
       imageIndex: Number(createProductDto.imageIndex),
-      propertyValues: properties || [], // propertyValues ni qo'shamiz
-      isPublish: createProductDto.isPublish ?? false,
+      propertyValues: properties || [],
+      isPublish: createProductDto.isPublish ?? false, // isPublish shu yerda keladi
     });
     console.log('Yaratilgan mahsulot obyekti:', product);
 
@@ -619,22 +648,46 @@ export class ProductService {
       throw new NotFoundException('Mahsulot topilmadi');
     }
 
+    // Rasmlarni Vercel Blob dan o'chirish (ixtiyoriy, lekin tavsiya etiladi)
+    // for (const image of product.images) {
+    //   try {
+    //     await this.uploadService.deleteFile(image.url); // deleteFile metodi mavjud deb faraz qilyapmiz
+    //     await this.fileService.deleteFile(image.url); // DB dan ham o'chirish
+    //   } catch (error) {
+    //     console.warn(
+    //       `Rasm o'chirishda xatolik: ${image.url}, ${error.message}`,
+    //     );
+    //   }
+    // }
+
     return await this.productRepository.delete(productId);
   }
 
-  async updateTopStatus(id: number, topData: TopProductDto) {
+  async updateTopStatus(
+    id: number,
+    topData: TopProductDto,
+    isAdmin: boolean,
+  ): Promise<Product> {
     const product = await this.productRepository.findOneBy({ id });
     if (!product) throw new NotFoundException('Product not found');
 
-    // Birinchi update qilamiz
+    // Agar isPublish ni o'zgartirish so'ralgan bo'lsa va bu admin bo'lmasa, ruxsat bermaslik
+    if (topData.isPublish !== undefined && !isAdmin) {
+      throw new BadRequestException(
+        'Sizning isPublish statusini o`zgartirishga ruxsatingiz yo`q.',
+      );
+    }
+
+    // Agar isPublish ni o'zgartirish so'ralgan bo'lsa (faqat adminlar uchun)
     if (topData.isPublish !== undefined) {
       product.isPublish = topData.isPublish;
     }
 
     // Agar top qilish istalgan bo‘lsa, lekin publish bo‘lmasa — error
-    if (topData.isTop && !product.isPublish && topData.isPublish !== true) {
+    // Bu tekshiruv hozir ham o'rinli, chunki top bo'lmagan mahsulot published bo'lishi shart
+    if (topData.isTop && !product.isPublish) {
       throw new BadRequestException(
-        'Top statusini faqat publish bo‘lganda o‘zgartirish mumkin',
+        'Top statusini faqat publish bo‘lgan mahsulotlarga qo`llash mumkin.',
       );
     }
 
@@ -644,6 +697,9 @@ export class ProductService {
 
     if (topData.topExpiresAt) {
       product.topExpiresAt = new Date(topData.topExpiresAt);
+    } else if (topData.isTop === false) {
+      // Agar isTop false bo'lsa, topExpiresAt ni null qilish
+      product.topExpiresAt = null;
     }
 
     return this.productRepository.save(product);
