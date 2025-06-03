@@ -64,6 +64,7 @@ export class BannerController {
     @UploadedFile() file: Express.Multer.File,
     @Body() body: Omit<CreateBannerDto, 'imageUrl'>,
   ): Promise<Banner> {
+    
     if (!file) {
       throw new BadRequestException('Banner rasmi majburiy.');
     }
