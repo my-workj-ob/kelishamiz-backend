@@ -7,6 +7,7 @@ import { Profile } from './../profile/enities/profile.entity';
 import { Product } from './../product/entities/product.entity';
 import { UserSearch } from './../search-filter/entities/user-search.entity';
 import { Like } from './../like/entities/like.entity';
+import { Comment } from 'src/comments/entities/comments.entity';
 
 @Injectable()
 export class UserService {
