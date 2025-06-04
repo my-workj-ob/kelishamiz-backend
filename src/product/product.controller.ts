@@ -293,6 +293,8 @@ export class ProductController {
     @Body() body: any, // To'g'ridan-to'g'ri ProductDto ni ishlatish maqsadga muvofiq
     @Req() req: AuthenticatedRequest,
   ): Promise<Product> {
+    console.log(files, body, req); // Debugging uchun
+
     // Body'dagi barcha qiymatlarni to'g'ri tiplarga o'girish
     const createProductDto: Omit<ProductDto, 'images'> = {
       title: body.title,
