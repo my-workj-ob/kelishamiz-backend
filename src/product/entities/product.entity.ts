@@ -120,7 +120,7 @@ export class Product {
   @Column({ default: 0 })
   commentsCount: number;
 
-  @ManyToMany(() => User, (user) => user.likes)
+  @ManyToMany(() => User, (user) => user.likes, { onDelete: 'CASCADE' })
   likes: User[];
 
   @ManyToOne(() => Region, (region) => region.products, { eager: true })

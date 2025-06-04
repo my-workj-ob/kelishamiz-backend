@@ -645,25 +645,30 @@ export class ProductService {
   async deleteOneById(productId: number): Promise<DeleteResult> {
     const product = await this.productRepository.findOne({
       where: { id: productId },
-      relations: ['profile', 'images', 'chatRooms'],
+      relations: ['profile', 'images', 'chatRooms', 'likes'],
     });
 
     if (!product) {
       throw new NotFoundException('Mahsulot topilmadi');
     }
 
-    // Rasmlarni Vercel Blob dan o'chirish (ixtiyoriy, lekin tavsiya etiladi)
+    // 1. product_likes_user jadvalidan bog‘langanlarni o‘chirish
+    if (product.likes?.length > 0) {
+      product.likes = [];
+      await this.productRepository.save(product);
+    }
+
+    // 2. Rasmlarni o‘chirish (agar kerak bo‘lsa)
     // for (const image of product.images) {
     //   try {
-    //     await this.uploadService.deleteFile(image.url); // deleteFile metodi mavjud deb faraz qilyapmiz
-    //     await this.fileService.deleteFile(image.url); // DB dan ham o'chirish
+    //     await this.uploadService.deleteFile(image.url);
+    //     await this.fileService.deleteFile(image.url);
     //   } catch (error) {
-    //     console.warn(
-    //       `Rasm o'chirishda xatolik: ${image.url}, ${error.message}`,
-    //     );
+    //     console.warn(`Rasm o'chirishda xatolik: ${image.url}, ${error.message}`);
     //   }
     // }
 
+    // 3. Product'ni o‘chirish
     return await this.productRepository.delete(productId);
   }
 
