@@ -72,8 +72,6 @@ export class ProductDto {
   price: number;
   @ApiProperty()
   categoryId: number;
-  @ApiProperty()
-  location: string;
 
   @ApiProperty({ type: [ProductImageDto], description: 'Mahsulot rasmlari' })
   @ValidateNested({ each: true })

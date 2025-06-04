@@ -238,7 +238,7 @@ export class ProductController {
         description: { type: 'string' },
         price: { type: 'number' },
         categoryId: { type: 'number' },
-        location: { type: 'string' },
+
         paymentType: { type: 'string' },
         currencyType: { type: 'string' },
         mainImage: { type: 'number' },
@@ -293,13 +293,17 @@ export class ProductController {
     @Body() body: any, // To'g'ridan-to'g'ri ProductDto ni ishlatish maqsadga muvofiq
     @Req() req: AuthenticatedRequest,
   ): Promise<Product> {
+    console.log('Qabul qilingan fayllar:', files); // Debugging uchun
+    console.log('Qabul qilingan body:', body); // Debugging uchun
+    console.log('User from request:', req.user); // Debugging uchun
+    console.log('User from request:', body.properties); // Debugging uchun
+
     // Body'dagi barcha qiymatlarni to'g'ri tiplarga o'girish
     const createProductDto: Omit<ProductDto, 'images'> = {
       title: body.title,
       description: body.description,
       price: Number(body.price),
       categoryId: Number(body.categoryId),
-      location: body.location,
       paymentType: body.paymentType,
       currencyType: body.currencyType,
       negotiable:
@@ -307,7 +311,10 @@ export class ProductController {
         (body.negotiable === 'false' && false),
       regionId: Number(body.regionId),
       districtId: Number(body.districtId),
-      properties: JSON.parse(body.properties || '[]'), // Parse properties if it's a string
+      properties:
+        typeof body.properties === 'string'
+          ? JSON.parse(body.properties)
+          : body.properties || [],
       imageIndex: Number(body.imageIndex || 0),
     };
 
