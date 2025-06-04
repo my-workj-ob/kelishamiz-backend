@@ -291,7 +291,7 @@ export class ProductService {
       isAdmin,
     );
   }
-
+// ok
   async getUserProducts(id: number): Promise<Profile | null> {
     return this.profileRepository
       .createQueryBuilder('profile')
