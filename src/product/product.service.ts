@@ -291,7 +291,7 @@ export class ProductService {
       isAdmin,
     );
   }
-// ok
+  // ok
   async getUserProducts(id: number): Promise<Profile | null> {
     return this.profileRepository
       .createQueryBuilder('profile')
@@ -299,9 +299,7 @@ export class ProductService {
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.images', 'image')
       .where('profile.id = :id', { id })
-      .orderBy('product.id', 'DESC') // mahsulotlar tartibi
-      .addOrderBy('image.id', 'DESC') // rasmlar tartibi
-      .getOne();
+      .getOne(); // E'tibor bering: orderBy yo‘q!
   }
 
   async syncLikesFromLocal(
