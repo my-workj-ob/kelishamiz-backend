@@ -11,6 +11,7 @@ import {
   NotFoundException,
   Logger,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import {
@@ -20,18 +21,20 @@ import {
   ApiBody,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { CreatePaymentDto, WebhookDto } from './dto/payme.dto';
+import { CreatePaymentDto, TopUpDto, WebhookDto } from './dto/payme.dto';
 import { ProfileService } from './../profile/profile.service';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
-// Define specific Payme error codes for clarity
+import { Request } from 'express'; // req obyekti uchun
+
+// Payme xato kodlari uchun enum
 enum PaymeErrorCodes {
   Unauthorized = -32504,
-  SystemError = -32000, // Generic system error
+  SystemError = -32000, // Umumiy tizim xatosi
 }
+
 @ApiTags('Payments') // Swaggerda "Payments" bo‘limi sifatida ko‘rinadi
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'))
 @Controller('payment')
 export class PaymentController {
   private readonly logger = new Logger(PaymentController.name);
@@ -43,12 +46,23 @@ export class PaymentController {
     private profileService: ProfileService,
     private readonly configService: ConfigService, // Inject qilingan
   ) {
-    this.merchantId =
-      this.configService.get<string>('683c3f4c70e3dcbc596bd119') ??
-      '683c3f4c70e3dcbc596bd119';
-    this.apiKey =
-      this.configService.get<string>('asot9Zhnv23Knw3x4YwXk%bhQWaNGJSwTxK4') ??
-      'asot9Zhnv23Knw3x4YwXk%bhQWaNGJSwTxK4'; // Shu yerda API_KEY olinadi
+    // ConfigService orqali muhit o'zgaruvchilaridan qiymatlarni oling
+    this.merchantId = this.configService.get<string>(
+      'PAYME_MERCHANT_ID',
+      '683c3f4c70e3dcbc596bd119',
+    );
+    this.apiKey = this.configService.get<string>(
+      'PAYME_API_KEY',
+      'asot9Zhnv23Knw3x4YwXk%bhQWaNGJSwTxK4',
+    );
+
+    // Debug loglar: Ishlab chiqishda foydali, lekin ishlab chiqarishda o'chirilishi kerak
+    this.logger.log(
+      `Initialized PaymentController with Merchant ID: ${this.merchantId}`,
+    );
+    this.logger.log(
+      `Initialized PaymentController with API Key: ${this.apiKey.substring(0, 5)}...`,
+    );
   }
 
   @Get('balance/:userId')
@@ -61,11 +75,13 @@ export class PaymentController {
   async getBalance(@Param('userId') userId: number): Promise<number> {
     const existUser = await this.profileService.findByUser(userId);
     if (!existUser) {
-      throw new Error('Foydalanuvchi ID kiritilmagan');
+      // NotFoundException NestJSning o'rnatilgan exception classidir,
+      // bu avtomatik ravishda HTTP 404 javobini qaytaradi.
+      throw new NotFoundException('Foydalanuvchi topilmadi.');
     }
     return this.paymentService.getBalance(userId);
   }
-
+  @UseGuards(AuthGuard('jwt'))
   @Post('create')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -77,77 +93,85 @@ export class PaymentController {
   @ApiResponse({ status: 400, description: 'Noto‘g‘ri so‘rov' })
   async createPayment(
     @Body() body: CreatePaymentDto,
-    @Req() req: any,
+    @Req() req: any, // req.user.userId'ga kirish uchun any turi ishlatilgan
   ): Promise<string> {
     const user_id = req.user.userId as number;
 
     if (!user_id) {
-      throw new NotFoundException('Foydalanuvchi ID kiritilmagan');
+      throw new NotFoundException(
+        'Autentifikatsiya qilingan foydalanuvchi topilmadi.',
+      );
     }
 
     return this.paymentService.createPayment(user_id, body);
   }
 
   @Post('webhook')
-  @HttpCode(HttpStatus.OK) // Payme expects 200 OK for successful responses (even errors in RPC format)
-  @ApiOperation({
-    summary: "Payme webhook so'rovlarini qayta ishlash",
-    description:
-      "Payme'dan kelgan webhook so'rovlarini avtorizatsiya qiladi va boshqaradi.",
-  })
-  @ApiBody({ type: WebhookDto })
-  @ApiResponse({
-    status: 200,
-    description:
-      'Webhook muvaffaqiyatli qayta ishlandi (JSON-RPC javobi qaytariladi).',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Avtorizatsiya muvaffaqiyatsiz tugadi.',
-  }) // Use 401 for HTTP Unauthorized
+  @HttpCode(HttpStatus.OK)
   async handleWebhook(
     @Body() data: WebhookDto,
-    @Req() req: Request, // Request obyektini qabul qilish
+    @Req() req: Request,
   ): Promise<any> {
-    // Log Payme'dan kelgan so'rov ID'si va metodi
-    this.logger.log(
-      `Received Payme webhook request. Method: ${data.method}, ID: ${data.id}`,
-    );
+    // ===== FULL DEBUG LOGGING =====
+    this.logger.log('=== WEBHOOK REQUEST DEBUG START ===');
+    this.logger.log(`Request Method: ${req.method}`);
+    this.logger.log(`Request URL: ${req.url}`);
+    this.logger.log(`Request Headers:`, JSON.stringify(req.headers, null, 2));
+    this.logger.log(`Request Body:`, JSON.stringify(data, null, 2));
+    this.logger.log(`Raw Headers Object:`, req.headers);
 
-    // --- Authentication ---
-    const authHeader = req.headers['authorization'];
+    // Check for different header variations
+    const authHeaders = [
+      req.headers['authorization'],
+      req.headers['Authorization'],
+      req.headers['AUTHORIZATION'],
+    ];
 
-    // For debugging during development, you can temporarily log configured credentials.
-    // Ensure these logs are removed or secured in production environments.
-    console.log(
-      `DEBUG: Configured Merchant ID: ${this.merchantId}, API Key: ${this.apiKey.substring(0, 5)}...`,
-    ); // Log partial API key
+    this.logger.log(`Authorization header variations:`, authHeaders);
+    this.logger.log('=== WEBHOOK REQUEST DEBUG END ===');
 
-    if (!authHeader || !authHeader.startsWith('Basic ')) {
-      this.logger.warn(
-        `Webhook authentication failed: Missing or invalid Authorization header.`,
-      );
-      // Return Payme's expected RPC error format for unauthorized access
+    const authHeader =
+      req.headers['authorization'] || req.headers['Authorization'];
+
+    if (!authHeader) {
+      this.logger.error('❌ NO AUTHORIZATION HEADER FOUND');
+      this.logger.error('Available headers:', Object.keys(req.headers));
+
       return {
         jsonrpc: '2.0',
         id: data.id,
         error: {
-          code: PaymeErrorCodes.Unauthorized, // Payme's specific error code for unauthorized
+          code: PaymeErrorCodes.Unauthorized,
           message: 'Unauthorized',
-          data: 'Invalid Authorization header format.',
+          data: 'Authorization header is missing.',
+        },
+      };
+    }
+
+    this.logger.log(`✅ Authorization header found: ${authHeader}`);
+
+    if (typeof authHeader !== 'string' || !authHeader.startsWith('Basic ')) {
+      this.logger.error(`❌ Invalid auth header format: ${authHeader}`);
+      return {
+        jsonrpc: '2.0',
+        id: data.id,
+        error: {
+          code: PaymeErrorCodes.Unauthorized,
+          message: 'Unauthorized',
+          data: 'Authorization header must start with "Basic ".',
         },
       };
     }
 
     const base64Credentials = authHeader.split(' ')[1];
+    this.logger.log(`Base64 credentials: ${base64Credentials}`);
+
     let credentials;
     try {
       credentials = Buffer.from(base64Credentials, 'base64').toString('utf8');
+      this.logger.log(`Decoded credentials: ${credentials}`);
     } catch (e) {
-      this.logger.error(
-        `Webhook authentication failed: Base64 decoding error.`,
-        e.stack,
-      );
+      this.logger.error(`Base64 decode error:`, e);
       return {
         jsonrpc: '2.0',
         id: data.id,
@@ -160,20 +184,24 @@ export class PaymentController {
     }
 
     const [receivedId, receivedKey] = credentials.split(':');
+    this.logger.log(`Received ID: ${receivedId}`);
+    this.logger.log(`Received Key: ${receivedKey ? 'Present' : 'Missing'}`);
 
-    // For debugging received credentials (use with caution in production)
-    console.log(
-      `DEBUG: Received Credentials - ID: ${receivedId}, Key: ${receivedKey?.substring(0, 5)}...`,
-    );
+    // Environment values
+    this.logger.log(`Expected ID: ${this.merchantId}`);
+    this.logger.log(`Expected Key length: ${this.apiKey?.length || 0}`);
 
-    if (receivedId !== this.merchantId || receivedKey !== this.apiKey) {
-      this.logger.error(
-        `Webhook authentication failed: Invalid credentials. Provided ID: ${receivedId}, Key: ${receivedKey ? 'Provided' : 'Not Provided'}.`,
-      );
-      // Return Payme's expected RPC error format for invalid credentials
+    const idMatches = receivedId === this.merchantId;
+    const keyMatches = receivedKey === this.apiKey;
+
+    this.logger.log(`ID matches: ${idMatches}`);
+    this.logger.log(`Key matches: ${keyMatches}`);
+
+    if (!idMatches || !keyMatches) {
+      this.logger.error('❌ Credential mismatch!');
       return {
         jsonrpc: '2.0',
-        id: data.id, // Payme so'rovining ID'si
+        id: data.id,
         error: {
           code: PaymeErrorCodes.Unauthorized,
           message: 'Unauthorized',
@@ -182,35 +210,70 @@ export class PaymentController {
       };
     }
 
-    // --- Delegate to Service ---
+    this.logger.log('✅ Authentication successful, delegating to service...');
+
     try {
-      // Autentifikatsiya muvaffaqiyatli o'tgandan so'ng, so'rovni service'ga yuboring
       const result = await this.paymentService.handleWebhook(data);
-      return result; // Service'dan kelgan JSON-RPC javobini qaytaring
+      this.logger.log('✅ Service response:', JSON.stringify(result, null, 2));
+      return result;
     } catch (error) {
-      // Service'dan kelgan istisnolarni Payme kutadigan RPC formatiga o'tkazing
-      this.logger.error(
-        `Error processing webhook in PaymeWebhookService: ${error.message}`,
-        error.stack,
-      );
-
-      // Try to extract the specific error code and message from the service layer
-      // Assuming service errors are structured similar to: { error: { code, message, data } }
-      const errorCode =
-        error.response?.error?.code || PaymeErrorCodes.SystemError;
-      const errorMessage =
-        error.response?.error?.message || 'Internal system error.';
-      const errorData = error.response?.error?.data || error.message;
-
+      this.logger.error(`❌ Service error:`, error);
       return {
         jsonrpc: '2.0',
         id: data.id,
         error: {
-          code: errorCode,
-          message: errorMessage,
-          data: errorData,
+          code: PaymeErrorCodes.SystemError,
+          message: 'Internal system error.',
+          data: error.message,
         },
       };
+    }
+  }
+
+  @Post('top-up-manual')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Foydalanuvchi balansini qo'lda to'ldirish" })
+  @ApiResponse({
+    status: 200,
+    description: "Balans muvaffaqiyatli to'ldirildi.",
+  })
+  @ApiResponse({ status: 400, description: "Yaroqsiz so'rov ma'lumotlari." })
+  @ApiResponse({ status: 404, description: 'Foydalanuvchi topilmadi.' })
+  @ApiResponse({
+    status: 500,
+    description: 'Serverda ichki xatolik yuz berdi.',
+  })
+  async topUpUserBalance(@Body() topUpDto: TopUpDto): Promise<any> {
+    const { userId, amountInTiyin } = topUpDto;
+
+    if (amountInTiyin <= 0) {
+      throw new BadRequestException('Amount must be positive.');
+    }
+
+    try {
+      // Serviceni chaqiramiz
+      const newBalance = await this.paymentService.topUpUserBalance(
+        userId,
+        amountInTiyin,
+      );
+      return {
+        message: `Foydalanuvchi ${userId} balansiga ${amountInTiyin / 100} so'm qo'shildi. Yangi balans: ${newBalance / 100} so'm.`,
+        userId: userId,
+        newBalanceInTiyin: newBalance,
+        newBalanceInUZS: newBalance / 100, // So'mda qaytarish
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw new NotFoundException(error.message); // Foydalanuvchi topilmasa 404 qaytarish
+      }
+      this.logger.error(
+        `Error topping up balance:`,
+        error.message,
+        error.stack,
+      );
+      throw new BadRequestException(
+        `Balansni to'ldirishda xatolik: ${error.message}`,
+      );
     }
   }
 }

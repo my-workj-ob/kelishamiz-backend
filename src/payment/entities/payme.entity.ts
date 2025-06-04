@@ -75,6 +75,12 @@ export class Payment {
     example: '2025-06-01T17:46:00+05:00',
   })
   created_at: Date;
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @ApiProperty({
+    description: 'Yaratilgan vaqt',
+    example: '2025-06-01T17:46:00+05:00',
+  })
+  updated_at: Date;
 
   @Column({ nullable: true })
   @ApiProperty({

@@ -199,8 +199,6 @@ export class ProductController {
           .filter((id) => !isNaN(id))
       : [];
 
-    console.log('Local liked product IDs:', localIds);
-
     return this.productService.syncLikesFromLocal(userId, localIds);
   }
 
