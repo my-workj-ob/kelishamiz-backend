@@ -316,7 +316,6 @@ export class ProductService {
 
       const orderedProducts = (localLikedProductIds ?? [])
         .map((id) => products.find((p) => p.id === id))
-        .filter((p) => p !== undefined);
 
       return orderedProducts;
     }
@@ -368,14 +367,19 @@ export class ProductService {
       ...newProductIdsToLike,
     ];
 
+    console.log('console.log(finalLikedProductIds); ', finalLikedProductIds);
+
     const products = await this.productRepository.find({
       where: { id: In(localLikedProductIds ?? []) },
       relations: ['category', 'images', 'likes', 'profile'],
     });
 
-    const orderedProducts = (localLikedProductIds ?? [])
-      .map((id) => products.find((p) => p.id === id))
-      .filter((p) => p !== undefined);
+    const orderedProducts = (localLikedProductIds ?? []).map((id) =>
+      products.find((p) => p.id === id),
+    );
+
+    console.log('console.log(finalLikedProductIds); ', orderedProducts);
+
 
     return orderedProducts;
   }
