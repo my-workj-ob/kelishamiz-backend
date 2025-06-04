@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -285,7 +289,6 @@ export class PaymentService {
     try {
       switch (method) {
         case 'CheckPerformTransaction': {
-          // --- Input Validation for CheckPerformTransaction ---
           if (
             !params.account ||
             !params.account.order_id ||
@@ -341,10 +344,11 @@ export class PaymentService {
           // --- Input Validation for CreateTransaction ---
           if (
             !params.account ||
-            !params.account.order_id ||
             !params.id ||
             typeof params.time === 'undefined' ||
-            typeof params.time !== 'number' // Ensure time is a number
+            typeof params.time !== 'number' ||
+            typeof params.amount === 'undefined' ||
+            typeof params.amount !== 'number'
           ) {
             return createErrorResponse(
               PaymeErrorCodes.InvalidParams,
@@ -353,81 +357,109 @@ export class PaymentService {
             );
           }
 
-          const orderIdCreate = params.account.order_id;
+          const account = params.account;
           const paymeTransactionId = params.id;
-          const transactionTime = params.time; // Unix timestamp in milliseconds
+          const transactionTime = params.time;
+          const amount = params.amount;
+
+          // Account parametrlarini tekshirish
+          let orderId: number | undefined;
+          let userId: number | undefined;
+
+          if (account.order_id) {
+            orderId = parseInt(account.order_id.toString());
+          } else if (account.user_id) {
+            userId = parseInt(account.user_id.toString());
+          } else {
+            return createErrorResponse(
+              PaymeErrorCodes.InvalidParams,
+              'Invalid account: Neither order_id nor user_id provided.',
+              { receivedAccount: account },
+            );
+          }
 
           const queryRunner = this.dataSource.createQueryRunner();
           await queryRunner.connect();
           await queryRunner.startTransaction();
 
           try {
-            // Find payment and lock it for the duration of the transaction
-            const paymentCreate = await queryRunner.manager.findOne(Payment, {
-              where: { id: orderIdCreate },
-              lock: { mode: 'pessimistic_write' },
-            });
+            let paymentCreate: Payment | null = null;
+
+            if (orderId) {
+              paymentCreate = await queryRunner.manager.findOne(Payment, {
+                where: { id: orderId.toString() },
+                lock: { mode: 'pessimistic_write' },
+              });
+            } else if (userId) {
+              paymentCreate = await queryRunner.manager.findOne(Payment, {
+                where: {
+                  user_id: userId,
+                  amount_in_tiyin: amount,
+                  status: PaymentStatus.Pending,
+                },
+                lock: { mode: 'pessimistic_write' },
+              });
+            }
 
             if (!paymentCreate) {
               await queryRunner.rollbackTransaction();
               return createErrorResponse(
                 PaymeErrorCodes.TransactionNotFound,
                 'Order not found.',
-                { orderId: orderIdCreate },
+                { orderId: orderId, userId: userId },
               );
             }
 
-            // --- Idempotency Check & State Validation ---
-            if (paymentCreate.status !== PaymentStatus.Pending) {
-              // If the payment is not pending, it might be a duplicate request
-              if (paymentCreate.payme_transaction_id === paymeTransactionId) {
-                // This is a duplicate request for an already created/completed transaction
-                this.logger.log(
-                  `CreateTransaction: Duplicate request for existing transaction ${paymeTransactionId}. Returning existing details.`,
-                );
-                await queryRunner.rollbackTransaction(); // No changes needed, safe rollback
-                return {
-                  id: id,
-                  result: {
-                    create_time: paymentCreate.created_at.getTime(),
-                    transaction: paymentCreate.payme_transaction_id,
-                    state:
-                      paymentCreate.status === PaymentStatus.Completed ||
-                      paymentCreate.status === PaymentStatus.ToppedUp
-                        ? 2 // Completed
-                        : 1, // Created (or other active non-completed state)
-                  },
-                };
-              } else {
-                // Payment exists but is in an invalid state for a *new* transaction ID
-                this.logger.warn(
-                  `CreateTransaction: Invalid state for payment ${orderIdCreate}. Current status: ${paymentCreate.status}. Payme Transaction ID mismatch.`,
-                );
-                await queryRunner.rollbackTransaction();
-                return createErrorResponse(
-                  PaymeErrorCodes.InvalidState,
-                  'Unable to create transaction: invalid state for payment.',
-                  {
-                    orderId: orderIdCreate,
-                    currentStatus: paymentCreate.status,
-                    receivedPaymeTransactionId: paymeTransactionId,
-                    existingPaymeTransactionId:
-                      paymentCreate.payme_transaction_id,
-                  },
-                );
-              }
+            // --- Existing transaction check ---
+            const existingTransaction = await queryRunner.manager.findOne(
+              Payment,
+              {
+                where: { payme_transaction_id: paymeTransactionId },
+              },
+            );
+
+            if (existingTransaction) {
+              await queryRunner.rollbackTransaction();
+              this.logger.log(
+                `CreateTransaction: Transaction ${paymeTransactionId} already exists. Returning existing details.`,
+              );
+              return {
+                id: id,
+                result: {
+                  create_time: existingTransaction.created_at.getTime(),
+                  transaction: paymeTransactionId,
+                  state:
+                    existingTransaction.status === PaymentStatus.Completed
+                      ? 2
+                      : 1,
+                },
+              };
             }
 
-            // Update payment status and details
+            // --- State validation ---
+            if (paymentCreate.status !== PaymentStatus.Pending) {
+              await queryRunner.rollbackTransaction();
+              return createErrorResponse(
+                PaymeErrorCodes.InvalidState,
+                'Payment is not in pending state.',
+                {
+                  orderId: orderId,
+                  userId: userId,
+                  currentStatus: paymentCreate.status,
+                },
+              );
+            }
+
+            // Update payment
             paymentCreate.payme_transaction_id = paymeTransactionId;
             paymentCreate.status = PaymentStatus.Created;
-            paymentCreate.created_at = new Date(transactionTime); // Payme `time` is milliseconds
+            paymentCreate.created_at = new Date(transactionTime);
 
-            await queryRunner.manager.save(paymentCreate); // Save within the transaction
-            await queryRunner.commitTransaction(); // Commit all changes
+            await queryRunner.manager.save(paymentCreate);
+            await queryRunner.commitTransaction();
 
             this.logger.log(
-              `Payment ${orderIdCreate} status updated to '${PaymentStatus.Created}'. Payme Transaction ID: ${paymeTransactionId}`,
+              `Payment ${paymentCreate.id} status updated to 'Created'. Payme Transaction ID: ${paymeTransactionId}`,
             );
 
             return {
@@ -439,18 +471,18 @@ export class PaymentService {
               },
             };
           } catch (error) {
-            await queryRunner.rollbackTransaction(); // Rollback on error
+            await queryRunner.rollbackTransaction();
             this.logger.error(
-              `Error during CreateTransaction for orderId: ${orderIdCreate}.`,
+              `Error during CreateTransaction: ${error.message}`,
               error.stack,
             );
             return createErrorResponse(
               PaymeErrorCodes.SystemError,
               'System error during transaction creation.',
-              { message: error.message, orderId: orderIdCreate },
+              { message: error.message },
             );
           } finally {
-            await queryRunner.release(); // Release the query runner
+            await queryRunner.release();
           }
         }
 
@@ -858,6 +890,70 @@ export class PaymentService {
         'An unexpected internal system error occurred.',
         { message: error.message },
       );
+    }
+  }
+
+  async topUpUserBalance(
+    userId: number,
+    amountInTiyin: number,
+  ): Promise<number> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Foydalanuvchini topish va qulflash (konkurentlik muammolarini oldini olish uchun)
+      const user = await queryRunner.manager.findOne(User, {
+        where: { id: userId },
+        lock: { mode: 'pessimistic_write' }, // Yozish uchun qulflash
+      });
+
+      if (!user) {
+        throw new NotFoundException(`Foydalanuvchi ID ${userId} topilmadi.`);
+      }
+
+      // 2. Balansni yangilash
+      user.balance += amountInTiyin / 100; // Tiyinlarni so'mga o'girib qo'shish
+
+      await queryRunner.manager.save(user);
+
+      // 3. To'lov yozuvini yaratish (agar kerak bo'lsa)
+      // Bu qism Payme orqali kelmagan, balki ichki to'ldirish bo'lgani uchun
+      // oddiy Payment yozuvini yaratishingiz mumkin.
+      const payment = new Payment();
+      payment.user_id = user.id;
+      payment.amount_in_tiyin = amountInTiyin;
+      payment.status = PaymentStatus.Completed; // To'g'ridan-to'g'ri completed
+      payment.transaction_type = 'in'; // Kiruvchi to'lov
+      payment.created_at = new Date();
+      payment.updated_at = new Date();
+      // payment.payme_transaction_id = 'MANUAL_TOPUP_' + Date.now(); // Agar Payme ID ga o'xshash unique ID kerak bo'lsa
+      // payment.reason = 'Manual balance top-up'; // Sabab
+
+      await queryRunner.manager.save(payment);
+
+      await queryRunner.commitTransaction(); // Tranzaksiyani yakunlash
+
+      this.logger.log(
+        `Foydalanuvchi ${userId} balansiga ${amountInTiyin / 100} so'm qo'shildi. Yangi balans: ${user.balance} so'm.`,
+      );
+
+      return user.balance * 100; // Yangi balansni tiyinlarda qaytarish
+    } catch (error) {
+      await queryRunner.rollbackTransaction(); // Xato bo'lsa, tranzaksiyani orqaga qaytarish
+      this.logger.error(
+        `Error topping up balance for user ${userId}:`,
+        error.message,
+        error.stack,
+      );
+      if (error instanceof NotFoundException) {
+        throw error; // controllerda tutish uchun
+      }
+      throw new InternalServerErrorException(
+        `Balansni to'ldirishda ichki xatolik yuz berdi: ${error.message}`,
+      );
+    } finally {
+      await queryRunner.release(); // QueryRunner'ni bo'shatish
     }
   }
 }

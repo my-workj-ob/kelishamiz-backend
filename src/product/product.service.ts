@@ -293,13 +293,15 @@ export class ProductService {
   }
 
   async getUserProducts(id: number): Promise<Profile | null> {
-    // Bu metodni User Products ni olib kelishda ishlatish uchun
-    // Agar bu faqat foydalanuvchining o'z mahsulotlari bo'lsa, isPublish ni tekshirmaslik kerak
-    // Agar buni boshqa foydalanuvchi ko'radigan bo'lsa, isPublish ni tekshirish kerak
-    return this.profileRepository.findOne({
-      where: { id },
-      relations: ['products', 'products.category', 'products.images'],
-    });
+    return this.profileRepository
+      .createQueryBuilder('profile')
+      .leftJoinAndSelect('profile.products', 'product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.images', 'image')
+      .where('profile.id = :id', { id })
+      .orderBy('product.id', 'ASC') // mahsulotlar tartibi
+      .addOrderBy('image.id', 'ASC') // rasmlar tartibi
+      .getOne();
   }
 
   async syncLikesFromLocal(

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsInt, IsNotEmpty, Min } from 'class-validator';
 
 export class CreatePaymentDto {
   @ApiProperty({
@@ -109,4 +110,21 @@ export class WebhookDto {
     },
   })
   params: any;
+}
+
+export class TopUpDto {
+  @ApiProperty({ description: 'Foydalanuvchi IDsi', example: 1 })
+  @IsNotEmpty()
+  @IsInt()
+  @Min(1)
+  userId: number;
+
+  @ApiProperty({
+    description: "To'ldiriladigan summa (tiyinlarda)",
+    example: 500000,
+  }) // 500000 tiyin = 5000 so'm
+  @IsNotEmpty()
+  @IsInt() // To'lov summasi tiyinlarda bo'lgani uchun butun son
+  @Min(1)
+  amountInTiyin: number;
 }
