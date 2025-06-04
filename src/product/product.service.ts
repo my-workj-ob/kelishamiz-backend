@@ -332,13 +332,11 @@ export class ProductService {
 
     const alreadyLikedProductIds = user.likes?.map((p) => p.id) || [];
 
-    // 3. Yangi like qilinadigan mahsulotlar aniqlanadi
     const newProductIdsToLike =
       localLikedProductIds?.filter(
         (id) => !alreadyLikedProductIds.includes(id),
       ) ?? [];
 
-    // 4. Yangi like'lar DBga yoziladi
     if (newProductIdsToLike.length > 0) {
       const productsToLike = await this.productRepository.find({
         where: { id: In(newProductIdsToLike) },
@@ -355,22 +353,16 @@ export class ProductService {
       }
 
       await this.productRepository.save(productsToLike);
-      console.log('Yangi mahsulotlar like qilindi:', productsToLike);
 
       user.likes = [...user.likes, ...productsToLike];
       await this.userRepository.save(user);
-      console.log('Foydalanuvchining likes yangilandi:', user.likes);
     }
 
-    // 5. Yakuniy liked product ID larni tayyorlaymiz
     const finalLikedProductIds = [
       ...alreadyLikedProductIds,
       ...newProductIdsToLike,
     ];
 
-    console.log('Final liked IDs:', finalLikedProductIds);
-
-    // 6. Faqat shu ID'lar bo'yicha mahsulotlar olib kelinadi
     const products = await this.productRepository.find({
       where: { id: In(finalLikedProductIds) },
       relations: ['category', 'images', 'likes', 'profile'],
@@ -379,8 +371,6 @@ export class ProductService {
     const orderedProducts = finalLikedProductIds
       .map((id) => products.find((p) => p.id === id))
       .filter((p): p is Product => !!p);
-
-    console.log('Ordered liked products:', orderedProducts);
 
     return orderedProducts;
   }

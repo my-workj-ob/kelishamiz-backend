@@ -24,7 +24,11 @@ import { CreatePaymentDto, WebhookDto } from './dto/payme.dto';
 import { ProfileService } from './../profile/profile.service';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
-
+// Define specific Payme error codes for clarity
+enum PaymeErrorCodes {
+  Unauthorized = -32504,
+  SystemError = -32000, // Generic system error
+}
 @ApiTags('Payments') // Swaggerda "Payments" bo‘limi sifatida ko‘rinadi
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
@@ -85,79 +89,128 @@ export class PaymentController {
   }
 
   @Post('webhook')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.OK) // Payme expects 200 OK for successful responses (even errors in RPC format)
   @ApiOperation({
-    summary: 'Payme webhook so‘rovlarni qayta ishlash',
-    description: 'Payme dan kelgan webhook so‘rovlarini boshqaradi',
+    summary: "Payme webhook so'rovlarini qayta ishlash",
+    description:
+      "Payme'dan kelgan webhook so'rovlarini avtorizatsiya qiladi va boshqaradi.",
   })
   @ApiBody({ type: WebhookDto })
   @ApiResponse({
     status: 200,
-    description: 'Webhook muvaffaqiyatli qayta ishlandi',
+    description:
+      'Webhook muvaffaqiyatli qayta ishlandi (JSON-RPC javobi qaytariladi).',
   })
-  @ApiResponse({ status: 400, description: 'Noto‘g‘ri webhook so‘rovi' })
+  @ApiResponse({
+    status: 401,
+    description: 'Avtorizatsiya muvaffaqiyatsiz tugadi.',
+  }) // Use 401 for HTTP Unauthorized
   async handleWebhook(
     @Body() data: WebhookDto,
     @Req() req: Request, // Request obyektini qabul qilish
   ): Promise<any> {
-    // JSON-RPC javobini qaytarish uchun Promise<any>
+    // Log Payme'dan kelgan so'rov ID'si va metodi
+    this.logger.log(
+      `Received Payme webhook request. Method: ${data.method}, ID: ${data.id}`,
+    );
+
+    // --- Authentication ---
     const authHeader = req.headers['authorization'];
-    console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey); // Bu loglarni o'chirish yoki debug rejimida qoldirish
+
+    // For debugging during development, you can temporarily log configured credentials.
+    // Ensure these logs are removed or secured in production environments.
+    console.log(
+      `DEBUG: Configured Merchant ID: ${this.merchantId}, API Key: ${this.apiKey.substring(0, 5)}...`,
+    ); // Log partial API key
 
     if (!authHeader || !authHeader.startsWith('Basic ')) {
-      this.logger.warn('Webhook: Missing or invalid Authorization header.');
-      console.log('merchantId: ', this.merchantId, 'api key :', this.apiKey); // Takroriy log
-      throw new UnauthorizedException('Unauthorized'); // Payme ning -32504 xato kodi
-    }
-
-    const base64Credentials = authHeader.split(' ')[1];
-    const credentials = Buffer.from(base64Credentials, 'base64').toString(
-      'utf8',
-    );
-    const [id, key] = credentials.split(':');
-
-    this.logger.log(`Webhook: Received credentials - ID: ${id}, Key: ${key}`);
-    this.logger.log(
-      `Webhook: Configured credentials - Merchant ID: ${this.merchantId}, API Key: ${this.apiKey}`,
-    );
-
-    if (id !== this.merchantId || key !== this.apiKey) {
-      this.logger.error(
-        `Webhook: Invalid credentials. Provided ID: ${id}, Key: ${key}`,
+      this.logger.warn(
+        `Webhook authentication failed: Missing or invalid Authorization header.`,
       );
-      // Payme kutadigan RPC formatidagi xato javobini qaytaring
-      return {
-        jsonrpc: '2.0',
-        id: data.id, // Payme so'rovining ID'si
-        error: {
-          code: -32504, // Noto'g'ri avtorizatsiya xato kodi
-          message: 'Unauthorized',
-          data: 'Invalid credentials', // Qo'shimcha ma'lumot
-        },
-      };
-    }
-
-    // Autentifikatsiya muvaffaqiyatli o'tgandan so'ng, so'rovni service'ga yuboring
-    try {
-      const result = await this.paymentService.handleWebhook(data);
-      return result; // Service'dan kelgan JSON-RPC javobini qaytaring
-    } catch (error) {
-      this.logger.error(
-        `Error processing webhook in service: ${error.message}`,
-        error.stack,
-      );
-      // Service'dan kelgan xatolarni Payme kutadigan RPC formatiga o'tkazing
+      // Return Payme's expected RPC error format for unauthorized access
       return {
         jsonrpc: '2.0',
         id: data.id,
         error: {
-          code: error.response?.error?.code || -32000, // Service'dan kelgan xato kodini ishlatish
-          message: error.response?.error?.message || 'Internal error',
-          data: error.message, // Qo'shimcha ma'lumot
+          code: PaymeErrorCodes.Unauthorized, // Payme's specific error code for unauthorized
+          message: 'Unauthorized',
+          data: 'Invalid Authorization header format.',
+        },
+      };
+    }
+
+    const base64Credentials = authHeader.split(' ')[1];
+    let credentials;
+    try {
+      credentials = Buffer.from(base64Credentials, 'base64').toString('utf8');
+    } catch (e) {
+      this.logger.error(
+        `Webhook authentication failed: Base64 decoding error.`,
+        e.stack,
+      );
+      return {
+        jsonrpc: '2.0',
+        id: data.id,
+        error: {
+          code: PaymeErrorCodes.Unauthorized,
+          message: 'Unauthorized',
+          data: 'Failed to decode credentials.',
+        },
+      };
+    }
+
+    const [receivedId, receivedKey] = credentials.split(':');
+
+    // For debugging received credentials (use with caution in production)
+    console.log(
+      `DEBUG: Received Credentials - ID: ${receivedId}, Key: ${receivedKey?.substring(0, 5)}...`,
+    );
+
+    if (receivedId !== this.merchantId || receivedKey !== this.apiKey) {
+      this.logger.error(
+        `Webhook authentication failed: Invalid credentials. Provided ID: ${receivedId}, Key: ${receivedKey ? 'Provided' : 'Not Provided'}.`,
+      );
+      // Return Payme's expected RPC error format for invalid credentials
+      return {
+        jsonrpc: '2.0',
+        id: data.id, // Payme so'rovining ID'si
+        error: {
+          code: PaymeErrorCodes.Unauthorized,
+          message: 'Unauthorized',
+          data: 'Invalid merchant ID or API key.',
+        },
+      };
+    }
+
+    // --- Delegate to Service ---
+    try {
+      // Autentifikatsiya muvaffaqiyatli o'tgandan so'ng, so'rovni service'ga yuboring
+      const result = await this.paymentService.handleWebhook(data);
+      return result; // Service'dan kelgan JSON-RPC javobini qaytaring
+    } catch (error) {
+      // Service'dan kelgan istisnolarni Payme kutadigan RPC formatiga o'tkazing
+      this.logger.error(
+        `Error processing webhook in PaymeWebhookService: ${error.message}`,
+        error.stack,
+      );
+
+      // Try to extract the specific error code and message from the service layer
+      // Assuming service errors are structured similar to: { error: { code, message, data } }
+      const errorCode =
+        error.response?.error?.code || PaymeErrorCodes.SystemError;
+      const errorMessage =
+        error.response?.error?.message || 'Internal system error.';
+      const errorData = error.response?.error?.data || error.message;
+
+      return {
+        jsonrpc: '2.0',
+        id: data.id,
+        error: {
+          code: errorCode,
+          message: errorMessage,
+          data: errorData,
         },
       };
     }
   }
-
-  
 }
