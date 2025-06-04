@@ -298,7 +298,7 @@ export class ProductService {
     // Agar buni boshqa foydalanuvchi ko'radigan bo'lsa, isPublish ni tekshirish kerak
     return this.profileRepository.findOne({
       where: { id },
-      relations: ['products'],
+      relations: ['products', 'products.category', 'products.images'],
     });
   }
 
@@ -583,10 +583,9 @@ export class ProductService {
     userId: number,
   ): Promise<Product> {
     const { categoryId, properties, ...productData } = createProductDto;
-    console.log("files:", files);
+    console.log('files:', files);
     console.log('createProductDto:', createProductDto);
-    
-    
+
     const category = await this.categoryRepository.findOne({
       where: { id: categoryId },
     });
