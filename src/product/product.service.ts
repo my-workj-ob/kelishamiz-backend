@@ -579,7 +579,9 @@ export class ProductService {
 
   async create(
     files: Express.Multer.File[],
+
     createProductDto: Omit<ProductDto, 'images'>,
+
     userId: number,
   ): Promise<Product> {
     const { categoryId, properties, ...productData } = createProductDto;
@@ -587,24 +589,26 @@ export class ProductService {
     const category = await this.categoryRepository.findOne({
       where: { id: categoryId },
     });
+
     if (!category) throw new NotFoundException(`Kategoriya topilmadi`);
+
     console.log('Topilgan kategoriya:', category);
 
-    // Profile orqali userni topish, chunki product profilega bog'langan
-    const profile = await this.profileRepository.findOne({
+    const user = await this.profileRepository.findOne({
       where: { user: { id: userId } },
     });
-    if (!profile)
-      throw new NotFoundException(`Foydalanuvchi profili topilmadi`);
+
+    if (!user) throw new NotFoundException(`Foydalanuvchi topilmadi`);
 
     const productImages: ProductImage[] = [];
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
       try {
         const vercelFileUrl = await this.uploadService.uploadFile(file);
 
-        await this.fileService.saveFile(vercelFileUrl); // Faylni DBga saqlash
+        await this.fileService.saveFile(vercelFileUrl);
 
         const newProductImage = this.productImageRepository.create({
           url: vercelFileUrl,
@@ -613,7 +617,9 @@ export class ProductService {
         productImages.push(newProductImage);
       } catch (error) {
         console.error('Yuklash xatoligi:', error);
+
         console.log("Xatolikka sabab bo'lgan fayllar:", files);
+
         throw new InternalServerErrorException(
           `Rasm yuklashda xatolik: ${error.message}`,
         );
@@ -622,22 +628,33 @@ export class ProductService {
 
     const product = this.productRepository.create({
       ...productData,
+
       category,
-      profile: profile, // User emas, Profile obyektini bog'laymiz
+
+      profile: user,
+
       images: productImages,
+
       regionId: Number(createProductDto.regionId),
+
       districtId: Number(createProductDto.districtId),
+
       imageIndex: Number(createProductDto.imageIndex),
-      propertyValues: properties || [],
-      isPublish: createProductDto.isPublish ?? false, // isPublish shu yerda keladi
+
+      propertyValues: properties || [], // propertyValues ni qo'shamiz
+
+      isPublish: createProductDto.isPublish ?? false,
     });
+
     console.log('Yaratilgan mahsulot obyekti:', product);
 
     await this.productRepository.save(product);
+
     console.log('Mahsulot saqlandi.');
 
     return await this.productRepository.findOneOrFail({
       where: { id: product.id },
+
       relations: ['category', 'images', 'region', 'district'],
     });
   }
