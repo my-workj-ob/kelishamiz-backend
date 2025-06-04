@@ -299,8 +299,8 @@ export class ProductService {
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.images', 'image')
       .where('profile.id = :id', { id })
-      .orderBy('product.id', 'ASC') // mahsulotlar tartibi
-      .addOrderBy('image.id', 'ASC') // rasmlar tartibi
+      .orderBy('product.id', 'DESC') // mahsulotlar tartibi
+      .addOrderBy('image.id', 'DESC') // rasmlar tartibi
       .getOne();
   }
 
