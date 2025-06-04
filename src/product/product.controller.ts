@@ -307,7 +307,7 @@ export class ProductController {
         (body.negotiable === 'false' && false),
       regionId: Number(body.regionId),
       districtId: Number(body.districtId),
-      properties: JSON.parse(body.properties || '[]'), // Parse properties if it's a string
+      properties: body.properties,
       imageIndex: Number(body.imageIndex || 0),
     };
 
