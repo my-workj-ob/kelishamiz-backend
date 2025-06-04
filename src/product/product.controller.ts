@@ -286,14 +286,15 @@ export class ProductController {
   })
   @ApiBadRequestResponse({ description: "Yaroqsiz ma'lumotlar kiritildi" })
   @ApiOperation({ summary: "Mahsulot qo'shish" })
-  @UseInterceptors(FilesInterceptor('images')) // files o'rniga images bo'lishi kerak, chunki ApiBody da images deb ko'rsatilgan
+  @UseInterceptors(FilesInterceptor('files')) // files o'rniga images bo'lishi kerak, chunki ApiBody da images deb ko'rsatilgan
   @UseGuards(AuthGuard('jwt')) // Post create metodi Authenticated bo'lishi kerak
   async create(
     @UploadedFiles() files: Express.Multer.File[],
     @Body() body: any, // To'g'ridan-to'g'ri ProductDto ni ishlatish maqsadga muvofiq
     @Req() req: AuthenticatedRequest,
   ): Promise<Product> {
-    console.log(files, body, req); // Debugging uchun
+    console.log('files:', files); // Debugging uchun
+    console.log('body:', body); // Debugging uchun
 
     // Body'dagi barcha qiymatlarni to'g'ri tiplarga o'girish
     const createProductDto: Omit<ProductDto, 'images'> = {
@@ -309,7 +310,7 @@ export class ProductController {
         (body.negotiable === 'false' && false),
       regionId: Number(body.regionId),
       districtId: Number(body.districtId),
-      properties: body.properties,
+      properties: JSON.parse(body.properties || '[]'),
       imageIndex: Number(body.imageIndex || 0),
     };
 
