@@ -579,9 +579,7 @@ export class ProductService {
 
   async create(
     files: Express.Multer.File[],
-
     createProductDto: Omit<ProductDto, 'images'>,
-
     userId: number,
   ): Promise<Product> {
     const { categoryId, properties, ...productData } = createProductDto;
@@ -589,26 +587,24 @@ export class ProductService {
     const category = await this.categoryRepository.findOne({
       where: { id: categoryId },
     });
-
     if (!category) throw new NotFoundException(`Kategoriya topilmadi`);
-
     console.log('Topilgan kategoriya:', category);
 
-    const user = await this.profileRepository.findOne({
+    // Profile orqali userni topish, chunki product profilega bog'langan
+    const profile = await this.profileRepository.findOne({
       where: { user: { id: userId } },
     });
-
-    if (!user) throw new NotFoundException(`Foydalanuvchi topilmadi`);
+    if (!profile)
+      throw new NotFoundException(`Foydalanuvchi profili topilmadi`);
 
     const productImages: ProductImage[] = [];
-
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
       try {
         const vercelFileUrl = await this.uploadService.uploadFile(file);
 
-        await this.fileService.saveFile(vercelFileUrl);
+        await this.fileService.saveFile(vercelFileUrl); // Faylni DBga saqlash
 
         const newProductImage = this.productImageRepository.create({
           url: vercelFileUrl,
@@ -617,9 +613,7 @@ export class ProductService {
         productImages.push(newProductImage);
       } catch (error) {
         console.error('Yuklash xatoligi:', error);
-
         console.log("Xatolikka sabab bo'lgan fayllar:", files);
-
         throw new InternalServerErrorException(
           `Rasm yuklashda xatolik: ${error.message}`,
         );
@@ -628,33 +622,22 @@ export class ProductService {
 
     const product = this.productRepository.create({
       ...productData,
-
       category,
-
-      profile: user,
-
+      profile: profile, // User emas, Profile obyektini bog'laymiz
       images: productImages,
-
       regionId: Number(createProductDto.regionId),
-
       districtId: Number(createProductDto.districtId),
-
       imageIndex: Number(createProductDto.imageIndex),
-
-      propertyValues: properties || [], // propertyValues ni qo'shamiz
-
-      isPublish: createProductDto.isPublish ?? false,
+      propertyValues: properties || [],
+      isPublish: createProductDto.isPublish ?? false, // isPublish shu yerda keladi
     });
-
     console.log('Yaratilgan mahsulot obyekti:', product);
 
     await this.productRepository.save(product);
-
     console.log('Mahsulot saqlandi.');
 
     return await this.productRepository.findOneOrFail({
       where: { id: product.id },
-
       relations: ['category', 'images', 'region', 'district'],
     });
   }
@@ -669,23 +652,18 @@ export class ProductService {
       throw new NotFoundException('Mahsulot topilmadi');
     }
 
-    // 1. product_likes_user jadvalidan bog‘langanlarni o‘chirish
-    if (product.likes?.length > 0) {
-      product.likes = [];
-      await this.productRepository.save(product);
-    }
-
-    // 2. Rasmlarni o‘chirish (agar kerak bo‘lsa)
+    // Rasmlarni Vercel Blob dan o'chirish (ixtiyoriy, lekin tavsiya etiladi)
     // for (const image of product.images) {
     //   try {
-    //     await this.uploadService.deleteFile(image.url);
-    //     await this.fileService.deleteFile(image.url);
+    //     await this.uploadService.deleteFile(image.url); // deleteFile metodi mavjud deb faraz qilyapmiz
+    //     await this.fileService.deleteFile(image.url); // DB dan ham o'chirish
     //   } catch (error) {
-    //     console.warn(`Rasm o'chirishda xatolik: ${image.url}, ${error.message}`);
+    //     console.warn(
+    //       `Rasm o'chirishda xatolik: ${image.url}, ${error.message}`,
+    //     );
     //   }
     // }
 
-    // 3. Product'ni o‘chirish
     return await this.productRepository.delete(productId);
   }
 

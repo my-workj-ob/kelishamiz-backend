@@ -293,9 +293,6 @@ export class ProductController {
     @Body() body: any, // To'g'ridan-to'g'ri ProductDto ni ishlatish maqsadga muvofiq
     @Req() req: AuthenticatedRequest,
   ): Promise<Product> {
-    console.log('files:', files); // Debugging uchun
-    console.log('body:', body); // Debugging uchun
-
     // Body'dagi barcha qiymatlarni to'g'ri tiplarga o'girish
     const createProductDto: Omit<ProductDto, 'images'> = {
       title: body.title,
@@ -310,7 +307,7 @@ export class ProductController {
         (body.negotiable === 'false' && false),
       regionId: Number(body.regionId),
       districtId: Number(body.districtId),
-      properties: JSON.parse(body.properties || '[]'),
+      properties: JSON.parse(body.properties || '[]'), // Parse properties if it's a string
       imageIndex: Number(body.imageIndex || 0),
     };
 
