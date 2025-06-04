@@ -139,7 +139,7 @@ export class ProfileService {
 
   async findByUser(userId: number): Promise<Profile | any> {
     const existUser = await this.profileRepository.findOne({
-      where: { user: { id: userId } },
+      where: { id: userId },
       relations: ['region', 'district', 'user'],
     });
 
