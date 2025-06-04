@@ -91,10 +91,6 @@ export class Product {
   @Column({ nullable: true })
   viewCount: number;
 
-  @ApiProperty({ example: 'Toshkent', description: 'Mahsulot joylashuvi' })
-  @Column()
-  location: string;
-
   @OneToMany(
     () => ProductProperty,
     (productProperty) => productProperty.product,

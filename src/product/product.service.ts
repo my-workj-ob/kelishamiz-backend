@@ -583,7 +583,10 @@ export class ProductService {
     userId: number,
   ): Promise<Product> {
     const { categoryId, properties, ...productData } = createProductDto;
-
+    console.log("files:", files);
+    console.log('createProductDto:', createProductDto);
+    
+    
     const category = await this.categoryRepository.findOne({
       where: { id: categoryId },
     });
