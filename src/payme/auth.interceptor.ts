@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { Observable, throwError } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
-import { map, catchError } from 'rxjs/operators';
 
 @Injectable()
 export class PaymeAuthInterceptor implements NestInterceptor {
