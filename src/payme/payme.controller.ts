@@ -27,7 +27,7 @@ export class PaymeController {
         response = await this.paymeService.checkPerformTransaction(params, id);
         break;
       case 'CreateTransaction':
-        response = await this.paymeService.createTransaction(params);
+        response = await this.paymeService.createTransaction(params, id);
         break;
       case 'PerformTransaction':
         response = await this.paymeService.performTransaction(params, id);

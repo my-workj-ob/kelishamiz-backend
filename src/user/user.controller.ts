@@ -146,8 +146,6 @@ export class UserController {
   }
 
   @Delete(':id') // <-- Yangi DELETE endpoint
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN) // FAQAT ADMINLAR foydalanuvchini o'chirishi mumkin
   @ApiOperation({
     summary: 'Foydalanuvchini oʻchirish (faqat admin uchun)',
     description: 'Berilgan ID boʻyicha foydalanuvchini oʻchiradi.',
