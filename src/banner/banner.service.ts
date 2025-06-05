@@ -11,7 +11,7 @@ import { CreateBannerDto } from './dto/create-banner.dto';
 import { UpdateBannerDto } from './dto/update-banner.dto';
 import { del } from '@vercel/blob'; // Rasmni o'chirish uchun Vercel Blob dan del funksiyasini import qilish
 import { UploadService } from './../file/uploadService';
-import { FileService } from 'src/file/file.service';
+import { FileService } from './../file/file.service';
 
 @Injectable()
 export class BannerService {

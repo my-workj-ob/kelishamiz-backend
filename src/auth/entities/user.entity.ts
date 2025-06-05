@@ -21,7 +21,7 @@ import { ChatRoom } from './../../chat/entities/chat-room.entity';
 import { Message } from './../../chat/entities/message.entity';
 import { Notification } from './../../notification/entities/notification.entity';
 import { ApiProperty } from '@nestjs/swagger';
-import { Payment } from './../../payment/entities/payme.entity';
+import { Transaction } from './../../payme/transaction/transaction.entity';
 // user.entity.ts
 export enum UserRole {
   USER = 'USER',
@@ -100,8 +100,9 @@ export class User {
   @ApiProperty({ description: 'Umumiy balans (so‘m)', example: 6658900 })
   balance: number;
 
-  @OneToMany(() => Payment, (payment) => payment.user)
-  payments: Payment[];
+  @OneToMany(() => Transaction, (tx) => tx.user)
+  transactions: Transaction[];
+
   @OneToMany(() => Notification, (message) => message.user)
   notifications: Notification[];
 
