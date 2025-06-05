@@ -15,8 +15,12 @@ export class PaymeAuthInterceptor implements NestInterceptor {
     const req = context.switchToHttp().getRequest();
     const authHeader = req.headers['authorization'];
 
-    const merchantId = this.configService.get<string>('PAYME_MERCHANT_ID');
-    const apiKey = this.configService.get<string>('PAYME_API_KEY');
+    const merchantId =
+      this.configService.get<string>('PAYME_MERCHANT_ID') ||
+      '683c3f4c70e3dcbc596bd119';
+    const apiKey =
+      this.configService.get<string>('PAYME_API_KEY') ||
+      'asot9Zhnv23Knw3x4YwXk%bhQWaNGJSwTxK4';
 
     const expectedAuth =
       'Basic ' + Buffer.from(`Paycom:${apiKey}`).toString('base64');
