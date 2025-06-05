@@ -28,10 +28,10 @@ import { ConfigModule } from '@nestjs/config';
 import { UserModule } from './user/user.module';
 import { BannerModule } from './banner/banner.module';
 import { PaymeModule } from './payme/payme.module';
-import { PaymeController } from './payme/payme.controller';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     ThrottlerModule.forRoot([
       {
         name: 'short',
@@ -77,7 +77,7 @@ import { PaymeController } from './payme/payme.controller';
     SearchModule,
     ChatModule,
     NotificationModule,
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+
     UserModule,
     BannerModule,
     PaymeModule,

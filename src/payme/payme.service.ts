@@ -277,60 +277,87 @@ export class PaymeService {
    * Tranzaksiya holatini tekshirish.
    */
   async checkTransaction(params: any, id: string | number): Promise<any> {
+    const startTime = Date.now();
+
     this.logger.debug(
       `[CheckTransaction] Request received. Params: ${JSON.stringify(params)}, ID: ${id}`,
     );
 
-    const transactionFindStartTime = Date.now();
-    const transaction = await this.transactionRepo.findOne({
-      where: { paymeTransactionId: params.id },
-    });
-    const transactionFindEndTime = Date.now();
-    this.logger.debug(
-      `[CheckTransaction] Transaction find took ${transactionFindEndTime - transactionFindStartTime}ms.`,
-    );
+    try {
+      const transactionFindStart = Date.now();
+      const transaction = await this.transactionRepo.findOne({
+        where: { paymeTransactionId: params.id },
+      });
+      const transactionFindEnd = Date.now();
 
-    if (!transaction) {
-      this.logger.warn(
-        `[CheckTransaction] Transaction with Payme ID ${params.id} not found.`,
+      this.logger.debug(
+        `[CheckTransaction] Transaction find took ${transactionFindEnd - transactionFindStart}ms.`,
       );
-      return this.createErrorResponse(
-        id,
-        -31003,
-        {
-          uz: 'Tranzaksiya topilmadi',
-          ru: 'Транзакция не найдена',
-          en: 'Transaction not found',
-        },
-        'transaction',
-      );
-    }
 
-    const state = this.getTransactionState(transaction.status);
-    const performTime =
-      transaction.status === 'success' ? transaction.updatedAt.getTime() : 0;
-    const cancelTime =
-      transaction.status === 'failed' ||
-      transaction.status === 'cancelled' ||
-      transaction.status === 'cancelled_with_revert'
+      if (!transaction) {
+        this.logger.warn(
+          `[CheckTransaction] Transaction with Payme ID ${params.id} not found.`,
+        );
+        return this.createErrorResponse(
+          id,
+          -31003,
+          {
+            uz: 'Tranzaksiya topilmadi',
+            ru: 'Транзакция не найдена',
+            en: 'Transaction not found',
+          },
+          'transaction',
+        );
+      }
+
+      const state = this.getTransactionState(transaction.status);
+      const performTime =
+        transaction.status === 'success' ? transaction.updatedAt.getTime() : 0;
+      const cancelTime = [
+        'failed',
+        'cancelled',
+        'cancelled_with_revert',
+      ].includes(transaction.status)
         ? transaction.updatedAt.getTime()
         : 0;
 
-    this.logger.debug(
-      `[CheckTransaction] Transaction found. Payme ID: ${params.id}, Status: ${transaction.status}, State: ${state}`,
-    );
-    return {
-      jsonrpc: '2.0',
-      result: {
-        create_time: transaction.createdAt.getTime(),
-        perform_time: performTime,
-        cancel_time: cancelTime,
-        transaction: transaction.id.toString(),
-        state,
-        reason: transaction.reason ?? null,
-      },
-      id,
-    };
+      const response = {
+        jsonrpc: '2.0',
+        result: {
+          create_time: transaction.createdAt.getTime(),
+          perform_time: performTime,
+          cancel_time: cancelTime,
+          transaction: transaction.id.toString(),
+          state,
+          reason: transaction.reason ?? null,
+        },
+        id,
+      };
+
+      const endTime = Date.now();
+      this.logger.debug(
+        `[CheckTransaction] Completed in ${endTime - startTime}ms. Responding with: ${JSON.stringify(
+          response,
+        )}`,
+      );
+
+      return response;
+    } catch (error) {
+      this.logger.error(
+        `[CheckTransaction] Internal error: ${error.message}`,
+        error.stack,
+      );
+      return this.createErrorResponse(
+        id,
+        -32400,
+        {
+          uz: 'Ichki server xatosi',
+          ru: 'Внутренняя ошибка сервера',
+          en: 'Internal server error',
+        },
+        'server',
+      );
+    }
   }
 
   /**
