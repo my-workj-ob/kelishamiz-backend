@@ -20,17 +20,15 @@ import { PropertyModule } from './property/property.module';
 import { UserSearch } from './search-filter/entities/user-search.entity';
 import { SearchFilterController } from './search-filter/search-filter.controller';
 import { SearchModule } from './search-filter/search-filter.module';
-import { ThrottlerModule, ThrottlerModuleOptions } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ChatModule } from './chat/chat.module';
 import { NotificationModule } from './notification/notification.module';
-import { PaymentController } from './payment/payment.controller';
-import { PaymentModule } from './payment/payment.module';
-import { PaymentService } from './payment/payment.service';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { Payment } from './payment/entities/payme.entity';
+import { ConfigModule } from '@nestjs/config';
 import { UserModule } from './user/user.module';
 import { BannerModule } from './banner/banner.module';
+import { PaymeModule } from './payme/payme.module';
+import { PaymeController } from './payme/payme.controller';
 
 @Module({
   imports: [
@@ -56,15 +54,7 @@ import { BannerModule } from './banner/banner.module';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       autoLoadEntities: true,
-      entities: [
-        Category,
-        Product,
-        User,
-        FileEntity,
-        Comment,
-        UserSearch,
-        Payment,
-      ],
+      entities: [Category, Product, User, FileEntity, Comment, UserSearch],
       synchronize: true,
     }),
 
@@ -87,10 +77,10 @@ import { BannerModule } from './banner/banner.module';
     SearchModule,
     ChatModule,
     NotificationModule,
-    PaymentModule,
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     UserModule,
     BannerModule,
+    PaymeModule,
   ],
 
   controllers: [
@@ -98,7 +88,6 @@ import { BannerModule } from './banner/banner.module';
     CategoryController,
     FileController,
     SearchFilterController,
-    PaymentController,
   ],
   providers: [AppService],
 })

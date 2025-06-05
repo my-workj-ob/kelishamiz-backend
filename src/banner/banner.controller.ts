@@ -31,7 +31,7 @@ import { CreateBannerDto } from './dto/create-banner.dto';
 import { UpdateBannerDto } from './dto/update-banner.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Banner } from './entities/banner.entity';
-import { JwtOptionalAuthGuard } from 'src/common/jwt/guards/jwt-optional-auth.guard';
+import { JwtOptionalAuthGuard } from './../common/jwt/guards/jwt-optional-auth.guard';
 
 @ApiTags('Banners')
 @ApiBearerAuth()
