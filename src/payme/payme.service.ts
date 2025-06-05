@@ -298,35 +298,38 @@ export class PaymeService {
         this.logger.warn(
           `[CheckTransaction] Transaction with Payme ID ${params.id} not found.`,
         );
-        return this.createErrorResponse(
-          id,
-          -31003,
-          {
-            uz: 'Tranzaksiya topilmadi',
-            ru: 'Транзакция не найдена',
-            en: 'Transaction not found',
+        return {
+          jsonrpc: '2.0',
+          error: {
+            code: -31003,
+            message: {
+              uz: 'Tranzaksiya topilmadi',
+              ru: 'Транзакция не найдена',
+              en: 'Transaction not found',
+            },
+            data: 'transaction',
           },
-          'transaction',
-        );
+          id,
+        };
       }
 
       const state = this.getTransactionState(transaction.status);
-      const performTime =
-        transaction.status === 'success' ? transaction.updatedAt.getTime() : 0;
-      const cancelTime = [
-        'failed',
-        'cancelled',
-        'cancelled_with_revert',
-      ].includes(transaction.status)
-        ? transaction.updatedAt.getTime()
-        : 0;
 
       const response = {
         jsonrpc: '2.0',
         result: {
           create_time: transaction.createdAt.getTime(),
-          perform_time: performTime,
-          cancel_time: cancelTime,
+          perform_time:
+            transaction.status === 'success'
+              ? transaction.updatedAt.getTime()
+              : 0,
+          cancel_time: [
+            'failed',
+            'cancelled',
+            'cancelled_with_revert',
+          ].includes(transaction.status)
+            ? transaction.updatedAt.getTime()
+            : 0,
           transaction: transaction.id.toString(),
           state,
           reason: transaction.reason ?? null,
@@ -336,9 +339,7 @@ export class PaymeService {
 
       const endTime = Date.now();
       this.logger.debug(
-        `[CheckTransaction] Completed in ${endTime - startTime}ms. Responding with: ${JSON.stringify(
-          response,
-        )}`,
+        `[CheckTransaction] Completed in ${endTime - startTime}ms. Responding with: ${JSON.stringify(response)}`,
       );
 
       return response;
@@ -347,16 +348,19 @@ export class PaymeService {
         `[CheckTransaction] Internal error: ${error.message}`,
         error.stack,
       );
-      return this.createErrorResponse(
-        id,
-        -32400,
-        {
-          uz: 'Ichki server xatosi',
-          ru: 'Внутренняя ошибка сервера',
-          en: 'Internal server error',
+      return {
+        jsonrpc: '2.0',
+        error: {
+          code: -32400,
+          message: {
+            uz: 'Ichki server xatosi',
+            ru: 'Внутренняя ошибка сервера',
+            en: 'Internal server error',
+          },
+          data: 'server',
         },
-        'server',
-      );
+        id,
+      };
     }
   }
 
