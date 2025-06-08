@@ -66,10 +66,13 @@ export class ProductImageDto {
 export class ProductDto {
   @ApiProperty()
   title: string;
+  
   @ApiProperty()
   description: string;
+
   @ApiProperty()
   price: number;
+
   @ApiProperty()
   categoryId: number;
 

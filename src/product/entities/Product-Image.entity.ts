@@ -13,5 +13,8 @@ export class ProductImage {
     onDelete: 'CASCADE',
   })
   product: Product;
-  // 
+
+  @Column()
+  order: number;
+  //
 }
