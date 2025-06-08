@@ -37,7 +37,7 @@ export class Transaction {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
-// ok
+  // ok
   @Column({
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP',

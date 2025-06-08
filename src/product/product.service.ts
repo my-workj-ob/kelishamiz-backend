@@ -291,15 +291,17 @@ export class ProductService {
       isAdmin,
     );
   }
-  // ok
+
   async getUserProducts(id: number): Promise<Profile | null> {
-    return this.profileRepository
+    const profile = await this.profileRepository
       .createQueryBuilder('profile')
       .leftJoinAndSelect('profile.products', 'product')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.images', 'image')
-      .where('profile.id = :id', { id })
-      .getOne(); // E'tibor bering: orderBy yo‘q!
+      .where('profile.userId = :userId', { id })
+      .getOne();
+
+    return profile;
   }
 
   async syncLikesFromLocal(
@@ -605,6 +607,7 @@ export class ProductService {
 
         const newProductImage = this.productImageRepository.create({
           url: vercelFileUrl,
+          order: i,
         });
 
         productImages.push(newProductImage);
