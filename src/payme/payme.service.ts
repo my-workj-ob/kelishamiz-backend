@@ -71,120 +71,62 @@ export class PaymeService {
   /**
    * Validate transaction before performing.
    */
-  async checkPerformTransaction(
-    params: any,
-    id: string | number,
-  ): Promise<any> {
-    const startTime = Date.now();
+  async checkPerformTransaction(params: any, id: string | number): Promise<any> {
     const userId = this.parseUserId(params.account?.user_id, id);
-    if (!userId) {
-      return this.createErrorResponse(
-        id,
-        -31001,
-        {
-          uz: 'Noto‘g‘ri hisob maʼlumotlari (foydalanuvchi IDsi xato)',
-          ru: 'Неверные данные счета (неверный ID пользователя)',
-          en: 'Invalid account data (invalid user ID)',
-        },
-        'account',
-      );
-    }
+    if (!userId) return;
 
     const user = await this.findUserById(userId, id);
-    if (!user) {
-      return this.createErrorResponse(
-        id,
-        -31050,
-        {
-          uz: 'Foydalanuvchi topilmadi',
-          ru: 'Пользователь не найден',
-          en: 'User not found',
-        },
-        'user_id',
-      );
-    }
+    if (!user) return;
 
     const isValidAmount = this.validateAmount(params.amount, id);
-    if (!isValidAmount) {
-      return this.createErrorResponse(
-        id,
-        -31001,
-        {
-          uz: 'Noto‘g‘ri summa',
-          ru: 'Неверная сумма',
-          en: 'Invalid amount',
-        },
-        'amount',
-      );
-    }
+    if (!isValidAmount) return;
 
+    // Pending tranzaksiyalarni tekshirish
     const pendingTransaction = await this.transactionRepo.findOne({
-      where: { userId, status: 'pending' },
-      select: ['id'],
+        where: { userId, status: 'pending' },
     });
-    this.logger.debug(
-      `[CheckPerformTransaction] DB query took ${Date.now() - startTime}ms`,
-    );
 
     if (pendingTransaction) {
-      this.logger.warn(
-        `[CheckPerformTransaction] User ${userId} has a pending transaction: ${pendingTransaction.id}`,
-      );
-      return this.createErrorResponse(
-        id,
-        -31099,
-        {
-          uz: 'Hisobda kutilayotgan tranzaksiya mavjud',
-          ru: 'На счете есть ожидающая транзакция',
-          en: 'Account has a pending transaction',
-        },
-        'account',
-      );
+        this.logger.warn(`[CheckPerformTransaction] User ${userId} has a pending transaction: ${pendingTransaction.id}`);
+        return this.createErrorResponse(id, -31099, {
+            uz: 'Hisobda kutilayotgan tranzaksiya mavjud',
+            ru: 'На счете есть ожидающая транзакция',
+            en: 'Account has a pending transaction',
+        }, 'account');
     }
 
     return {
-      jsonrpc: '2.0',
-      result: { allow: true },
-      id,
+        jsonrpc: '2.0',
+        result: { allow: true },
+        id,
     };
-  }
+}
+
   /**
    * Create a new transaction.
    */
   async createTransaction(params: any, id: string | number): Promise<any> {
-    const startTime = Date.now();
-    this.logger.debug(`[CreateTransaction] ID: ${id}`);
+    this.logger.debug(
+      `[CreateTransaction] Params: ${JSON.stringify(params)}, ID: ${id}`,
+    );
 
+    // Mavjud tranzaksiyani tekshirish
     const existingTransaction = await this.transactionRepo.findOne({
       where: { paymeTransactionId: params.id },
-      select: ['id', 'status', 'createdAt'],
       relations: ['user'],
     });
-    this.logger.debug(
-      `[CreateTransaction] Existing transaction check took ${Date.now() - startTime}ms`,
-    );
 
     if (existingTransaction) {
       return this.handleExistingTransaction(existingTransaction, id);
     }
 
+    // Foydalanuvchi ID sini tekshirish
     const userId = this.parseUserId(params.account?.user_id, id);
-    if (!userId) {
-      return this.createErrorResponse(
-        id,
-        -31001,
-        {
-          uz: 'Noto‘g‘ri hisob maʼlumotlari (foydalanuvchi IDsi xato)',
-          ru: 'Неверные данные счета (неверный ID пользователя)',
-          en: 'Invalid account data (invalid user ID)',
-        },
-        'account',
-      );
-    }
+    if (!userId) return;
 
+    // Foydalanuvchi hisobida pending tranzaksiyalarni tekshirish
     const pendingTransaction = await this.transactionRepo.findOne({
       where: { userId, status: 'pending' },
-      select: ['id'],
     });
 
     if (pendingTransaction) {
@@ -203,63 +145,39 @@ export class PaymeService {
       );
     }
 
+    // Foydalanuvchini tekshirish
     const user = await this.findUserById(userId, id);
-    if (!user) {
-      return this.createErrorResponse(
-        id,
-        -31050,
-        {
-          uz: 'Foydalanuvchi topilmadi',
-          ru: 'Пользователь не найден',
-          en: 'User not found',
-        },
-        'user_id',
-      );
-    }
+    if (!user) return;
 
+    // Summani tekshirish
     const isValidAmount = this.validateAmount(params.amount, id);
-    if (!isValidAmount) {
-      return this.createErrorResponse(
-        id,
-        -31001,
-        {
-          uz: 'Noto‘g‘ri summa',
-          ru: 'Неверная сумма',
-          en: 'Invalid amount',
-        },
-        'amount',
-      );
-    }
+    if (!isValidAmount) return;
 
-    // ok
-
+    // CheckPerformTransaction ni chaqirish
     const checkResult = await this.checkPerformTransaction(params, id);
     if (checkResult.error) {
       return checkResult;
     }
 
+    // Yangi tranzaksiya yaratish
     const newTransaction = this.transactionRepo.create({
       userId: user.id,
-      user,
       paymeTransactionId: params.id,
       amount: params.amount,
       status: 'pending',
       paymeTime: params.time ? new Date(params.time).toISOString() : undefined,
-      paymeTimeMs: params.time ? params.time.toString() : undefined,
+      paymeTimeMs: params.time || undefined,
     });
 
-    const saveStart = Date.now();
     await this.transactionRepo.save(newTransaction);
     this.logger.debug(
-      `[CreateTransaction] Transaction ${newTransaction.id} saved in ${Date.now() - saveStart}ms`,
+      `[CreateTransaction] New transaction created: ${newTransaction.id}`,
     );
 
     return {
       jsonrpc: '2.0',
       result: {
-        create_time: newTransaction.paymeTimeMs
-          ? parseInt(newTransaction.paymeTimeMs)
-          : newTransaction.createdAt.getTime(),
+        create_time: newTransaction.createdAt.getTime(),
         transaction: newTransaction.id.toString(),
         state: 1,
       },
@@ -274,7 +192,6 @@ export class PaymeService {
     const cacheKey = `transaction:${params.id}`;
     let transaction: Transaction | null = null;
 
-    const startTime = Date.now();
     const cached = await this.cacheManager.get<string>(cacheKey);
     if (cached) {
       transaction = JSON.parse(cached) as Transaction;
@@ -282,6 +199,7 @@ export class PaymeService {
     }
 
     if (!transaction) {
+      const startTime = Date.now();
       transaction = await this.transactionRepo.findOne({
         where: { paymeTransactionId: params.id },
         select: [
@@ -321,9 +239,7 @@ export class PaymeService {
     const response = {
       jsonrpc: '2.0',
       result: {
-        create_time: transaction.paymeTimeMs
-          ? parseInt(transaction.paymeTimeMs)
-          : transaction.createdAt.getTime(),
+        create_time: transaction.paymeTimeMs || transaction.createdAt.getTime(),
         perform_time:
           transaction.status === 'success'
             ? transaction.updatedAt.getTime()
@@ -341,35 +257,26 @@ export class PaymeService {
     };
 
     this.logger.debug(
-      `[CheckTransaction] Response sent in ${Date.now() - startTime}ms`,
+      `[CheckTransaction] Response: ${JSON.stringify(response)}`,
     );
     return response;
   }
+
   /**
    * Perform transaction and update user balance.
    */
   async performTransaction(params: any, id: string | number): Promise<any> {
-    const startTime = Date.now();
     const transaction = await this.transactionRepo.findOne({
       where: { paymeTransactionId: params.id },
       relations: ['user'],
-      select: ['id', 'status', 'amount', 'updatedAt'],
     });
-    this.logger.debug(
-      `[PerformTransaction] DB query took ${Date.now() - startTime}ms`,
-    );
 
     if (!transaction) {
-      return this.createErrorResponse(
-        id,
-        -31003,
-        {
-          uz: 'Tranzaksiya topilmadi',
-          ru: 'Транзакция не найдена',
-          en: 'Transaction not found',
-        },
-        'transaction',
-      );
+      return this.createErrorResponse(id, -31003, {
+        uz: 'Tranzaksiya topilmadi',
+        ru: 'Транзакция не найдена',
+        en: 'Transaction not found',
+      });
     }
 
     if (transaction.status === 'success') {
@@ -389,45 +296,18 @@ export class PaymeService {
         transaction.status,
       )
     ) {
-      return this.createErrorResponse(
-        id,
-        -31008,
-        {
-          uz: 'Tranzaksiya bajarib bo‘lmaydi',
-          ru: 'Невозможно выполнить транзакцию',
-          en: 'Cannot perform transaction',
-        },
-        'transaction',
-      );
-    }
-
-    if (!transaction.user) {
-      this.logger.error(
-        `[PerformTransaction] User not found for transaction ${params.id}`,
-      );
-      return this.createErrorResponse(
-        id,
-        -32400,
-        {
-          uz: 'Foydalanuvchi maʼlumotlari yuklanmadi',
-          ru: 'Данные пользователя не загружены',
-          en: 'User data not loaded',
-        },
-        'internal_error',
-      );
+      return this.createErrorResponse(id, -31008, {
+        uz: 'Tranzaksiya bajarib bo‘lmaydi',
+        ru: 'Невозможно выполнить транзакцию',
+        en: 'Cannot perform transaction',
+      });
     }
 
     transaction.user.balance += transaction.amount / 100;
     transaction.status = 'success';
 
-    const saveStart = Date.now();
-    await Promise.all([
-      this.transactionRepo.save(transaction),
-      this.userRepo.save(transaction.user),
-    ]);
-    this.logger.debug(
-      `[PerformTransaction] Save took ${Date.now() - saveStart}ms`,
-    );
+    await this.transactionRepo.save(transaction);
+    await this.userRepo.save(transaction.user);
 
     return {
       jsonrpc: '2.0',
@@ -444,27 +324,17 @@ export class PaymeService {
    * Cancel transaction and optionally revert user balance.
    */
   async cancelTransaction(params: any, id: string | number): Promise<any> {
-    const startTime = Date.now();
     const transaction = await this.transactionRepo.findOne({
       where: { paymeTransactionId: params.id },
       relations: ['user'],
-      select: ['id', 'status', 'amount', 'updatedAt', 'reason'],
     });
-    this.logger.debug(
-      `[CancelTransaction] DB query took ${Date.now() - startTime}ms`,
-    );
 
     if (!transaction) {
-      return this.createErrorResponse(
-        id,
-        -31003,
-        {
-          uz: 'Tranzaksiya topilmadi',
-          ru: 'Транзакция не найдена',
-          en: 'Transaction not found',
-        },
-        'transaction',
-      );
+      return this.createErrorResponse(id, -31003, {
+        uz: 'Tranzaksiya topilmadi',
+        ru: 'Транзакция не найдена',
+        en: 'Transaction not found',
+      });
     }
 
     if (
@@ -472,29 +342,18 @@ export class PaymeService {
         transaction.status,
       )
     ) {
-      return this.createResponse(id, {
-        transaction: transaction.id.toString(),
-        cancel_time: transaction.updatedAt.getTime(),
-        state: this.getTransactionState(transaction.status),
-      });
+      return {
+        jsonrpc: '2.0',
+        result: {
+          transaction: transaction.id.toString(),
+          cancel_time: transaction.updatedAt.getTime(),
+          state: this.getTransactionState(transaction.status),
+        },
+        id,
+      };
     }
 
     if (transaction.status === 'success') {
-      if (!transaction.user) {
-        this.logger.error(
-          `[CancelTransaction] User not found for transaction ${params.id}`,
-        );
-        return this.createErrorResponse(
-          id,
-          -32400,
-          {
-            uz: 'Foydalanuvchi maʼlumotlari yuklanmadi',
-            ru: 'Данные пользователя не загружены',
-            en: 'User data not loaded',
-          },
-          'internal_error',
-        );
-      }
       transaction.user.balance -= transaction.amount / 100;
       await this.userRepo.save(transaction.user);
       transaction.status = 'cancelled_with_revert';
@@ -503,48 +362,51 @@ export class PaymeService {
     }
 
     transaction.reason = params.reason || null;
-    const saveStart = Date.now();
     await this.transactionRepo.save(transaction);
-    this.logger.debug(
-      `[CancelTransaction] Save took ${Date.now() - saveStart}ms`,
-    );
 
-    return this.createResponse(id, {
-      transaction: transaction.id.toString(),
-      cancel_time: transaction.updatedAt.getTime(),
-      state: this.getTransactionState(transaction.status),
-    });
+    return {
+      jsonrpc: '2.0',
+      result: {
+        transaction: transaction.id.toString(),
+        cancel_time: transaction.updatedAt.getTime(),
+        state: this.getTransactionState(transaction.status),
+      },
+      id,
+    };
   }
 
+  /**
+   * Helper to parse user ID.
+   */
   private parseUserId(userId: any, id: string | number): number | null {
     const parsedUserId = userId ? parseInt(userId, 10) : NaN;
     if (isNaN(parsedUserId)) {
       this.logger.error(`[parseUserId] Invalid or missing user_id: ${userId}`);
+      this.createErrorResponse(id, -31001, {
+        uz: 'Noto‘g‘ri hisob maʼlumotlari (foydalanuvchi IDsi xato)',
+        ru: 'Неверные данные счета (неверный ID пользователя)',
+        en: 'Invalid account data (invalid user ID)',
+      });
       return null;
     }
     return parsedUserId;
   }
 
   /**
-   * Helper to find user by ID with caching.
+   * Helper to find user by ID.
    */
   private async findUserById(
     userId: number,
     id: string | number,
   ): Promise<User | null> {
-    const cacheKey = `user:${userId}`;
-    let user = await this.cacheManager.get<User>(cacheKey);
+    const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
-      user = await this.userRepo.findOne({
-        where: { id: userId },
-        select: ['id', 'balance'],
+      this.logger.warn(`[findUserById] User with ID ${userId} not found.`);
+      this.createErrorResponse(id, -31050, {
+        uz: 'Foydalanuvchi topilmadi',
+        ru: 'Пользователь не найден',
+        en: 'User not found',
       });
-      if (user) {
-        await this.cacheManager.set(cacheKey, user, 300);
-      }
-    }
-    if (!user) {
-      this.logger.warn(`[findUserById] User with ID ${userId} not found`);
       return null;
     }
     return user;
@@ -558,6 +420,11 @@ export class PaymeService {
     const maxAmount = 10000000;
     if (amount < minAmount || amount > maxAmount) {
       this.logger.warn(`[validateAmount] Invalid amount: ${amount}`);
+      this.createErrorResponse(id, -31001, {
+        uz: 'Noto‘g‘ri summa',
+        ru: 'Неверная сумма',
+        en: 'Invalid amount',
+      });
       return false;
     }
     return true;
@@ -572,22 +439,22 @@ export class PaymeService {
   ): any {
     const state = this.getTransactionState(transaction.status);
     if (state === 1) {
-      return this.createResponse(id, {
-        create_time: transaction.createdAt.getTime(),
-        transaction: transaction.id.toString(),
-        state,
-      });
-    }
-    return this.createErrorResponse(
-      id,
-      -31008,
-      {
+      return {
+        jsonrpc: '2.0',
+        result: {
+          create_time: transaction.createdAt.getTime(),
+          transaction: transaction.id.toString(),
+          state,
+        },
+        id,
+      };
+    } else {
+      return this.createErrorResponse(id, -31008, {
         uz: 'Tranzaksiya allaqachon mavjud va yakunlangan',
         ru: 'Транзакция уже существует и завершена',
         en: 'Transaction already exists and is finalized',
-      },
-      'transaction',
-    );
+      });
+    }
   }
 
   /**
@@ -606,17 +473,6 @@ export class PaymeService {
       default:
         return 0;
     }
-  }
-
-  /**
-   * Helper to create JSON-RPC success response.
-   */
-  private createResponse(id: string | number | null, result: any): any {
-    return {
-      jsonrpc: '2.0',
-      result,
-      id,
-    };
   }
 
   /**
