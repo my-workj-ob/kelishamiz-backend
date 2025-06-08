@@ -1,27 +1,58 @@
-import { User } from "./../../auth/entities/user.entity";
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { User } from './../../auth/entities/user.entity';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  Index,
+} from 'typeorm';
 
-@Entity('transactions')
+@Entity()
 export class Transaction {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true })
+  @Column({ type: 'varchar', length: 255, unique: true })
   @Index()
   paymeTransactionId: string;
 
-  @Column()
-  amount: number;
+  @Column({ type: 'integer' })
+  @Index()
+  userId: number;
 
   @ManyToOne(() => User, (user) => user.transactions)
-  @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column()
-  @Index()
-  userId: number; // Agar relation to‘g‘ri ishlasa, bu ustun kerak emas
+  @Column({ type: 'varchar', nullable: true })
+  paymeTime: string;
 
-  @Column({ default: 'pending' })
+  @Column({ type: 'bigint' })
+  paymeTimeMs: number;
+
+  @Column({ type: 'varchar', nullable: true })
+  reason: string;
+
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt: Date;
+
+  @Column({
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+    onUpdate: 'CURRENT_TIMESTAMP',
+  })
+  updatedAt: Date;
+
+  @Column({
+    type: 'enum',
+    enum: [
+      'pending',
+      'success',
+      'failed',
+      'cancelled',
+      'cancelled_with_revert',
+    ],
+    default: 'pending',
+  })
   @Index()
   status:
     | 'pending'
@@ -29,19 +60,4 @@ export class Transaction {
     | 'failed'
     | 'cancelled'
     | 'cancelled_with_revert';
-
-  @Column({ nullable: true })
-  paymeTime: string;
-
-  @Column({ nullable: true })
-  reason: string;
-
-  @Column({ type: 'bigint', nullable: true })
-  paymeTimeMs: string;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 }
