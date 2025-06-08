@@ -12,7 +12,7 @@ export class Transaction {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'string', length: 255, unique: true })
+  @Column({ type: 'varchar', length: 255, unique: true })
   @Index()
   paymeTransactionId: string;
 
@@ -23,9 +23,6 @@ export class Transaction {
   @ManyToOne(() => User, (user) => user.transactions)
   user: User;
 
-  @Column()
-  amount: number;
-
   @Column({ type: 'varchar', nullable: true })
   paymeTime: string;
 
@@ -34,6 +31,9 @@ export class Transaction {
 
   @Column({ type: 'varchar', nullable: true })
   reason: string;
+
+  @Column({ type: 'bigint', nullable: true })
+  amount: number;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
