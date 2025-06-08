@@ -334,17 +334,29 @@ export class PaymeService {
    * Cancel transaction and optionally revert user balance.
    */
   async cancelTransaction(params: any, id: string | number): Promise<any> {
-    const transaction = await this.transactionRepo.findOne({
-      where: { paymeTransactionId: params.id },
-      relations: ['user'],
-    });
+    const startTime = Date.now();
+    const transaction = await this.retryOperation(() =>
+      this.transactionRepo.findOne({
+        where: { paymeTransactionId: params.id },
+        relations: ['user'],
+        select: ['id', 'status', 'amount', 'updatedAt', 'reason'],
+      }),
+    );
+    this.logger.debug(
+      `[CancelTransaction] DB query took ${Date.now() - startTime}ms`,
+    );
 
     if (!transaction) {
-      return this.createErrorResponse(id, -31003, {
-        uz: 'Tranzaksiya topilmadi',
-        ru: 'Транзакция не найдена',
-        en: 'Transaction not found',
-      });
+      return this.createErrorResponse(
+        id,
+        -31003,
+        {
+          uz: 'Tranzaksiya topilmadi',
+          ru: 'Транзакция не найдена',
+          en: 'Transaction not found',
+        },
+        'transaction',
+      );
     }
 
     if (
@@ -352,37 +364,48 @@ export class PaymeService {
         transaction.status,
       )
     ) {
-      return {
-        jsonrpc: '2.0',
-        result: {
-          transaction: transaction.id.toString(),
-          cancel_time: transaction.updatedAt.getTime(),
-          state: this.getTransactionState(transaction.status),
-        },
-        id,
-      };
+      return this.createSuccessResponse(id, {
+        transaction: transaction.id.toString(),
+        cancel_time: transaction.updatedAt.getTime(),
+        state: this.getTransactionState(transaction.status),
+      });
     }
 
     if (transaction.status === 'success') {
+      if (!transaction.user) {
+        this.logger.error(
+          `[CancelTransaction] User not found for transaction ${params.id}`,
+        );
+        return this.createErrorResponse(
+          id,
+          -32400,
+          {
+            uz: 'Foydalanuvchi maʼlumotlari yuklanmadi',
+            ru: 'Данные пользователя не загружены',
+            en: 'User data not loaded',
+          },
+          'internal_error',
+        );
+      }
       transaction.user.balance -= transaction.amount / 100;
-      await this.userRepo.save(transaction.user);
+      await this.retryOperation(() => this.userRepo.save(transaction.user));
       transaction.status = 'cancelled_with_revert';
     } else {
       transaction.status = 'failed';
     }
 
     transaction.reason = params.reason || null;
-    await this.transactionRepo.save(transaction);
+    const saveStart = Date.now();
+    await this.retryOperation(() => this.transactionRepo.save(transaction));
+    this.logger.debug(
+      `[CancelTransaction] Save took ${Date.now() - saveStart}ms`,
+    );
 
-    return {
-      jsonrpc: '2.0',
-      result: {
-        transaction: transaction.id.toString(),
-        cancel_time: transaction.updatedAt.getTime(),
-        state: this.getTransactionState(transaction.status),
-      },
-      id,
-    };
+    return this.createResponse(id, {
+      transaction: transaction.id.toString(),
+      cancel_time: transaction.updatedAt.getTime(),
+      state: this.getTransactionState(transaction.status),
+    });
   }
 
   /**
@@ -503,5 +526,41 @@ export class PaymeService {
       errorResponse.error.data = data;
     }
     return errorResponse;
+  }
+
+  /**
+   * Helper to create JSON-RPC success response.
+   */
+  private createSuccessResponse(id: string | number | null, result: any): any {
+    return {
+      jsonrpc: '2.0',
+      result,
+      id,
+    };
+  }
+  private createResponse(id: string | number | null, result: any): any {
+    return {
+      jsonrpc: '2.0',
+      result,
+      id,
+    };
+  }
+  private async retryOperation<T>(
+    operation: () => Promise<T>,
+    retries = 2,
+    delay = 1000,
+  ): Promise<T> {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (i === retries - 1) throw error;
+        this.logger.warn(
+          `[RetryOperation] Attempt ${i + 1} failed: ${error.message}`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+    throw new Error('Operation failed after retries');
   }
 }
