@@ -1,14 +1,5 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  CreateDateColumn,
-  UpdateDateColumn,
-  Index,
-  JoinColumn,
-} from 'typeorm';
-import { User } from './../../auth/entities/user.entity'; // User entity joylashgan yo'lni to'g'rilang
+import { User } from "./../../auth/entities/user.entity";
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity('transactions')
 export class Transaction {
@@ -27,9 +18,11 @@ export class Transaction {
   user: User;
 
   @Column()
-  userId: number;
+  @Index()
+  userId: number; // Agar relation to‘g‘ri ishlasa, bu ustun kerak emas
 
   @Column({ default: 'pending' })
+  @Index()
   status:
     | 'pending'
     | 'success'
@@ -44,7 +37,7 @@ export class Transaction {
   reason: string;
 
   @Column({ type: 'bigint', nullable: true })
-  paymeTimeMs?: string;
+  paymeTimeMs: string;
 
   @CreateDateColumn()
   createdAt: Date;

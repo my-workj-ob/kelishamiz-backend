@@ -1,8 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Transaction } from './transaction/transaction.entity'; // Yo'lni tekshiring
-import { User } from './../auth/entities/user.entity'; // Yo'lni tekshiring
+import { Transaction } from './transaction/transaction.entity';
+import { User } from './../auth/entities/user.entity';
+import Redis from 'ioredis';
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 
 @Injectable()
 export class PaymeService {
@@ -13,12 +15,14 @@ export class PaymeService {
     private transactionRepo: Repository<Transaction>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    @Inject(CACHE_MANAGER)
+    private cacheManager: Cache,
   ) {}
 
   /**
-   * Payme API'dan kelgan so'rovlarni asosiy qabul qiluvchi metod.
-   * @param body Payme so'rovining JSON tanasi
-   * @returns JSON-RPC formatidagi javob
+   * Main handler for Payme API requests.
+   * @param body JSON-RPC request body
+   * @returns JSON-RPC response
    */
   async handlePaymeRequest(body: any): Promise<any> {
     const { method, params, id } = body;
@@ -29,26 +33,22 @@ export class PaymeService {
     try {
       switch (method) {
         case 'CheckPerformTransaction':
-          return await this.checkPerformTransaction(params, id);
+          return this.checkPerformTransaction(params, id);
         case 'CreateTransaction':
-          return await this.createTransaction(params, id);
+          return this.createTransaction(params, id);
         case 'PerformTransaction':
-          return await this.performTransaction(params, id);
+          return this.performTransaction(params, id);
         case 'CancelTransaction':
-          return await this.cancelTransaction(params, id);
+          return this.cancelTransaction(params, id);
         case 'CheckTransaction':
-          return await this.checkTransaction(params, id);
+          return this.checkTransaction(params, id);
         case 'GetStatement':
-          this.logger.warn(
-            `[handlePaymeRequest] GetStatement method is not implemented.`,
-          );
           return this.createErrorResponse(id, -32601, {
             uz: 'Metod mavjud emas',
             ru: 'Метод не существует',
             en: 'Method not found',
           });
         default:
-          this.logger.warn(`[handlePaymeRequest] Unknown method: ${method}`);
           return this.createErrorResponse(id, -32601, {
             uz: 'Metod mavjud emas',
             ru: 'Метод не существует',
@@ -69,339 +69,207 @@ export class PaymeService {
   }
 
   /**
-   * Tranzaksiyani bajarishdan oldin tekshirish.
+   * Validate transaction before performing.
    */
-  async checkPerformTransaction(
-    params: any,
-    id: string | number,
-  ): Promise<any> {
-    this.logger.debug(
-      `[CheckPerformTransaction] Request received. Params: ${JSON.stringify(params)}, ID: ${id}`,
-    );
+  async checkPerformTransaction(params: any, id: string | number): Promise<any> {
+    const userId = this.parseUserId(params.account?.user_id, id);
+    if (!userId) return;
 
-    const userId = params.account?.user_id;
+    const user = await this.findUserById(userId, id);
+    if (!user) return;
 
-    // ✅ userId ni intga aylantirish va NaN bo'lsa xato qaytarish
-    const parsedUserId = userId ? parseInt(userId, 10) : NaN;
-    if (isNaN(parsedUserId)) {
-      this.logger.error(
-        `[CheckPerformTransaction] Invalid or missing user_id in account parameters: ${userId}`,
-      );
-      return this.createErrorResponse(
-        id,
-        -31001,
-        {
-          uz: 'Noto‘g‘ri hisob maʼlumotlari (foydalanuvchi IDsi xato)',
-          ru: 'Неверные данные счета (неверный ID пользователя)',
-          en: 'Invalid account data (invalid user ID)',
-        },
-        'account',
-      );
-    }
+    const isValidAmount = this.validateAmount(params.amount, id);
+    if (!isValidAmount) return;
 
-    const userFindStartTime = Date.now();
-    const user = await this.userRepo.findOne({
-      where: { id: parsedUserId }, // ✅ Parse qilingan userId'ni ishlatish
+    // Pending tranzaksiyalarni tekshirish
+    const pendingTransaction = await this.transactionRepo.findOne({
+        where: { userId, status: 'pending' },
     });
-    const userFindEndTime = Date.now();
-    this.logger.debug(
-      `[CheckPerformTransaction] User find took ${userFindEndTime - userFindStartTime}ms.`,
-    );
 
-    if (!user) {
-      this.logger.warn(
-        `[CheckPerformTransaction] User with ID ${parsedUserId} not found.`,
-      );
-      return this.createErrorResponse(
-        id,
-        -31050,
-        {
-          uz: 'Foydalanuvchi topilmadi',
-          ru: 'Пользователь не найден',
-          en: 'User not found',
-        },
-        'user_id',
-      );
+    if (pendingTransaction) {
+        this.logger.warn(`[CheckPerformTransaction] User ${userId} has a pending transaction: ${pendingTransaction.id}`);
+        return this.createErrorResponse(id, -31099, {
+            uz: 'Hisobda kutilayotgan tranzaksiya mavjud',
+            ru: 'На счете есть ожидающая транзакция',
+            en: 'Account has a pending transaction',
+        }, 'account');
     }
 
-    const minAmount = 1000;
-    const maxAmount = 10000000;
-    if (params.amount < minAmount || params.amount > maxAmount) {
-      this.logger.warn(
-        `[CheckPerformTransaction] Invalid amount: ${params.amount}. User ID: ${parsedUserId}`,
-      );
-      return this.createErrorResponse(
-        id,
-        -31001,
-        {
-          uz: 'Noto‘g‘ri summa',
-          ru: 'Неверная сумма',
-          en: 'Invalid amount',
-        },
-        'amount',
-      );
-    }
-
-    this.logger.debug(
-      `[CheckPerformTransaction] User found: ${user.id}. Returning allow: true.`,
-    );
     return {
-      jsonrpc: '2.0',
-      result: {
-        allow: true,
-      },
-      id,
+        jsonrpc: '2.0',
+        result: { allow: true },
+        id,
     };
-  }
-
+}
   /**
-   * Yangi tranzaksiyani yaratish.
+   * Create a new transaction.
    */
   async createTransaction(params: any, id: string | number): Promise<any> {
-    this.logger.debug(
-      `[CreateTransaction] Params: ${JSON.stringify(params)}, ID: ${id}`,
-    );
+    this.logger.debug(`[CreateTransaction] Params: ${JSON.stringify(params)}, ID: ${id}`);
 
-    const existing = await this.transactionRepo.findOne({
-      where: { paymeTransactionId: params.id },
-      relations: ['user'],
+    // Mavjud tranzaksiyani tekshirish
+    const existingTransaction = await this.transactionRepo.findOne({
+        where: { paymeTransactionId: params.id },
+        relations: ['user'],
     });
 
-    if (existing) {
-      const state = this.getTransactionState(existing.status);
+    if (existingTransaction) {
+        return this.handleExistingTransaction(existingTransaction, id);
+    }
 
-      // Payme spetsifikatsiyasi bo'yicha idempotensiya:
-      // Agar tranzaksiya allaqachon mavjud bo'lsa
-      // va uning holati 1 (pending) bo'lsa, xuddi shu natijani qaytaramiz.
-      // Agar holati 2 (success) yoki -1/-2 (cancelled) bo'lsa, xato qaytaramiz.
-      if (state === 1) {
+    // Foydalanuvchi ID sini tekshirish
+    const userId = this.parseUserId(params.account?.user_id, id);
+    if (!userId) return;
+
+    // Foydalanuvchi hisobida pending tranzaksiyalarni tekshirish
+    const pendingTransaction = await this.transactionRepo.findOne({
+        where: { userId, status: 'pending' },
+    });
+
+    if (pendingTransaction) {
+        this.logger.warn(`[CreateTransaction] User ${userId} has a pending transaction: ${pendingTransaction.id}`);
+        return this.createErrorResponse(id, -31099, {
+            uz: 'Hisobda kutilayotgan tranzaksiya mavjud',
+            ru: 'На счете есть ожидающая транзакция',
+            en: 'Account has a pending transaction',
+        }, 'account');
+    }
+
+    // Foydalanuvchini tekshirish
+    const user = await this.findUserById(userId, id);
+    if (!user) return;
+
+    // Summani tekshirish
+    const isValidAmount = this.validateAmount(params.amount, id);
+    if (!isValidAmount) return;
+
+    // CheckPerformTransaction ni chaqirish
+    const checkResult = await this.checkPerformTransaction(params, id);
+    if (checkResult.error) {
+        return checkResult;
+    }
+
+    // Yangi tranzaksiya yaratish
+    const newTransaction = this.transactionRepo.create({
+        userId: user.id,
+        user, // Relation sifatida user ni qo‘shish
+        paymeTransactionId: params.id,
+        amount: params.amount,
+        status: 'pending',
+        paymeTime: params.time ? new Date(params.time).toISOString() : undefined,
+        paymeTimeMs: params.time ? params.time.toString() : undefined,
+    });
+
+    await this.transactionRepo.save(newTransaction);
+    this.logger.debug(`[CreateTransaction] New transaction created: ${newTransaction.id}`);
+
+    return {
+        jsonrpc: '2.0',
+        result: {
+            create_time: newTransaction.paymeTimeMs ? parseInt(newTransaction.paymeTimeMs) : newTransaction.createdAt.getTime(),
+            transaction: newTransaction.id.toString(),
+            state: 1,
+        },
+        id,
+    };
+}
+
+  /**
+   * Check transaction status.
+   */
+  async checkTransaction(params: any, id: string | number): Promise<any> {
+    const cacheKey = `transaction:${params.id}`;
+    let transaction: Transaction | null = null;
+
+    const cached = await this.cacheManager.get<string>(cacheKey);
+    if (cached) {
+      transaction = JSON.parse(cached) as Transaction;
+      this.logger.debug(`[CheckTransaction] Cache hit for ${cacheKey}`);
+    }
+
+    if (!transaction) {
+      const startTime = Date.now();
+      transaction = await this.transactionRepo.findOne({
+        where: { paymeTransactionId: params.id },
+        select: [
+          'id',
+          'status',
+          'createdAt',
+          'updatedAt',
+          'reason',
+          'paymeTimeMs',
+        ],
+      });
+      const queryTime = Date.now() - startTime;
+
+      if (transaction) {
+        await this.cacheManager.set(cacheKey, JSON.stringify(transaction), 300);
         this.logger.debug(
-          `[CreateTransaction] Transaction ${params.id} already exists and is pending. Returning existing result.`,
+          `[CheckTransaction] Cached transaction ${params.id} in ${queryTime}ms`,
         );
-        return {
-          jsonrpc: '2.0',
-          result: {
-            create_time: existing.createdAt.getTime(),
-            transaction: existing.id.toString(),
-            state,
-          },
-          id,
-        };
       } else {
         this.logger.warn(
-          `[CreateTransaction] Transaction ${params.id} already exists with status ${existing.status}. Returning -31008.`,
+          `[CheckTransaction] Transaction with Payme ID ${params.id} not found`,
         );
         return this.createErrorResponse(
           id,
-          -31008, // Transaction already exists and is finalized
+          -31003,
           {
-            uz: 'Tranzaksiya allaqachon mavjud va yakunlangan',
-            ru: 'Транзакция уже существует и завершена',
-            en: 'Transaction already exists and is finalized',
+            uz: 'Tranzaksiya topilmadi',
+            ru: 'Транзакция не найдена',
+            en: 'Transaction not found',
           },
           'transaction',
         );
       }
     }
 
-    // Foydalanuvchini tekshiramiz
-    const userId = params.account?.user_id;
-    const parsedUserId = userId ? parseInt(userId, 10) : NaN;
-    if (isNaN(parsedUserId)) {
-      this.logger.error(
-        `[CreateTransaction] Invalid or missing user_id in account parameters: ${userId}`,
-      );
-      return this.createErrorResponse(
-        id,
-        -31001,
-        {
-          uz: 'Noto‘g‘ri hisob maʼlumotlari (foydalanuvchi IDsi xato)',
-          ru: 'Неверные данные счета (неверный ID пользователя)',
-          en: 'Invalid account data (invalid user ID)',
-        },
-        'account',
-      );
-    }
-
-    const user = await this.userRepo.findOne({ where: { id: parsedUserId } }); // ✅ Parse qilingan userId'ni ishlatish
-    if (!user) {
-      this.logger.warn(
-        `[CreateTransaction] User with ID ${parsedUserId} not found. Returning -31050.`,
-      );
-      return this.createErrorResponse(
-        id,
-        -31050,
-        {
-          uz: 'Foydalanuvchi topilmadi',
-          ru: 'Пользователь не найден',
-          en: 'User not found',
-        },
-        'user_id',
-      );
-    }
-
-    const newTx = this.transactionRepo.create({
-      userId: user.id, // User entiti obyekti emas, balki to'g'ridan-to'g'ri IDni saqlash afzalroq agar DB sxemasida shunday bo'lsa
-      // Agar Transaction entitingizda `user: User` (relation) va `userId: number` (foreign key column) ikkalasi ham bo'lsa,
-      // va siz user obyektini biriktirmoqchi bo'lsangiz:
-      // user: user,
-      // Bu holda `userId: user.id` yozish shart emas TypeORM avtomatik ravishda foreign keyni to'ldiradi.
-      // Lekin agar Transaction entitingizda faqat `userId` ustuni bo'lsa va `user: User` relationi bo'lmasa,
-      // u holda `userId: user.id` to'g'ri.
-      paymeTransactionId: params.id,
-      amount: params.amount,
-      status: 'pending',
-      paymeTime: params.time ? new Date(params.time).toISOString() : undefined,
-      paymeTimeMs: params.time || undefined,
-    });
-
-    const saveStartTime = Date.now();
-    await this.transactionRepo.save(newTx);
-    const saveEndTime = Date.now();
-    this.logger.debug(
-      `[CreateTransaction] New transaction saved in ${saveEndTime - saveStartTime}ms. ID: ${newTx.id}`,
-    );
-
-    return {
+    const state = this.getTransactionState(transaction.status);
+    const response = {
       jsonrpc: '2.0',
       result: {
-        create_time: newTx.createdAt.getTime(),
-        transaction: newTx.id.toString(),
-        state: 1,
+        create_time: transaction.paymeTimeMs
+          ? parseInt(transaction.paymeTimeMs)
+          : transaction.createdAt.getTime(),
+        perform_time:
+          transaction.status === 'success'
+            ? transaction.updatedAt.getTime()
+            : 0,
+        cancel_time: ['failed', 'cancelled', 'cancelled_with_revert'].includes(
+          transaction.status,
+        )
+          ? transaction.updatedAt.getTime()
+          : 0,
+        transaction: transaction.id.toString(),
+        state,
+        reason: transaction.reason ?? null,
       },
       id,
     };
-  }
-
-  /**
-   * Tranzaksiya holatini tekshirish.
-   */
-  async checkTransaction(params: any, id: string | number): Promise<any> {
-    const startTime = Date.now();
 
     this.logger.debug(
-      `[CheckTransaction] Request received. Params: ${JSON.stringify(params)}, ID: ${id}`,
+      `[CheckTransaction] Response: ${JSON.stringify(response)}`,
     );
-
-    try {
-      const transactionFindStart = Date.now();
-      const transaction = await this.transactionRepo.findOne({
-        where: { paymeTransactionId: params.id },
-      });
-      const transactionFindEnd = Date.now();
-
-      this.logger.debug(
-        `[CheckTransaction] Transaction find took ${transactionFindEnd - transactionFindStart}ms.`,
-      );
-
-      if (!transaction) {
-        this.logger.warn(
-          `[CheckTransaction] Transaction with Payme ID ${params.id} not found.`,
-        );
-        return {
-          jsonrpc: '2.0',
-          error: {
-            code: -31003,
-            message: {
-              uz: 'Tranzaksiya topilmadi',
-              ru: 'Транзакция не найдена',
-              en: 'Transaction not found',
-            },
-            data: 'transaction',
-          },
-          id,
-        };
-      }
-
-      const state = this.getTransactionState(transaction.status);
-
-      const response = {
-        jsonrpc: '2.0',
-        result: {
-          create_time: transaction.createdAt.getTime(),
-          perform_time:
-            transaction.status === 'success'
-              ? transaction.updatedAt.getTime()
-              : 0,
-          cancel_time: [
-            'failed',
-            'cancelled',
-            'cancelled_with_revert',
-          ].includes(transaction.status)
-            ? transaction.updatedAt.getTime()
-            : 0,
-          transaction: transaction.id.toString(),
-          state,
-          reason: transaction.reason ?? null,
-        },
-        id,
-      };
-
-      const endTime = Date.now();
-      this.logger.debug(
-        `[CheckTransaction] Completed in ${endTime - startTime}ms. Responding with: ${JSON.stringify(response)}`,
-      );
-
-      return response;
-    } catch (error) {
-      this.logger.error(
-        `[CheckTransaction] Internal error: ${error.message}`,
-        error.stack,
-      );
-      return {
-        jsonrpc: '2.0',
-        error: {
-          code: -32400,
-          message: {
-            uz: 'Ichki server xatosi',
-            ru: 'Внутренняя ошибка сервера',
-            en: 'Internal server error',
-          },
-          data: 'server',
-        },
-        id,
-      };
-    }
+    return response;
   }
-
   /**
-   * Tranzaksiyani yakunlash va foydalanuvchi balansini yangilash.
+   * Perform transaction and update user balance.
    */
   async performTransaction(params: any, id: string | number): Promise<any> {
-    this.logger.debug(
-      `[PerformTransaction] Request received. Payme ID: ${params.id}, ID: ${id}`,
-    );
-
-    const transactionFindStartTime = Date.now();
     const transaction = await this.transactionRepo.findOne({
       where: { paymeTransactionId: params.id },
       relations: ['user'],
     });
-    const transactionFindEndTime = Date.now();
-    this.logger.debug(
-      `[PerformTransaction] Transaction find took ${transactionFindEndTime - transactionFindStartTime}ms.`,
-    );
 
     if (!transaction) {
-      this.logger.warn(
-        `[PerformTransaction] Transaction with Payme ID ${params.id} not found.`,
-      );
-      return this.createErrorResponse(
-        id,
-        -31003,
-        {
-          uz: 'Tranzaksiya topilmadi',
-          ru: 'Транзакция не найдена',
-          en: 'Transaction not found',
-        },
-        'transaction',
-      );
+      return this.createErrorResponse(id, -31003, {
+        uz: 'Tranzaksiya topilmadi',
+        ru: 'Транзакция не найдена',
+        en: 'Transaction not found',
+      });
     }
 
     if (transaction.status === 'success') {
-      this.logger.debug(
-        `[PerformTransaction] Transaction ${params.id} already successful. Returning existing state.`,
-      );
       return {
         jsonrpc: '2.0',
         result: {
@@ -414,59 +282,22 @@ export class PaymeService {
     }
 
     if (
-      transaction.status === 'failed' ||
-      transaction.status === 'cancelled' ||
-      transaction.status === 'cancelled_with_revert'
+      ['failed', 'cancelled', 'cancelled_with_revert'].includes(
+        transaction.status,
+      )
     ) {
-      this.logger.error(
-        `[PerformTransaction] Transaction ${params.id} cannot be performed, current status: ${transaction.status}`,
-      );
-      return this.createErrorResponse(
-        id,
-        -31008,
-        {
-          uz: 'Tranzaksiya bajarib bo‘lmaydi',
-          ru: 'Невозможно выполнить транзакцию',
-          en: 'Cannot perform transaction',
-        },
-        'transaction',
-      );
+      return this.createErrorResponse(id, -31008, {
+        uz: 'Tranzaksiya bajarib bo‘lmaydi',
+        ru: 'Невозможно выполнить транзакцию',
+        en: 'Cannot perform transaction',
+      });
     }
 
-    const amountInSom = transaction.amount / 100;
-
-    // Balans yangilanishidan oldin foydalanuvchi mavjudligini tekshirish
-    if (!transaction.user) {
-      this.logger.error(
-        `[PerformTransaction] User relation not loaded for transaction ${params.id}.`,
-      );
-      return this.createErrorResponse(
-        id,
-        -32400, // Internal error
-        {
-          uz: 'Foydalanuvchi maʼlumotlari yuklanmadi',
-          ru: 'Данные пользователя не загружены',
-          en: 'User data not loaded',
-        },
-        'internal_error',
-      );
-    }
-
-    transaction.user.balance =
-      parseFloat(transaction.user.balance.toString()) + amountInSom;
-    this.logger.debug(
-      `[PerformTransaction] User ${transaction.user.id} balance updated. Old: ${transaction.user.balance - amountInSom}, New: ${transaction.user.balance}`,
-    );
-
+    transaction.user.balance += transaction.amount / 100;
     transaction.status = 'success';
 
-    const saveStartTime = Date.now();
     await this.transactionRepo.save(transaction);
     await this.userRepo.save(transaction.user);
-    const saveEndTime = Date.now();
-    this.logger.debug(
-      `[PerformTransaction] Transaction and user balance saved in ${saveEndTime - saveStartTime}ms.`,
-    );
 
     return {
       jsonrpc: '2.0',
@@ -480,42 +311,27 @@ export class PaymeService {
   }
 
   /**
-   * Tranzaksiyani bekor qilish.
+   * Cancel transaction and optionally revert user balance.
    */
   async cancelTransaction(params: any, id: string | number): Promise<any> {
-    this.logger.debug(
-      `[CancelTransaction] Request received. Payme ID: ${params.id}, ID: ${id}`,
-    );
-
     const transaction = await this.transactionRepo.findOne({
       where: { paymeTransactionId: params.id },
       relations: ['user'],
     });
 
     if (!transaction) {
-      this.logger.warn(
-        `[CancelTransaction] Transaction with Payme ID ${params.id} not found.`,
-      );
-      return this.createErrorResponse(
-        id,
-        -31003,
-        {
-          uz: 'Tranzaksiya topilmadi',
-          ru: 'Транзакция не найдена',
-          en: 'Transaction not found',
-        },
-        'transaction',
-      );
+      return this.createErrorResponse(id, -31003, {
+        uz: 'Tranzaksiya topilmadi',
+        ru: 'Транзакция не найдена',
+        en: 'Transaction not found',
+      });
     }
 
     if (
-      transaction.status === 'failed' ||
-      transaction.status === 'cancelled' ||
-      transaction.status === 'cancelled_with_revert'
+      ['failed', 'cancelled', 'cancelled_with_revert'].includes(
+        transaction.status,
+      )
     ) {
-      this.logger.debug(
-        `[CancelTransaction] Transaction ${params.id} already cancelled/failed. State: ${this.getTransactionState(transaction.status)}`,
-      );
       return {
         jsonrpc: '2.0',
         result: {
@@ -527,66 +343,112 @@ export class PaymeService {
       };
     }
 
-    let newState: number; // Use newState instead of immediately assigning -1
-
     if (transaction.status === 'success') {
-      // Only attempt to revert balance if it was previously successful
-      if (!transaction.user) {
-        this.logger.error(
-          `[CancelTransaction] User relation not loaded for transaction ${params.id}. Cannot revert balance.`,
-        );
-        return this.createErrorResponse(
-          id,
-          -32400, // Internal error
-          {
-            uz: 'Foydalanuvchi maʼlumotlari yuklanmadi. Balansni qaytarib bo‘lmadi.',
-            ru: 'Данные пользователя не загружены. Не удалось отменить баланс.',
-            en: 'User data not loaded. Could not revert balance.',
-          },
-          'internal_error',
-        );
-      }
-      const amountInSom = transaction.amount / 100;
-      transaction.user.balance =
-        parseFloat(transaction.user.balance.toString()) - amountInSom;
-      this.logger.debug(
-        `[CancelTransaction] User ${transaction.user.id} balance reverted. Old: ${transaction.user.balance + amountInSom}, New: ${transaction.user.balance}`,
-      );
+      transaction.user.balance -= transaction.amount / 100;
       await this.userRepo.save(transaction.user);
-      newState = -2; // Cancelled with revert
-      this.logger.warn(
-        `[CancelTransaction] Transaction ${params.id} was successful, but cancelled and balance reverted.`,
-      );
+      transaction.status = 'cancelled_with_revert';
     } else {
-      // If pending, just set to failed/cancelled without revert
-      newState = -1; // Cancelled without revert
-      this.logger.debug(
-        `[CancelTransaction] Transaction ${params.id} pending status changed to failed.`,
-      );
+      transaction.status = 'failed';
     }
 
-    transaction.status = newState === -2 ? 'cancelled_with_revert' : 'failed';
     transaction.reason = params.reason || null;
-    const cancelSaveStartTime = Date.now();
     await this.transactionRepo.save(transaction);
-    const cancelSaveEndTime = Date.now();
-    this.logger.debug(
-      `[CancelTransaction] Transaction ${params.id} status updated in ${cancelSaveEndTime - cancelSaveStartTime}ms. New state: ${newState}`,
-    );
 
     return {
       jsonrpc: '2.0',
       result: {
         transaction: transaction.id.toString(),
         cancel_time: transaction.updatedAt.getTime(),
-        state: newState,
+        state: this.getTransactionState(transaction.status),
       },
       id,
     };
   }
 
   /**
-   * Tranzaksiya holatini Payme kodiga o'tkazuvchi yordamchi funksiya.
+   * Helper to parse user ID.
+   */
+  private parseUserId(userId: any, id: string | number): number | null {
+    const parsedUserId = userId ? parseInt(userId, 10) : NaN;
+    if (isNaN(parsedUserId)) {
+      this.logger.error(`[parseUserId] Invalid or missing user_id: ${userId}`);
+      this.createErrorResponse(id, -31001, {
+        uz: 'Noto‘g‘ri hisob maʼlumotlari (foydalanuvchi IDsi xato)',
+        ru: 'Неверные данные счета (неверный ID пользователя)',
+        en: 'Invalid account data (invalid user ID)',
+      });
+      return null;
+    }
+    return parsedUserId;
+  }
+
+  /**
+   * Helper to find user by ID.
+   */
+  private async findUserById(
+    userId: number,
+    id: string | number,
+  ): Promise<User | null> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      this.logger.warn(`[findUserById] User with ID ${userId} not found.`);
+      this.createErrorResponse(id, -31050, {
+        uz: 'Foydalanuvchi topilmadi',
+        ru: 'Пользователь не найден',
+        en: 'User not found',
+      });
+      return null;
+    }
+    return user;
+  }
+
+  /**
+   * Helper to validate transaction amount.
+   */
+  private validateAmount(amount: number, id: string | number): boolean {
+    const minAmount = 1000;
+    const maxAmount = 10000000;
+    if (amount < minAmount || amount > maxAmount) {
+      this.logger.warn(`[validateAmount] Invalid amount: ${amount}`);
+      this.createErrorResponse(id, -31001, {
+        uz: 'Noto‘g‘ri summa',
+        ru: 'Неверная сумма',
+        en: 'Invalid amount',
+      });
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Helper to handle existing transactions.
+   */
+  private handleExistingTransaction(
+    transaction: Transaction,
+    id: string | number,
+  ): any {
+    const state = this.getTransactionState(transaction.status);
+    if (state === 1) {
+      return {
+        jsonrpc: '2.0',
+        result: {
+          create_time: transaction.createdAt.getTime(),
+          transaction: transaction.id.toString(),
+          state,
+        },
+        id,
+      };
+    } else {
+      return this.createErrorResponse(id, -31008, {
+        uz: 'Tranzaksiya allaqachon mavjud va yakunlangan',
+        ru: 'Транзакция уже существует и завершена',
+        en: 'Transaction already exists and is finalized',
+      });
+    }
+  }
+
+  /**
+   * Helper to map transaction status to Payme state.
    */
   private getTransactionState(status: string): number {
     switch (status) {
@@ -597,14 +459,14 @@ export class PaymeService {
       case 'failed':
       case 'cancelled':
       case 'cancelled_with_revert':
-        return -1; // Payme API specifies -1 for cancelled, -2 for cancelled with revert. Adjust if your specific Payme spec uses -2.
+        return -1;
       default:
-        return 0; // Noma'lum holat
+        return 0;
     }
   }
 
   /**
-   * JSON-RPC xato javobini yaratish yordamchi funksiyasi.
+   * Helper to create JSON-RPC error response.
    */
   private createErrorResponse(
     id: string | number | null,
@@ -614,10 +476,7 @@ export class PaymeService {
   ): any {
     const errorResponse: any = {
       jsonrpc: '2.0',
-      error: {
-        code,
-        message,
-      },
+      error: { code, message },
       id,
     };
     if (data) {
