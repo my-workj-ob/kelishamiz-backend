@@ -71,7 +71,10 @@ export class PaymeService {
   /**
    * Validate transaction before performing.
    */
-  async checkPerformTransaction(params: any, id: string | number): Promise<any> {
+  async checkPerformTransaction(
+    params: any,
+    id: string | number,
+  ): Promise<any> {
     const userId = this.parseUserId(params.account?.user_id, id);
     if (!userId) return;
 
@@ -83,24 +86,31 @@ export class PaymeService {
 
     // Pending tranzaksiyalarni tekshirish
     const pendingTransaction = await this.transactionRepo.findOne({
-        where: { userId, status: 'pending' },
+      where: { userId, status: 'pending' },
     });
 
     if (pendingTransaction) {
-        this.logger.warn(`[CheckPerformTransaction] User ${userId} has a pending transaction: ${pendingTransaction.id}`);
-        return this.createErrorResponse(id, -31099, {
-            uz: 'Hisobda kutilayotgan tranzaksiya mavjud',
-            ru: 'На счете есть ожидающая транзакция',
-            en: 'Account has a pending transaction',
-        }, 'account');
+      this.logger.warn(
+        `[CheckPerformTransaction] User ${userId} has a pending transaction: ${pendingTransaction.id}`,
+      );
+      return this.createErrorResponse(
+        id,
+        -31099,
+        {
+          uz: 'Hisobda kutilayotgan tranzaksiya mavjud',
+          ru: 'На счете есть ожидающая транзакция',
+          en: 'Account has a pending transaction',
+        },
+        'account',
+      );
     }
 
     return {
-        jsonrpc: '2.0',
-        result: { allow: true },
-        id,
+      jsonrpc: '2.0',
+      result: { allow: true },
+      id,
     };
-}
+  }
 
   /**
    * Create a new transaction.
