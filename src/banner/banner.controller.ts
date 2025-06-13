@@ -151,7 +151,7 @@ export class BannerController {
     description: 'Banner joylashuvi',
   })
   @UseGuards(JwtOptionalAuthGuard) // Autentifikatsiya shart emas
-  @Roles(UserRole.USER, UserRole.ADMIN) // Lekin rollarga ruxsat berish
+  @Roles(UserRole.USER) // Lekin rollarga ruxsat berish
   async getActiveBannersPublic(
     @Query('placement') placement: string,
   ): Promise<Banner[]> {
