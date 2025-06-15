@@ -298,7 +298,7 @@ export class ProductService {
       .leftJoinAndSelect('profile.products', 'product')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.images', 'image')
-      .where('profile.userId = :userId', { id })
+      .where('profile.userId = :userId', { userId: id }) // ✅ nomlar mos
       .getOne();
 
     return profile;
