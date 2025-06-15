@@ -35,8 +35,6 @@ import { JwtOptionalAuthGuard } from './../common/jwt/guards/jwt-optional-auth.g
 
 @ApiTags('Banners')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'), RolesGuard) // Barcha endpointlar JWT va Admin rolini talab qiladi
-@Roles(UserRole.ADMIN) // Faqat Adminlar bannerlarni boshqara oladi
 @Controller('banners')
 export class BannerController {
   constructor(private readonly bannerService: BannerService) {}
