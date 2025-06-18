@@ -207,14 +207,14 @@ export class ProductController {
     description: 'Mahsulotning layk statusini olish',
   })
   @ApiOperation({ summary: 'user like status ' })
-  @UseGuards(JwtOptionalAuthGuard) // Agar userId querydan kelmasa, req.user dan olish uchun
+  @UseGuards(JwtOptionalAuthGuard)
   async getLikeStatus(
     @Param('id', ParseIntPipe) projectId: number,
-    @Req() req: AuthenticatedRequest, // userId ni req.user dan olish uchun
+    @Req() req: AuthenticatedRequest,
     @Query('userId', new ParseIntPipe({ optional: true }))
-    userIdFromQuery?: number, // Qo'shimcha option
+    userIdFromQuery?: number,
   ): Promise<{ liked: boolean }> {
-    const userId = userIdFromQuery ?? req.user?.userId ?? null; // Avval querydan, keyin req.user dan
+    const userId = userIdFromQuery ?? req.user?.userId ?? null;
     if (!userId) {
       throw new BadRequestException(
         'User ID is required to check like status.',

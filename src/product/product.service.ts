@@ -75,7 +75,7 @@ export class ProductService {
       take: pageSize,
       where: whereCondition, // <-- isPublish shartini shu yerga qo'ydik
       relations: ['category', 'profile', 'district', 'images', 'likes'],
-      order: { isTop: 'DESC', createdAt: 'DESC' },
+      order: { isTop: 'DESC', createdAt: 'DESC', images: { order: 'ASC' } },
     });
 
     const result = products.map((product) => {
@@ -128,7 +128,11 @@ export class ProductService {
       take: pageSize,
       relations: ['category', 'profile', 'district', 'images', 'likes'],
       where: whereCondition, // <-- isPublish shartini shu yerga qo'ydik
-      order: { topExpiresAt: 'DESC' },
+      order: {
+        topExpiresAt: 'DESC',
+        createdAt: 'DESC',
+        images: { order: 'DESC' },
+      },
     });
 
     const result = products.map((product) => {
@@ -298,7 +302,8 @@ export class ProductService {
       .leftJoinAndSelect('profile.products', 'product')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.images', 'image')
-      .where('profile.userId = :userId', { userId: id }) // ✅ nomlar mos
+      .where('profile.userId = :userId', { userId: id })
+      .orderBy('image.order', 'ASC') // Bu qator muhim!
       .getOne();
 
     return profile;
@@ -310,10 +315,15 @@ export class ProductService {
   ) {
     // 1. Mehmon foydalanuvchi bo‘lsa, faqat localLikedProductIds asosida qaytaramiz
     if (!userId) {
-      const products = await this.productRepository.find({
-        where: { id: In(localLikedProductIds ?? []) },
-        relations: ['category', 'images', 'likes', 'profile'],
-      });
+      const products = await this.productRepository
+        .createQueryBuilder('product')
+        .leftJoinAndSelect('product.category', 'category')
+        .leftJoinAndSelect('product.images', 'images')
+        .leftJoinAndSelect('product.likes', 'likes')
+        .leftJoinAndSelect('product.profile', 'profile')
+        .where('product.id IN (:...ids)', { ids: localLikedProductIds ?? [] })
+        .orderBy('images.order', 'ASC')
+        .getMany();
 
       const orderedProducts = (localLikedProductIds ?? [])
         .map((id) => products.find((p) => p.id === id))
@@ -365,10 +375,15 @@ export class ProductService {
       ...newProductIdsToLike,
     ];
 
-    const products = await this.productRepository.find({
-      where: { id: In(finalLikedProductIds) },
-      relations: ['category', 'images', 'likes', 'profile'],
-    });
+    const products = await this.productRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.images', 'images')
+      .leftJoinAndSelect('product.likes', 'likes')
+      .leftJoinAndSelect('product.profile', 'profile')
+      .where('product.id IN (:...ids)', { ids: finalLikedProductIds })
+      .orderBy('images.order', 'ASC')
+      .getMany();
 
     const orderedProducts = finalLikedProductIds
       .map((id) => products.find((p) => p.id === id))
@@ -602,12 +617,11 @@ export class ProductService {
 
       try {
         const vercelFileUrl = await this.uploadService.uploadFile(file);
-
-        await this.fileService.saveFile(vercelFileUrl); // Faylni DBga saqlash
+        await this.fileService.saveFile(vercelFileUrl);
 
         const newProductImage = this.productImageRepository.create({
           url: vercelFileUrl,
-          order: i,
+          order: i, // Bu yerda i - bu array'dagi tartib
         });
 
         productImages.push(newProductImage);
