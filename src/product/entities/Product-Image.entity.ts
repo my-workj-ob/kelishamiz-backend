@@ -14,7 +14,6 @@ export class ProductImage {
   })
   product: Product;
 
-  @Column({nullable: true})
+  @Column({ nullable: true })
   order: number;
-  //
 }
