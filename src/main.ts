@@ -21,17 +21,12 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'http://localhost:5173',
-
-      'https://kelishamiz.uz',
-      'https://kelishamiz-backend.vercel.app',
-      'https://it-experts-nine.vercel.app',
       'http://localhost:5174',
+      'https://kelishamiz.uz',
       'https://kelishamiz-admin-panels.vercel.app',
-      'https://kelishamiz-backend.onrender.com',
-      'http://185.191.141.159',
-      'https://api.kelishamiz.uz',
+      'https://it-experts-nine.vercel.app',
     ],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true,
   });
 
