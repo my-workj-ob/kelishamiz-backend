@@ -49,6 +49,7 @@ import { Cache } from 'cache-manager';
 import { DeleteResult } from 'typeorm';
 import { RolesGuard } from './../common/interceptors/roles/roles.guard'; // RolesGuard ni import qilish
 import { Roles } from './../common/interceptors/roles/role.decorator'; // Roles decoratorini import qilish
+import { UpdateProductDto } from './dto/update-product.dto';
 
 // Foydalanuvchi obyektining tipini aniqlash (sizning autentifikatsiya tizimingizga mos ravishda)
 // Agar sizning JWT strategiyangiz req.user ga userId, phone, username, role kabi ma'lumotlarni qo'shsa
@@ -485,6 +486,17 @@ export class ProductController {
       statusCode: 200,
       message: 'Product successfully deleted',
     };
+  }
+
+  @Patch(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtOptionalAuthGuard)
+  @ApiOperation({ summary: 'Mahsulotni yangilash' })
+  async updateProduct(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: UpdateProductDto,
+  ) {
+    return this.productService.updateProduct(id, body);
   }
 
   // ... constructor va service injection

@@ -131,7 +131,7 @@ export class ProductService {
       order: {
         topExpiresAt: 'DESC',
         createdAt: 'DESC',
-        images: { order: 'DESC' },
+        images: { order: 'ASC' },
       },
     });
 
@@ -213,7 +213,7 @@ export class ProductService {
     query: string,
     categoryId: number,
     location?: string,
-    isAdmin: boolean = false, // <-- Yangi parametr
+    isAdmin: boolean = false,
   ): Promise<Product[]> {
     try {
       const qb = this.productRepository.createQueryBuilder('product');
@@ -741,5 +741,64 @@ export class ProductService {
     }
 
     return this.productRepository.save(product);
+  }
+
+  async updateProduct(id: number, body: any) {
+    const product = await this.productRepository.findOne({
+      where: { id },
+      relations: ['images'], // Rasmlarni olish uchun
+    });
+
+    if (!product) throw new NotFoundException('Product not found');
+
+    // Ruxsat berilgan maydonlar
+    const updatableFields = [
+      'title',
+      'description',
+      'price',
+      'minPrice',
+      'maxPrice',
+      'categoryId',
+      'profileId',
+      'regionId',
+      'districtId',
+      'paymentType',
+      'currencyType',
+      'negotiable',
+      'ownProduct',
+      'imageIndex',
+      'isTop',
+      'isPublish',
+      'topExpiresAt',
+      'propertyValues',
+    ];
+
+    for (const key of updatableFields) {
+      if (body[key] !== undefined) {
+        product[key] = body[key];
+      }
+    }
+
+    // --- 🖼 RASM YANGILASH ---
+    if (body.images && Array.isArray(body.images)) {
+      // Eski rasmlarni o'chirish
+      await this.productImageRepository.delete({ product: { id } });
+
+      // Yangi rasmlarni tayyorlash
+      const newImages = body.images.map((url: string, index: number) => {
+        const image = new ProductImage();
+        image.url = url; // yoki path, body.images[] da qanday format bo‘lsa
+        image.product = product;
+        image.order = index; // agar kerak bo‘lsa, tartib raqami
+        return image;
+      });
+
+      // Yangi rasmlarni saqlash
+      await this.productImageRepository.save(newImages);
+
+      product.images = newImages;
+    }
+
+    return await this.productRepository.save(product);
   }
 }
