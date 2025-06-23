@@ -779,6 +779,48 @@ export class ProductService {
       }
     }
 
+    if (body.propertyValues && typeof body.propertyValues === 'object') {
+      // 1. Eski property qiymatlarini o'chiramiz
+      await this.productPropertyRepository.delete({ product: { id } });
+
+      // 2. Har bir key-value uchun yangi ProductProperty yaratamiz
+      const newProperties: ProductProperty[] = [];
+
+      for (const [propertyName, value] of Object.entries(body.propertyValues)) {
+        // Property obyektini bazadan topamiz
+        const property = await this.productPropertyRepository.findOne({
+          where: {
+            property: {
+              name: propertyName,
+              category: { id: product.categoryId },
+            },
+          },
+        });
+
+        if (!property) {
+          // Kategoriya bo‘yicha mavjud bo‘lmagan property bo‘lsa — o‘tkazib yuboramiz yoki xatolik qaytaramiz
+          console.warn(`Property not found: ${propertyName}`);
+          continue;
+        }
+
+        const productProperty = new ProductProperty();
+        productProperty.product = product;
+        productProperty.property = property.property;
+        if (typeof value === 'object' && value !== null) {
+          productProperty.value = value as Record<string, string>;
+        } else {
+          throw new BadRequestException(
+            `Invalid value type for property: ${propertyName}`,
+          );
+        }
+
+        newProperties.push(productProperty);
+      }
+
+      await this.productPropertyRepository.save(newProperties);
+      product.productProperties = newProperties;
+    }
+
     // --- 🖼 RASM YANGILASH ---
     if (body.images && Array.isArray(body.images)) {
       // Eski rasmlarni o'chirish
