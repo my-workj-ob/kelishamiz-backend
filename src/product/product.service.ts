@@ -74,7 +74,7 @@ export class ProductService {
       skip,
       take: pageSize,
       where: whereCondition, // <-- isPublish shartini shu yerga qo'ydik
-      relations: ['category', 'profile', 'district', 'images', 'likes'],
+      relations: ['category', 'category.parent', 'profile', 'district', 'images', 'likes'],
       order: { isTop: 'DESC', createdAt: 'DESC', images: { order: 'ASC' } },
     });
 
@@ -303,7 +303,7 @@ export class ProductService {
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.images', 'image')
       .where('profile.userId = :userId', { userId: id })
-      .orderBy('image.order', 'ASC') // Bu qator muhim!
+      .orderBy('image.order', 'ASC')
       .getOne();
 
     return profile;
@@ -395,7 +395,7 @@ export class ProductService {
   async toggleLike(projectId: number, userId: number): Promise<boolean> {
     const project = await this.productRepository.findOne({
       where: { id: projectId },
-      relations: ['likes'],
+      relations: ['likes', 'images'],
     });
 
     if (!project) {
