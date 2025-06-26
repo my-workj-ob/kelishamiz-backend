@@ -750,15 +750,47 @@ export class ProductService {
     return this.productRepository.save(product);
   }
 
-  async updateProduct(id: number, body: any) {
+  async updateProduct(
+    id: number,
+    body: any,
+    files?: Express.Multer.File[], // yangi yuklanayotgan fayllar
+  ) {
     const product = await this.productRepository.findOne({
       where: { id },
-      relations: ['images'], // Rasmlarni olish uchun
+      relations: ['images'],
     });
 
     if (!product) throw new NotFoundException('Product not found');
 
-    // Ruxsat berilgan maydonlar
+    // 1. Fayllarni yuklash va URL olish
+    if (files && files.length > 0) {
+      const uploadedUrls: string[] = [];
+
+      for (const file of files) {
+        const url = await this.uploadService.uploadFile(file);
+        await this.fileService.saveFile(url);
+        uploadedUrls.push(url);
+      }
+
+      // 2. Max order aniqlaymiz
+      const maxOrder =
+        product.images.length > 0
+          ? Math.max(...product.images.map((img) => img.order ?? 0))
+          : 0;
+
+      // 3. Yangi URL’larni body.images ga qo‘shamiz
+      if (!Array.isArray(body.images)) {
+        body.images = [];
+      }
+      uploadedUrls.forEach((url, index) => {
+        body.images.push({
+          url,
+          order: maxOrder + index + 1,
+        });
+      });
+    }
+
+    // --- Boshqa maydonlarni yangilash ---
     const updatableFields = [
       'title',
       'description',
@@ -779,22 +811,18 @@ export class ProductService {
       'topExpiresAt',
       'propertyValues',
     ];
-
     for (const key of updatableFields) {
       if (body[key] !== undefined) {
         product[key] = body[key];
       }
     }
 
+    // --- propertyValues yangilash (sizning avvalgi kodingiz bilan) ---
     if (body.propertyValues && typeof body.propertyValues === 'object') {
-      // 1. Eski property qiymatlarini o'chiramiz
       await this.productPropertyRepository.delete({ product: { id } });
 
-      // 2. Har bir key-value uchun yangi ProductProperty yaratamiz
       const newProperties: ProductProperty[] = [];
-
       for (const [propertyName, value] of Object.entries(body.propertyValues)) {
-        // Property obyektini bazadan topamiz
         const property = await this.productPropertyRepository.findOne({
           where: {
             property: {
@@ -805,7 +833,6 @@ export class ProductService {
         });
 
         if (!property) {
-          // Kategoriya bo‘yicha mavjud bo‘lmagan property bo‘lsa — o‘tkazib yuboramiz yoki xatolik qaytaramiz
           console.warn(`Property not found: ${propertyName}`);
           continue;
         }
@@ -823,46 +850,17 @@ export class ProductService {
 
         newProperties.push(productProperty);
       }
-
       await this.productPropertyRepository.save(newProperties);
       product.productProperties = newProperties;
     }
 
-    // --- 🖼 RASM YANGILASH ---
+    // --- Rasmlarni yangilash ---
     if (body.images && Array.isArray(body.images)) {
       const updatedImages: ProductImage[] = [];
-
-      for (const imageData of body.images) {
-        const { id, url, order } = imageData;
-
-        if (id) {
-          const existingImage = await this.productImageRepository.findOne({
-            where: { id, product: { id: product.id } },
-          });
-
-          if (existingImage) {
-            existingImage.url = url;
-            existingImage.order = order ?? 0;
-            updatedImages.push(existingImage);
-          } else {
-            console.warn(`Image with ID ${id} not found`);
-          }
-        } else {
-          // Yangi rasm
-          const newImage = new ProductImage();
-          newImage.url = url;
-          newImage.product = product;
-          newImage.order = order ?? 0;
-          updatedImages.push(newImage);
-        }
-      }
-
-      // Mavjud product rasmlarini olamiz
       const existingImages = await this.productImageRepository.find({
         where: { product: { id: product.id } },
       });
 
-      // body.images ichida yo‘q bo‘lgan eski rasm id'larini aniqlaymiz
       const incomingIds = body.images
         .filter((img) => img.id)
         .map((img) => img.id);
@@ -870,12 +868,38 @@ export class ProductService {
       const imagesToDelete = existingImages.filter(
         (img) => !incomingIds.includes(img.id),
       );
-
       if (imagesToDelete.length > 0) {
         await this.productImageRepository.remove(imagesToDelete);
       }
 
-      // Save updated and new images
+      // Max order hisoblash (eskilar orasidan)
+      const maxOrder =
+        existingImages.length > 0
+          ? Math.max(...existingImages.map((img) => img.order ?? 0))
+          : 0;
+      let nextOrder = maxOrder + 1;
+
+      for (const imageData of body.images) {
+        const { id, url, order } = imageData;
+
+        if (id) {
+          const existingImage = existingImages.find((img) => img.id === id);
+          if (existingImage) {
+            existingImage.url = url;
+            // Tartib eski holatda qoladi, agar order berilgan bo‘lsa yangilanadi
+            existingImage.order = order ?? existingImage.order;
+            updatedImages.push(existingImage);
+          }
+        } else {
+          // Yangi rasm
+          const newImage = new ProductImage();
+          newImage.url = url;
+          newImage.product = product;
+          newImage.order = order ?? nextOrder++;
+          updatedImages.push(newImage);
+        }
+      }
+
       await this.productImageRepository.save(updatedImages);
       product.images = updatedImages;
     }
