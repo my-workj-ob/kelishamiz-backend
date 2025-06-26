@@ -836,7 +836,6 @@ export class ProductService {
         const { id, url, order } = imageData;
 
         if (id) {
-          // Mavjud rasmni topamiz
           const existingImage = await this.productImageRepository.findOne({
             where: { id, product: { id: product.id } },
           });
