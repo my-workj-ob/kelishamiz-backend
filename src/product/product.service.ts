@@ -121,7 +121,6 @@ export class ProductService {
   }> {
     const skip = (page - 1) * pageSize;
     const now = new Date();
-
     const whereCondition: any = {
       isTop: true,
       topExpiresAt: MoreThan(now),
@@ -308,6 +307,7 @@ export class ProductService {
       .createQueryBuilder('profile')
       .leftJoinAndSelect('profile.products', 'product')
       .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('category.parent', 'parentCategory') // <-- ota kategoriya qo‘shildi
       .leftJoinAndSelect('product.images', 'image')
       .where('profile.userId = :userId', { userId: id })
       .orderBy('image.order', 'ASC')
