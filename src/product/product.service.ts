@@ -74,7 +74,14 @@ export class ProductService {
       skip,
       take: pageSize,
       where: whereCondition, // <-- isPublish shartini shu yerga qo'ydik
-      relations: ['category', 'category.parent', 'profile', 'district', 'images', 'likes'],
+      relations: [
+        'category',
+        'category.parent',
+        'profile',
+        'district',
+        'images',
+        'likes',
+      ],
       order: { isTop: 'DESC', createdAt: 'DESC', images: { order: 'ASC' } },
     });
 
@@ -823,22 +830,55 @@ export class ProductService {
 
     // --- 🖼 RASM YANGILASH ---
     if (body.images && Array.isArray(body.images)) {
-      // Eski rasmlarni o'chirish
-      await this.productImageRepository.delete({ product: { id } });
+      const updatedImages: ProductImage[] = [];
 
-      // Yangi rasmlarni tayyorlash
-      const newImages = body.images.map((url: string, index: number) => {
-        const image = new ProductImage();
-        image.url = url; // yoki path, body.images[] da qanday format bo‘lsa
-        image.product = product;
-        image.order = index; // agar kerak bo‘lsa, tartib raqami
-        return image;
+      for (const imageData of body.images) {
+        const { id, url, order } = imageData;
+
+        if (id) {
+          // Mavjud rasmni topamiz
+          const existingImage = await this.productImageRepository.findOne({
+            where: { id, product: { id: product.id } },
+          });
+
+          if (existingImage) {
+            existingImage.url = url;
+            existingImage.order = order ?? 0;
+            updatedImages.push(existingImage);
+          } else {
+            console.warn(`Image with ID ${id} not found`);
+          }
+        } else {
+          // Yangi rasm
+          const newImage = new ProductImage();
+          newImage.url = url;
+          newImage.product = product;
+          newImage.order = order ?? 0;
+          updatedImages.push(newImage);
+        }
+      }
+
+      // Mavjud product rasmlarini olamiz
+      const existingImages = await this.productImageRepository.find({
+        where: { product: { id: product.id } },
       });
 
-      // Yangi rasmlarni saqlash
-      await this.productImageRepository.save(newImages);
+      // body.images ichida yo‘q bo‘lgan eski rasm id'larini aniqlaymiz
+      const incomingIds = body.images
+        .filter((img) => img.id)
+        .map((img) => img.id);
 
-      product.images = newImages;
+      const imagesToDelete = existingImages.filter(
+        (img) => !incomingIds.includes(img.id),
+      );
+
+      if (imagesToDelete.length > 0) {
+        await this.productImageRepository.remove(imagesToDelete);
+      }
+
+      // Save updated and new images
+      await this.productImageRepository.save(updatedImages);
+      product.images = updatedImages;
     }
 
     return await this.productRepository.save(product);
