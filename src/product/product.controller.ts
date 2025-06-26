@@ -43,7 +43,10 @@ import {
 import { GetProductsDto } from './dto/filter-product.dto';
 import { Product } from './entities/product.entity';
 import { ProductService } from './product.service';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FilesInterceptor,
+} from '@nestjs/platform-express';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { DeleteResult } from 'typeorm';
@@ -492,11 +495,14 @@ export class ProductController {
   @ApiBearerAuth()
   @UseGuards(JwtOptionalAuthGuard)
   @ApiOperation({ summary: 'Mahsulotni yangilash' })
+  @UseInterceptors(FilesInterceptor('files', 10)) // yoki FilesInterceptor('files', 10) agar maksimal fayl soni bo'lsa
+  @ApiConsumes('multipart/form-data')
   async updateProduct(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: UpdateProductDto,
+    @UploadedFiles() files: Express.Multer.File[],
   ) {
-    return this.productService.updateProduct(id, body);
+    return this.productService.updateProduct(id, body, files);
   }
 
   // ... constructor va service injection
