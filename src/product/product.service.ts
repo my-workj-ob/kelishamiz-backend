@@ -307,6 +307,8 @@ export class ProductService {
       .createQueryBuilder('profile')
       .leftJoinAndSelect('profile.products', 'product')
       .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.region', 'region')
+      .leftJoinAndSelect('product.district', 'district')
       .leftJoinAndSelect('category.parent', 'parentCategory') // <-- ota kategoriya qo‘shildi
       .leftJoinAndSelect('product.images', 'image')
       .where('profile.userId = :userId', { userId: id })
@@ -850,6 +852,7 @@ export class ProductService {
 
         newProperties.push(productProperty);
       }
+
       await this.productPropertyRepository.save(newProperties);
       product.productProperties = newProperties;
     }

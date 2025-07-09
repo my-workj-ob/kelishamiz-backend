@@ -490,16 +490,57 @@ export class ProductController {
       message: 'Product successfully deleted',
     };
   }
-
   @Patch(':id')
   @ApiBearerAuth()
   @UseGuards(JwtOptionalAuthGuard)
-  @ApiOperation({ summary: 'Mahsulotni yangilash' })
-  @UseInterceptors(FilesInterceptor('files', 10)) // yoki FilesInterceptor('files', 10) agar maksimal fayl soni bo'lsa
+  @ApiOperation({ summary: 'Mahsulotni yangilash (rasmlar bilan)' })
+  @UseInterceptors(FilesInterceptor('files', 10))
   @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    type: UpdateProductDto,
+
+    schema: {
+      type: 'object',
+      properties: {
+        files: {
+          type: 'array',
+          items: {
+            type: 'string',
+            format: 'binary',
+          },
+          description: 'Yangi yuklanayotgan rasm fayllari',
+        },
+        title: { type: 'string' },
+        description: { type: 'string' },
+        price: { type: 'number' },
+        images: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'number', nullable: true },
+              url: { type: 'string' },
+              order: { type: 'number' },
+            },
+          },
+        },
+        propertyValues: {
+          type: 'object',
+          additionalProperties: {
+            type: 'object',
+          },
+          example: {
+            color: { value: 'red' },
+            size: { value: 'L' },
+          },
+        },
+      },
+      required: ['title', 'price'], // keraklilar
+    },
+  })
   async updateProduct(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: UpdateProductDto,
+    @Body() body: any,
     @UploadedFiles() files: Express.Multer.File[],
   ) {
     return this.productService.updateProduct(id, body, files);
