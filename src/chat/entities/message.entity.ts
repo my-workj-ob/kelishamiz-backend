@@ -15,7 +15,7 @@ export class Message {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({nullable: true})
   chatRoomId: string;
 
   @ManyToOne(() => ChatRoom, (chatRoom) => chatRoom.messages, {
