@@ -30,7 +30,7 @@ export class Message {
   @JoinColumn({ name: 'senderId' }) 
   sender: User;
 
-  @Column('text') // Katta matnlar uchun 'text' tipi yaxshiroq
+  @Column('text',{nullable: true}) // Katta matnlar uchun 'text' tipi yaxshiroq
   content: string; // Xabar matni
 
   @CreateDateColumn()
