@@ -15,7 +15,7 @@ export class Message {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({nullable: true})
+  @Column({ nullable: true })
   chatRoomId: string;
 
   @ManyToOne(() => ChatRoom, (chatRoom) => chatRoom.messages, {
@@ -27,10 +27,10 @@ export class Message {
   senderId: string; // Kim yuborgani (User ID)
 
   @ManyToOne(() => User, (user) => user.messages, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'senderId' }) 
+  @JoinColumn({ name: 'senderId' })
   sender: User;
 
-  @Column('text',{nullable: true}) // Katta matnlar uchun 'text' tipi yaxshiroq
+  @Column('text', { nullable: true }) // Katta matnlar uchun 'text' tipi yaxshiroq
   content: string; // Xabar matni
 
   @CreateDateColumn()
