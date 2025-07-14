@@ -543,6 +543,8 @@ export class ProductController {
     @Body() body: any,
     @UploadedFiles() files: Express.Multer.File[],
   ) {
+    console.log('Qabul qilingan fayllar:', files); // Debugging uchun
+    console.log('Qabul qilingan body:', body); // Debugging uchun
     return this.productService.updateProduct(id, body, files);
   }
 
