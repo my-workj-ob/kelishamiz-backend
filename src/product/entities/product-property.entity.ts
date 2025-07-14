@@ -17,6 +17,7 @@ export class ProductProperty {
   @ManyToOne(() => Product, (product) => product.productProperties, {
     onDelete: 'CASCADE',
   })
+  
   @JoinColumn({ name: 'productId' })
   @Exclude() // bu maydon javobga kirmaydi
   product: Product;

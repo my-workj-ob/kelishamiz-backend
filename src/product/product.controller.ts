@@ -4,6 +4,7 @@
 import {
   BadRequestException,
   Body,
+  ClassSerializerInterceptor,
   Controller,
   Delete,
   Get,
@@ -68,6 +69,7 @@ interface AuthenticatedRequest extends Request {
 @ApiTags('Products')
 @ApiBearerAuth()
 @Controller('products')
+@UseInterceptors(ClassSerializerInterceptor) // Shu yerda interceptor qo‘shildi
 export class ProductController {
   constructor(
     private readonly productService: ProductService,
