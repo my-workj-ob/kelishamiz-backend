@@ -756,6 +756,7 @@ export class ProductService {
   }
 
   async updateProduct(id: number, body: any, files?: Express.Multer.File[]) {
+    // 1. Mahsulotni oldingi rasm va propertylar bilan birga olib kelamiz
     const product = await this.productRepository.findOne({
       where: { id },
       relations: ['images', 'productProperties'],
@@ -763,21 +764,21 @@ export class ProductService {
 
     if (!product) throw new NotFoundException('Product not found');
 
-    // --- Eski rasm ID’lari ---
+    // 2. Incoming images tahlili
     const oldImages = (body.images || []).filter((img) => img.id);
     const urlImages = (body.images || []).filter(
       (img) => !img.id && typeof img.url === 'string',
     );
     const newFiles = files || [];
 
-    // --- Rasm sonini tekshirish ---
+    // 3. Rasmlar sonini cheklash (max 10 ta)
     const totalImageCount =
       oldImages.length + urlImages.length + newFiles.length;
     if (totalImageCount > 10) {
       throw new BadRequestException('Rasmlar soni 10 tadan oshmasligi kerak');
     }
 
-    // --- Yangi fayllarni yuklash ---
+    // 4. Yangi fayllarni yuklash
     const uploadedUrls: string[] = [];
     for (const file of newFiles) {
       const url = await this.uploadService.uploadFile(file);
@@ -785,16 +786,14 @@ export class ProductService {
       uploadedUrls.push(url);
     }
 
-    // --- Yangi fayl URL’larini body.images ga qo‘shamiz ---
+    // 5. Uploaded URL'larni body.images ga qo'shish
+    if (!Array.isArray(body.images)) {
+      body.images = [];
+    }
     const maxOrder =
       product.images.length > 0
         ? Math.max(...product.images.map((img) => img.order ?? 0))
         : 0;
-
-    if (!Array.isArray(body.images)) {
-      body.images = [];
-    }
-
     uploadedUrls.forEach((url, index) => {
       body.images.push({
         url,
@@ -802,7 +801,7 @@ export class ProductService {
       });
     });
 
-    // --- Boshqa maydonlarni yangilash ---
+    // 6. Mahsulotning boshqa maydonlarini update qilish
     const updatableFields = [
       'title',
       'description',
@@ -829,13 +828,14 @@ export class ProductService {
       }
     }
 
-    // --- propertyValues yangilash ---
+    // 7. propertyValues yangilash
     if (body.propertyValues && typeof body.propertyValues === 'object') {
+      // Eski propertylarni o'chirish
       await this.productPropertyRepository.delete({ product: { id } });
 
       const newProperties: ProductProperty[] = [];
-
       for (const [propertyName, value] of Object.entries(body.propertyValues)) {
+        // Property ni olish
         const property = await this.propertyRepository.findOne({
           where: {
             name: propertyName,
@@ -848,6 +848,7 @@ export class ProductService {
           continue;
         }
 
+        // Yangi ProductProperty yaratish
         const productProperty = new ProductProperty();
         productProperty.product = product;
         productProperty.productId = product.id;
@@ -865,44 +866,62 @@ export class ProductService {
         newProperties.push(productProperty);
       }
 
+      // Yangi propertylarni saqlash
       await this.productPropertyRepository.save(newProperties);
       product.productProperties = newProperties;
     }
 
-    // --- Rasmlarni yangilash ---
+    // 8. Rasmlarni yangilash: eski rasmalar va fayllarni o'chirish + yangi rasmalarni saqlash
     if (body.images && Array.isArray(body.images)) {
       const updatedImages: ProductImage[] = [];
       const existingImages = await this.productImageRepository.find({
         where: { product: { id: product.id } },
       });
 
+      // Incoming images dagi id'lar
       const incomingIds = body.images
         .filter((img) => img.id)
         .map((img) => img.id);
 
+      // O'chirilishi kerak bo'lgan eski rasmalar (body.images da yo'q)
       const imagesToDelete = existingImages.filter(
         (img) => !incomingIds.includes(img.id),
       );
+
+      // Fayl tizimidan o'chirish
+      for (const imgToDel of imagesToDelete) {
+        await this.fileService.deleteFileByUrl(imgToDel.url);
+      }
+
+      // Bazadan o'chirish
       if (imagesToDelete.length > 0) {
         await this.productImageRepository.remove(imagesToDelete);
       }
 
+      // Rasm order uchun boshlang'ich
       let nextOrder =
         existingImages.length > 0
           ? Math.max(...existingImages.map((img) => img.order ?? 0)) + 1
           : 1;
 
+      // Body.images dagi rasmalarni bazaga joylash (yangilash yoki yangi rasm qo'shish)
       for (const imageData of body.images) {
         const { id, url, order } = imageData;
 
         if (id) {
+          // Eskisini yangilash
           const existingImage = existingImages.find((img) => img.id === id);
           if (existingImage) {
-            existingImage.url = url;
+            if (existingImage.url !== url) {
+              // URL o'zgargan bo'lsa eski faylni o'chirish
+              await this.fileService.deleteFileByUrl(existingImage.url);
+              existingImage.url = url;
+            }
             existingImage.order = order ?? existingImage.order;
             updatedImages.push(existingImage);
           }
         } else {
+          // Yangi rasm qo'shish
           const newImage = new ProductImage();
           newImage.url = url;
           newImage.product = product;
@@ -911,19 +930,21 @@ export class ProductService {
         }
       }
 
+      // Yangilangan rasmalarni saqlash
       await this.productImageRepository.save(updatedImages);
       product.images = updatedImages;
     }
 
-    // --- Asosiy rasmni tanlash (imageIndex asosida) ---
+    // 9. Asosiy rasmni (imageIndex asosida) tanlash — agar kerak bo'lsa
     if (
       typeof product.imageIndex === 'number' &&
       product.images?.length > product.imageIndex
     ) {
       const mainImage = product.images[product.imageIndex];
-      // mainImage.isMain = true; // Agar kerak bo‘lsa asosiy deb belgilang
+      // mainImage.isMain = true; // agar kerak bo'lsa
     }
 
+    // 10. Mahsulotni saqlash va natijani qaytarish
     return await this.productRepository.save(product);
   }
 }
