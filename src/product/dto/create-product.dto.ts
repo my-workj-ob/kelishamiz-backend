@@ -38,12 +38,13 @@ export class ProductPropertyDto {
   type: string;
 
   @ApiProperty({
-    example: { key: 'Eshiklar soni', value: '2' },
-    description: 'Xususiyat nomi va qiymati',
+    example: [{ key: 'Eshiklar soni', value: '2' }],
+    description: 'Xususiyat nomi va qiymatlari',
+    isArray: true,
   })
-  @ValidateNested()
+  @ValidateNested({ each: true })
   @Type(() => ProductPropertyValueDto)
-  value: ProductPropertyValueDto;
+  value: ProductPropertyValueDto[];
 }
 
 export class ProductImageDto {
@@ -66,7 +67,7 @@ export class ProductImageDto {
 export class ProductDto {
   @ApiProperty()
   title: string;
-  
+
   @ApiProperty()
   description: string;
 
