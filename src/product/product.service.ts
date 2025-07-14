@@ -947,76 +947,99 @@ export class ProductService {
       // Propertylarni yangilash
       this.logger.debug(`[updateProduct] Updating product properties...`);
       if (Array.isArray(body.properties)) {
+        // Eski product propertylarini o'chirish
+        this.logger.debug(
+          `[updateProduct] Deleting old product properties for product ID: ${product.id}`,
+        );
         await queryRunner.manager.delete(ProductProperty, {
           product: { id: product.id },
         });
         this.logger.debug(`[updateProduct] Old product properties deleted.`);
 
-        const propertyEntities: ProductProperty[] = [];
+        const newProductProperties: ProductProperty[] = [];
 
-        for (const prop of body.properties) {
-          const propertyId = toNumber(prop.propertyId);
+        for (const propData of body.properties) {
+          const propertyId = toNumber(propData.propertyId);
           if (isNaN(propertyId)) {
             this.logger.warn(
-              `[updateProduct] Invalid propertyId format: ${prop.propertyId}. Skipping.`,
+              `[updateProduct] Invalid propertyId format in body.properties: ${propData.propertyId}. Skipping.`,
             );
             continue;
           }
 
+          // Property entity'sini topish
           const propertyEntity = await queryRunner.manager.findOne(Property, {
-            where: { id: propertyId },
+            where: { id: propertyId, category: { id: product.categoryId } }, // Kategoriya bo'yicha ham tekshirish muhim!
           });
 
           if (!propertyEntity) {
             this.logger.warn(
-              `[updateProduct] Property not found. ID: ${propertyId}. Skipping.`,
+              `[updateProduct] Property with ID ${propertyId} not found for category ${product.categoryId}. Skipping.`,
             );
             continue;
           }
           this.logger.debug(
-            `[updateProduct] Found property: ${propertyEntity.name} (ID: ${propertyId})`,
+            `[updateProduct] Found Property: ${propertyEntity.name} (ID: ${propertyId})`,
           );
 
+          // ProductProperty ob'ektini yaratish
           const productProperty = new ProductProperty();
           productProperty.product = product;
+          productProperty.productId = product.id;
           productProperty.property = propertyEntity;
           productProperty.propertyId = propertyEntity.id;
-          productProperty.productId = product.id;
 
-          if (typeof prop.value === 'object' && prop.value !== null) {
-            productProperty.value = prop.value;
+          // Qiymat turini tekshirish
+          if (typeof propData.value === 'object' && propData.value !== null) {
+            productProperty.value = propData.value;
             this.logger.debug(
-              `[updateProduct] Property value set for ${propertyEntity.name}: ${JSON.stringify(prop.value)}`,
+              `[updateProduct] Property value set for ${propertyEntity.name}: ${JSON.stringify(propData.value)}`,
+            );
+          } else if (propData.value !== undefined && propData.value !== null) {
+            // String yoki raqam bo'lsa, uni { value: "..." } formatiga o'tkazamiz
+            productProperty.value = { value: String(propData.value) };
+            this.logger.debug(
+              `[updateProduct] Simple property value converted to object for ${propertyEntity.name}: ${JSON.stringify(productProperty.value)}`,
             );
           } else {
             this.logger.warn(
-              `[updateProduct] Invalid value format for Property ID ${propertyId}. Expected object. Skipping.`,
+              `[updateProduct] Invalid or missing value for Property ID ${propertyId}. Expected object or basic type. Skipping.`,
             );
             continue;
           }
 
-          propertyEntities.push(productProperty);
+          newProductProperties.push(productProperty);
         }
 
-        if (propertyEntities.length > 0) {
-          await queryRunner.manager.save(propertyEntities);
+        if (newProductProperties.length > 0) {
           this.logger.debug(
-            `[updateProduct] ${propertyEntities.length} new product properties saved.`,
+            `[updateProduct] Saving ${newProductProperties.length} new product properties.`,
           );
+          await queryRunner.manager.save(newProductProperties);
+          this.logger.debug(`[updateProduct] New product properties saved.`);
         } else {
           this.logger.debug(
             `[updateProduct] No new product properties to save.`,
           );
         }
-        product.productProperties = propertyEntities;
+        product.productProperties = newProductProperties; // Mahsulot ob'ektining relatsiyasini yangilaymiz
         this.logger.debug(
           `[updateProduct] Product properties update finished.`,
         );
       } else {
         this.logger.debug(
-          `[updateProduct] No properties provided or invalid format.`,
+          `[updateProduct] No properties array provided in body or invalid format. Product properties not updated.`,
+        );
+        // Agar body.properties kelmasa, mavjud propertylarni o'chirib, bo'sh massivga aylantirish
+        await queryRunner.manager.delete(ProductProperty, {
+          product: { id: product.id },
+        });
+        product.productProperties = [];
+        this.logger.debug(
+          `[updateProduct] Existing product properties cleared as no new properties were provided.`,
         );
       }
+      // --- Propertylarni yangilash qismi tugadi ---
 
       // Eski rasmlarni olib tashlash
       this.logger.debug(
