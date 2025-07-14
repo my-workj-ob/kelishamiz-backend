@@ -796,7 +796,9 @@ export class ProductService {
         body.images.push({ url, order: maxOrder + i + 1 });
       });
 
-      // Update simple fields
+      const toNumber = (val: any) =>
+        typeof val === 'string' ? parseInt(val, 10) : val;
+
       const updatableFields = [
         'title',
         'description',
@@ -816,28 +818,62 @@ export class ProductService {
         'isPublish',
         'topExpiresAt',
       ];
-      for (const field of updatableFields) {
-        if (body[field] !== undefined) product[field] = body[field];
-      }
 
+      for (const key of updatableFields) {
+        if (body[key] !== undefined) {
+          product[key] = [
+            'categoryId',
+            'profileId',
+            'regionId',
+            'districtId',
+            'imageIndex',
+          ].includes(key)
+            ? toNumber(body[key])
+            : body[key];
+        }
+      }
       // Build propertyValues from properties array
       if (Array.isArray(body.properties)) {
-        const propertyValues: Record<string, Record<string, string>> = {};
+        await queryRunner.manager.delete(ProductProperty, {
+          product: { id: product.id },
+        });
+
+        const propertyEntities: ProductProperty[] = [];
+
         for (const prop of body.properties) {
-          if (!prop.propertyId) continue;
+          const propertyId = parseInt(prop.propertyId, 10);
 
-          const property = await this.propertyRepository.findOne({
-            where: { id: prop.propertyId },
+          const propertyEntity = await queryRunner.manager.findOne(Property, {
+            where: { id: propertyId },
           });
-          if (!property) continue;
 
-          const value =
-            typeof prop.value === 'object'
-              ? prop.value
-              : { value: String(prop.value) };
-          propertyValues[property.name] = value;
+          if (!propertyEntity) {
+            this.logger.warn(
+              `[updateProduct] Property topilmadi. ID: ${propertyId}`,
+            );
+            continue;
+          }
+
+          const productProperty = new ProductProperty();
+          productProperty.product = product;
+          productProperty.property = propertyEntity;
+          productProperty.propertyId = propertyEntity.id;
+          productProperty.productId = product.id;
+
+          if (typeof prop.value === 'object' && prop.value !== null) {
+            productProperty.value = prop.value;
+          } else {
+            this.logger.warn(
+              `[updateProduct] Property ID ${propertyId} uchun noto'g'ri value format.`,
+            );
+            continue;
+          }
+
+          propertyEntities.push(productProperty);
         }
-        body.propertyValues = propertyValues;
+
+        await queryRunner.manager.save(propertyEntities);
+        product.productProperties = propertyEntities;
       }
 
       // Validate and persist new productProperties
