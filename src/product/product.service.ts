@@ -1127,7 +1127,11 @@ export class ProductService {
           this.logger.warn(
             `[updateProduct] Provided imageIndex (${product.imageIndex}) is out of bounds for current images array (length: ${product.images.length}).`,
           );
-          product.imageIndex = product.images.length > 0 ? 0 : null; // Agar rasm bo'lmasa null
+          if (product.images.length > 0) {
+            product.imageIndex = 0;
+          } else {
+            product.imageIndex = 0; // entitida nullable bo'lsa, xato bermaydi
+          } // Agar rasm bo'lmasa null
           this.logger.debug(
             `[updateProduct] imageIndex adjusted to: ${product.imageIndex}`,
           );
@@ -1140,7 +1144,11 @@ export class ProductService {
             `[updateProduct] imageIndex not provided, set to 0 as default.`,
           );
         } else {
-          product.imageIndex = null; // Rasmlar bo'lmasa null
+          const imageIndexValue = body.imageIndex;
+          product.imageIndex =
+            typeof imageIndexValue === 'object' && imageIndexValue?.id
+              ? Number(imageIndexValue.id)
+              : (toNumber(imageIndexValue) ?? null);
           this.logger.debug(
             `[updateProduct] No images, imageIndex set to null.`,
           );

@@ -137,7 +137,7 @@ export class Product {
   ownProduct: boolean;
 
   @Column({ default: 0, nullable: true })
-  imageIndex: number | null;
+  imageIndex: number ;
 
   // Ushbu mahsulotga tegishli chat xonalari
   @OneToMany(() => ChatRoom, (chatRoom) => chatRoom.product)
