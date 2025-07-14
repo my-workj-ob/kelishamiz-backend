@@ -5,6 +5,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -15,6 +16,7 @@ import {
   ILike,
   In,
   MoreThan,
+  QueryFailedError,
   Repository,
 } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
@@ -35,6 +37,8 @@ import { ProductImage } from './entities/Product-Image.entity';
 
 @Injectable()
 export class ProductService {
+  private readonly logger = new Logger(ProductService.name);
+
   constructor(
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
@@ -756,44 +760,61 @@ export class ProductService {
   }
 
   async updateProduct(id: number, body: any, files?: Express.Multer.File[]) {
-    console.debug(
+    this.logger.debug(
       `[updateProduct] Mahsulotni yangilash boshlandi. ID: ${id}, Body: ${JSON.stringify(body)}, Files count: ${files?.length || 0}`,
     );
+    let product: Product;
 
-    // 1. Mahsulotni oldingi rasm va propertylar bilan birga olib kelamiz
-    console.debug(
-      `[updateProduct] Mahsulotni ID: ${id} bo'yicha ma'lumotlar bazasidan qidirish...`,
-    );
-    const product = await this.productRepository.findOne({
-      where: { id },
-      relations: ['images', 'productProperties'],
-    });
+    try {
+      this.logger.debug(
+        `[updateProduct] Mahsulotni ID: ${id} bo'yicha qidirish...`,
+      );
 
-    if (!product) {
-      console.warn(`[updateProduct] Mahsulot topilmadi. ID: ${id}`);
-      throw new NotFoundException('Product not found');
+      const found = await this.productRepository.findOne({
+        where: { id },
+        relations: ['images', 'productProperties'],
+      });
+
+      if (!found) {
+        this.logger.warn(`[updateProduct] Mahsulot topilmadi. ID: ${id}`);
+        throw new NotFoundException('Product not found');
+      }
+
+      product = found; // endi bu 100% Product
+      this.logger.debug(`[updateProduct] Mahsulot topildi. ID: ${product.id}`);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      this.logger.error(
+        `[updateProduct] Mahsulotni olishda xatolik. ID: ${id}. ${error.message}`,
+        error.stack,
+      );
+
+      throw new InternalServerErrorException(
+        'Mahsulotni olishda xatolik yuz berdi.',
+      );
     }
-    console.debug(`[updateProduct] Mahsulot topildi. ID: ${product.id}`);
 
     // 2. Incoming images tahlili
-    // 'body.images' null yoki undefined bo'lishi mumkinligini hisobga olamiz
     const incomingImages = Array.isArray(body.images) ? body.images : [];
 
-    const oldImages = incomingImages.filter((img) => img.id); // ID mavjud bo'lgan rasmlar (eskilar)
+    const oldImages = incomingImages.filter((img) => img.id);
     const urlImages = incomingImages.filter(
       (img) => !img.id && typeof img.url === 'string',
-    ); // ID yo'q, lekin URL mavjud bo'lgan rasmlar (oldindan yuklangan URL'lar)
-    const newFiles = files || []; // Yangi yuklangan fayllar
-    console.debug(
+    );
+    const newFiles = files || [];
+    this.logger.debug(
       `[updateProduct] Incoming images tahlili: Old images: ${oldImages.length}, URL images: ${urlImages.length}, New files: ${newFiles.length}`,
     );
 
     // 3. Rasmlar sonini cheklash (max 10 ta)
     const totalImageCount =
       oldImages.length + urlImages.length + newFiles.length;
-    console.debug(`[updateProduct] Jami rasm soni: ${totalImageCount}`);
+    this.logger.debug(`[updateProduct] Jami rasm soni: ${totalImageCount}`);
     if (totalImageCount > 10) {
-      console.warn(
+      this.logger.warn(
         `[updateProduct] Rasmlar soni cheklovdan oshib ketdi (${totalImageCount} > 10).`,
       );
       throw new BadRequestException('Rasmlar soni 10 tadan oshmasligi kerak');
@@ -802,61 +823,62 @@ export class ProductService {
     // 4. Yangi fayllarni yuklash
     const uploadedUrls: string[] = [];
     if (newFiles.length > 0) {
-      console.debug(
+      this.logger.debug(
         `[updateProduct] Yangi fayllarni yuklash boshlandi. Fayllar soni: ${newFiles.length}`,
       );
       for (const file of newFiles) {
         try {
           const url = await this.uploadService.uploadFile(file);
-          await this.fileService.saveFile(url); // Fayl ma'lumotini bazaga saqlash
+          await this.fileService.saveFile(url);
           uploadedUrls.push(url);
-          console.debug(`[updateProduct] Fayl muvaffaqiyatli yuklandi: ${url}`);
-        } catch (uploadError) {
-          console.error(
-            `[updateProduct] Faylni yuklashda xato yuz berdi: ${file.originalname}. Xato: ${uploadError.message}`,
+          this.logger.debug(
+            `[updateProduct] Fayl muvaffaqiyatli yuklandi: ${url}`,
           );
-          throw new BadRequestException(
-            `Faylni yuklashda xato: ${file.originalname}`,
+        } catch (uploadError) {
+          this.logger.error(
+            `[updateProduct] Faylni yuklashda xato yuz berdi: ${file.originalname}. Xato: ${uploadError.message}`,
+            uploadError.stack,
+          );
+          throw new InternalServerErrorException(
+            `Faylni yuklashda xato yuz berdi: ${file.originalname}. Iltimos, keyinroq urinib ko'ring.`,
           );
         }
       }
-      console.debug(
+      this.logger.debug(
         `[updateProduct] Barcha yangi fayllar yuklandi. Yuklangan URL'lar soni: ${uploadedUrls.length}`,
       );
     } else {
-      console.debug(`[updateProduct] Yangi fayllar mavjud emas.`);
+      this.logger.debug(`[updateProduct] Yangi fayllar mavjud emas.`);
     }
 
     // 5. Uploaded URL'larni body.images ga qo'shish
-    // Agar body.images array bo'lmasa, uni bo'sh array qilib yaratamiz
     if (!Array.isArray(body.images)) {
       body.images = [];
-      console.debug(
+      this.logger.debug(
         `[updateProduct] body.images mavjud emas edi, yangi bo'sh array yaratildi.`,
       );
     }
 
-    // Maksimal orderni hisoblash
     const maxOrder =
       product.images && product.images.length > 0
         ? Math.max(...product.images.map((img) => img.order ?? 0))
         : 0;
-    console.debug(
+    this.logger.debug(
       `[updateProduct] Mavjud rasmlar orasida maksimal order: ${maxOrder}`,
     );
 
     uploadedUrls.forEach((url, index) => {
       body.images.push({
         url,
-        order: maxOrder + index + 1, // Yangi rasmlar uchun noyob order berish
+        order: maxOrder + index + 1,
       });
-      console.debug(
+      this.logger.debug(
         `[updateProduct] Yangi yuklangan URL body.images ga qo'shildi: ${url}, Order: ${maxOrder + index + 1}`,
       );
     });
 
     // 6. Mahsulotning boshqa maydonlarini update qilish
-    console.debug(
+    this.logger.debug(
       `[updateProduct] Mahsulotning boshqa maydonlarini yangilash...`,
     );
     const updatableFields = [
@@ -877,42 +899,131 @@ export class ProductService {
       'isTop',
       'isPublish',
       'topExpiresAt',
-      // 'propertyValues' bu yerda bo'lishi shart emas, chunki u alohida handle qilinadi
     ];
     for (const key of updatableFields) {
       if (body[key] !== undefined) {
-        // Faqat undefined bo'lmagan qiymatlarni yangilash
         product[key] = body[key];
-        console.debug(
+        this.logger.debug(
           `[updateProduct] Maydon '${key}' yangilandi. Yangi qiymat: ${body[key]}`,
         );
       }
     }
-    console.debug(`[updateProduct] Mahsulotning asosiy maydonlari yangilandi.`);
+    this.logger.debug(
+      `[updateProduct] Mahsulotning asosiy maydonlari yangilandi.`,
+    );
 
     // 7. propertyValues yangilash
+    if (body.properties && Array.isArray(body.properties)) {
+      this.logger.debug(
+        `[updateProduct] 'body.properties' arrayini qayta ishlash boshlandi.`,
+      );
+      const constructedPropertyValues: {
+        [key: string]: Record<string, string>;
+      } = {};
+
+      for (const prop of body.properties) {
+        if (!prop.propertyId) {
+          this.logger.warn(
+            `[updateProduct] PropertyId topilmadi, o'tkazib yuborildi: ${JSON.stringify(prop)}`,
+          );
+          continue;
+        }
+
+        let propertyEntity: Property | null;
+        try {
+          propertyEntity = await this.propertyRepository.findOne({
+            where: { id: prop.propertyId },
+          });
+
+          if (!propertyEntity) {
+            this.logger.warn(
+              `[updateProduct] Property topilmadi: ID ${prop.propertyId}.`,
+            );
+            throw new NotFoundException(
+              `Property topilmadi: ID ${prop.propertyId}`,
+            );
+          }
+        } catch (error) {
+          this.logger.error(
+            `[updateProduct] Property ID: ${prop.propertyId} bo'yicha topishda xato: ${error.message}`,
+            error.stack,
+          );
+          throw new InternalServerErrorException(
+            `Xususiyatni topishda xato yuz berdi: ID ${prop.propertyId}`,
+          );
+        }
+
+        if (!propertyEntity) {
+          this.logger.warn(
+            `[updateProduct] Property ID: ${prop.propertyId} bazada topilmadi. O'tkazib yuborildi.`,
+          );
+          continue;
+        }
+
+        let propertyValue: Record<string, string>;
+        if (typeof prop.value === 'object' && prop.value !== null) {
+          propertyValue = prop.value;
+        } else if (prop.value !== undefined && prop.value !== null) {
+          propertyValue = { value: String(prop.value) };
+          this.logger.debug(
+            `[updateProduct] Property '${propertyEntity.name}' uchun oddiy qiymat ob'ektga o'raldi: ${JSON.stringify(propertyValue)}`,
+          );
+        } else {
+          this.logger.warn(
+            `[updateProduct] Property '${propertyEntity.name}' uchun qiymat mavjud emas yoki noto'g'ri turda. O'tkazib yuborildi.`,
+          );
+          continue;
+        }
+
+        constructedPropertyValues[propertyEntity.name] = propertyValue;
+      }
+      body.propertyValues = constructedPropertyValues;
+      this.logger.debug(
+        `[updateProduct] body.propertyValues konstruksiya qilindi: ${JSON.stringify(body.propertyValues)}`,
+      );
+    } else if (body.propertyValues) {
+      this.logger.debug(
+        `[updateProduct] 'body.propertyValues' to'g'ridan-to'g'ri ishlatilmoqda.`,
+      );
+    } else {
+      this.logger.debug(
+        `[updateProduct] 'body.properties' yoki 'body.propertyValues' mavjud emas.`,
+      );
+    }
+
     if (body.propertyValues) {
       if (
         typeof body.propertyValues !== 'object' ||
         body.propertyValues === null
       ) {
-        console.warn(
-          `[updateProduct] 'propertyValues' uchun noto'g'ri tur aniqlandi. Kutilgan: object. Kelgan: ${typeof body.propertyValues}`,
+        this.logger.warn(
+          `[updateProduct] 'propertyValues' uchun noto'g'ri tur aniqlandi (tekshiruvdan keyin ham). Kutilgan: object. Kelgan: ${typeof body.propertyValues}`,
         );
         throw new BadRequestException(
           'Invalid type for propertyValues. Expected an object.',
         );
       }
 
-      console.debug(`[updateProduct] 'propertyValues' yangilash boshlandi.`);
-      // Eski propertylarni o'chirish
-      console.debug(
-        `[updateProduct] Mahsulotga tegishli eski propertylarni o'chirish...`,
+      this.logger.debug(
+        `[updateProduct] 'propertyValues' yangilash boshlandi.`,
       );
-      await this.productPropertyRepository.delete({
-        product: { id: product.id },
-      });
-      console.debug(`[updateProduct] Eski propertylar o'chirildi.`);
+      try {
+        this.logger.debug(
+          `[updateProduct] Mahsulotga tegishli eski propertylarni o'chirish...`,
+        );
+        await this.productPropertyRepository.delete({
+          product: { id: product.id },
+        });
+        this.logger.debug(`[updateProduct] Eski propertylar o'chirildi.`);
+      } catch (error) {
+        this.logger.error(
+          `[updateProduct] Eski product properties o'chirishda xato yuz berdi. Product ID: ${product.id}. Xato: ${error.message}`,
+          error.stack,
+        );
+        throw new InternalServerErrorException(
+          "Eski mahsulot xususiyatlarini o'chirishda xato yuz berdi.",
+        );
+      }
 
       const newProperties: ProductProperty[] = [];
       for (const [propertyName, value] of Object.entries(body.propertyValues)) {
@@ -920,25 +1031,35 @@ export class ProductService {
           `[updateProduct] '${propertyName}' propertyni qayta ishlash.`,
         );
 
-        // Property ni olish
-        const property = await this.propertyRepository.findOne({
-          where: {
-            name: propertyName,
-            category: { id: product.categoryId },
-          },
-        });
+        let property: Property | null = null;
+        try {
+          property = await this.propertyRepository.findOne({
+            where: {
+              name: propertyName,
+              category: { id: product.categoryId },
+            },
+          });
 
-        if (!property) {
-          console.warn(
-            `[updateProduct] Property topilmadi: ${propertyName}. Ushbu property o'tkazib yuboriladi.`,
+          if (!property) {
+            console.warn(
+              `[updateProduct] Property topilmadi: ${propertyName}. Ushbu property o'tkazib yuboriladi.`,
+            );
+            continue; // property topilmasa, davom ettirish
+          }
+        } catch (error) {
+          console.error(
+            `[updateProduct] Property '${propertyName}' ni topishda xato yuz berdi. Xato: ${error.message}`,
+            error.stack,
           );
-          continue; // Topilmagan propertyni o'tkazib yuboramiz
+          throw new InternalServerErrorException(
+            `'${propertyName}' xususiyatini topishda xato yuz berdi.`,
+          );
         }
+
         console.debug(
           `[updateProduct] Property topildi: ${property.name} (ID: ${property.id})`,
         );
 
-        // Yangi ProductProperty yaratish
         const productProperty = new ProductProperty();
         productProperty.product = product;
         productProperty.productId = product.id;
@@ -962,194 +1083,334 @@ export class ProductService {
         newProperties.push(productProperty);
       }
 
-      // Yangi propertylarni saqlash
-      if (newProperties.length > 0) {
-        console.debug(
-          `[updateProduct] Yangi propertylarni bazaga saqlash. Son: ${newProperties.length}`,
+      try {
+        if (newProperties.length > 0) {
+          this.logger.debug(
+            `[updateProduct] Yangi propertylarni bazaga saqlash. Son: ${newProperties.length}`,
+          );
+          await this.productPropertyRepository.save(newProperties);
+          this.logger.debug(`[updateProduct] Yangi propertylar saqlandi.`);
+        } else {
+          this.logger.debug(
+            `[updateProduct] Saqlash uchun yangi propertylar mavjud emas.`,
+          );
+        }
+        product.productProperties = newProperties;
+        this.logger.debug(
+          `[updateProduct] 'propertyValues' yangilanishi yakunlandi.`,
         );
-        await this.productPropertyRepository.save(newProperties);
-        console.debug(`[updateProduct] Yangi propertylar saqlandi.`);
-      } else {
-        console.debug(
-          `[updateProduct] Saqlash uchun yangi propertylar mavjud emas.`,
+      } catch (error) {
+        if (error instanceof QueryFailedError) {
+          this.logger.error(
+            `[updateProduct] Yangi product properties saqlashda DB xatosi: ${error.message}`,
+            error.stack,
+          );
+          throw new InternalServerErrorException(
+            "Mahsulot xususiyatlarini saqlashda ma'lumotlar bazasi xatosi yuz berdi.",
+          );
+        }
+        this.logger.error(
+          `[updateProduct] Yangi product properties saqlashda xato yuz berdi. Xato: ${error.message}`,
+          error.stack,
+        );
+        throw new InternalServerErrorException(
+          'Mahsulot xususiyatlarini saqlashda xato yuz berdi.',
         );
       }
-      product.productProperties = newProperties; // Mahsulot ob'ektini yangilash
-      console.debug(
-        `[updateProduct] 'propertyValues' yangilanishi yakunlandi.`,
-      );
     } else {
-      console.debug(
-        `[updateProduct] 'propertyValues' bodyda mavjud emas, propertylar yangilanmadi.`,
+      this.logger.debug(
+        `[updateProduct] 'body.propertyValues' mavjud emas yoki array emas, propertylar yangilanmadi.`,
       );
     }
 
     // 8. Rasmlarni yangilash: eski rasmalar va fayllarni o'chirish + yangi rasmalarni saqlash
     if (body.images && Array.isArray(body.images)) {
-      console.debug(`[updateProduct] Rasmlarni yangilash jarayoni boshlandi.`);
-      const updatedImages: ProductImage[] = [];
-      const existingImages = await this.productImageRepository.find({
-        where: { product: { id: product.id } },
-      });
-      console.debug(
-        `[updateProduct] Mavjud rasmlar soni: ${existingImages.length}`,
+      this.logger.debug(
+        `[updateProduct] Rasmlarni yangilash jarayoni boshlandi.`,
       );
+      const updatedImages: ProductImage[] = [];
+      let existingImages: ProductImage[];
+      try {
+        existingImages = await this.productImageRepository.find({
+          where: { product: { id: product.id } },
+        });
+        this.logger.debug(
+          `[updateProduct] Mavjud rasmlar soni: ${existingImages.length}`,
+        );
+      } catch (error) {
+        this.logger.error(
+          `[updateProduct] Mavjud rasmlarni olishda xato yuz berdi. Product ID: ${product.id}. Xato: ${error.message}`,
+          error.stack,
+        );
+        throw new InternalServerErrorException(
+          'Mahsulot rasmlarini olishda xato yuz berdi.',
+        );
+      }
 
-      // Incoming images dagi id'lar
       const incomingIds = body.images
         .filter((img) => img.id)
         .map((img) => img.id);
-      console.debug(`[updateProduct] Incoming IDs: ${incomingIds.join(', ')}`);
-
-      // O'chirilishi kerak bo'lgan eski rasmalar (body.images da yo'q)
-      const imagesToDelete = existingImages.filter(
-        (img) => img.id && !incomingIds.includes(img.id), // IDsi bor va incoming listda yo'q
+      this.logger.debug(
+        `[updateProduct] Incoming IDs: ${incomingIds.join(', ')}`,
       );
-      console.debug(
+
+      const imagesToDelete = existingImages.filter(
+        (img) => img.id && !incomingIds.includes(img.id),
+      );
+      this.logger.debug(
         `[updateProduct] O'chirilishi kerak bo'lgan rasmlar soni: ${imagesToDelete.length}`,
       );
 
-      // Fayl tizimidan o'chirish
       for (const imgToDel of imagesToDelete) {
-        console.debug(
+        this.logger.debug(
           `[updateProduct] Fayl tizimidan o'chirilmoqda: ${imgToDel.url} (ID: ${imgToDel.id})`,
         );
         try {
           await this.fileService.deleteFileByUrl(imgToDel.url);
-          console.debug(
+          this.logger.debug(
             `[updateProduct] Fayl muvaffaqiyatli o'chirildi: ${imgToDel.url}`,
           );
         } catch (fileDeleteError) {
-          console.error(
+          this.logger.error(
             `[updateProduct] Faylni o'chirishda xato yuz berdi: ${imgToDel.url}. Xato: ${fileDeleteError.message}`,
+            fileDeleteError.stack,
           );
-          // Xato bo'lsa ham jarayonni to'xtatmaymiz, chunki fayl allaqachon yo'q bo'lishi mumkin
         }
       }
 
-      // Bazadan o'chirish
-      if (imagesToDelete.length > 0) {
-        console.debug(
-          `[updateProduct] Bazadan rasmlarni o'chirish. Son: ${imagesToDelete.length}`,
+      try {
+        if (imagesToDelete.length > 0) {
+          this.logger.debug(
+            `[updateProduct] Bazadan rasmlarni o'chirish. Son: ${imagesToDelete.length}`,
+          );
+          await this.productImageRepository.remove(imagesToDelete);
+          this.logger.debug(`[updateProduct] Rasmlar bazadan o'chirildi.`);
+        }
+      } catch (error) {
+        if (error instanceof QueryFailedError) {
+          this.logger.error(
+            `[updateProduct] Eski rasmlarni bazadan o'chirishda DB xatosi: ${error.message}`,
+            error.stack,
+          );
+          throw new InternalServerErrorException(
+            "Eski rasmlarni ma'lumotlar bazasidan o'chirishda xato yuz berdi.",
+          );
+        }
+        this.logger.error(
+          `[updateProduct] Eski rasmlarni bazadan o'chirishda xato yuz berdi. Xato: ${error.message}`,
+          error.stack,
         );
-        await this.productImageRepository.remove(imagesToDelete);
-        console.debug(`[updateProduct] Rasmlar bazadan o'chirildi.`);
+        throw new InternalServerErrorException(
+          "Eski rasmlarni o'chirishda xato yuz berdi.",
+        );
       }
 
-      // Rasm order uchun boshlang'ich
       let nextOrder =
         existingImages.length > 0
           ? Math.max(...existingImages.map((img) => img.order ?? 0)) + 1
           : 1;
-      console.debug(
+      this.logger.debug(
         `[updateProduct] Rasmlar uchun keyingi boshlang'ich order: ${nextOrder}`,
       );
 
-      // Body.images dagi rasmalarni bazaga joylash (yangilash yoki yangi rasm qo'shish)
+      // Agar `isMain` maydoni yo'q bo'lsa, bu yerda `isMain` flagini boshqarish mantiqi keraksiz.
+      // Faqatgina debug xabari qoladi, agar isMain maydoni bo'lmasa.
+      if (product.images) {
+        // product.images mavjudligini tekshirish
+        product.images.forEach((img) => {
+          // Agar `isMain` maydoni mavjud bo'lsa, uni false qiling
+          if ('isMain' in img) {
+            (img as ProductImage & { isMain?: boolean }).isMain = false;
+          }
+        });
+      }
+      this.logger.debug(
+        `[updateProduct] Barcha rasmlarning 'isMain' flagi (agar mavjud bo'lsa) 'false' ga o'rnatildi.`,
+      );
+
       for (const imageData of body.images) {
         const { id, url, order } = imageData;
-        console.debug(
+        this.logger.debug(
           `[updateProduct] Rasm ma'lumotini qayta ishlash: ID: ${id}, URL: ${url}, Order: ${order}`,
         );
 
         if (id) {
-          // Eskisini yangilash
           const existingImage = existingImages.find((img) => img.id === id);
           if (existingImage) {
-            console.debug(`[updateProduct] Mavjud rasmni yangilash: ID: ${id}`);
+            this.logger.debug(
+              `[updateProduct] Mavjud rasmni yangilash: ID: ${id}`,
+            );
             if (existingImage.url !== url) {
-              // URL o'zgargan bo'lsa eski faylni o'chirish
-              console.debug(
+              this.logger.debug(
                 `[updateProduct] URL o'zgargan. Eski fayl o'chirilmoqda: ${existingImage.url}`,
               );
               try {
                 await this.fileService.deleteFileByUrl(existingImage.url);
-                console.debug(
+                this.logger.debug(
                   `[updateProduct] Eski fayl muvaffaqiyatli o'chirildi: ${existingImage.url}`,
                 );
               } catch (oldFileDeleteError) {
-                console.error(
+                this.logger.error(
                   `[updateProduct] Eski faylni o'chirishda xato: ${existingImage.url}. Xato: ${oldFileDeleteError.message}`,
+                  oldFileDeleteError.stack,
                 );
               }
               existingImage.url = url;
             }
-            existingImage.order = order ?? existingImage.order; // Agar order berilmagan bo'lsa, eskisini qoldiramiz
+            existingImage.order = order ?? existingImage.order;
+            // `isMain`ni bu yerda o'zgartirmaymiz, 9-bosqich boshqaradi.
             updatedImages.push(existingImage);
-            console.debug(
+            this.logger.debug(
               `[updateProduct] Rasm yangilandi: ID: ${existingImage.id}, Yangi URL: ${existingImage.url}, Yangi Order: ${existingImage.order}`,
             );
           } else {
-            console.warn(
+            this.logger.warn(
               `[updateProduct] Bodyda ko'rsatilgan ID: ${id} ga ega rasm bazada topilmadi. E'tiborsiz qoldirildi.`,
             );
           }
         } else if (url) {
-          // Yangi rasm qo'shish (faqat URL mavjud bo'lsa, chunki ID yo'q)
-          console.debug(`[updateProduct] Yangi rasm qo'shilmoqda: URL: ${url}`);
+          this.logger.debug(
+            `[updateProduct] Yangi rasm qo'shilmoqda: URL: ${url}`,
+          );
           const newImage = new ProductImage();
           newImage.url = url;
           newImage.product = product;
-          newImage.order = order ?? nextOrder++; // Agar order berilmagan bo'lsa, keyingi orderni beramiz
+          newImage.order = order ?? nextOrder++;
+          // Agar `isMain` maydoni mavjud bo'lsa, default qiymatini false qiling
+          if ('isMain' in newImage) {
+            (newImage as ProductImage & { isMain?: boolean }).isMain = false;
+          }
           updatedImages.push(newImage);
-          console.debug(
+          this.logger.debug(
             `[updateProduct] Yangi rasm ob'ekti yaratildi: URL: ${newImage.url}, Order: ${newImage.order}`,
           );
         } else {
-          console.warn(
+          this.logger.warn(
             `[updateProduct] Noto'g'ri rasm ma'lumotlari topildi (ID va URL ham yo'q). O'tkazib yuborildi: ${JSON.stringify(imageData)}`,
           );
         }
       }
 
-      // Yangilangan rasmalarni saqlash
-      if (updatedImages.length > 0) {
-        console.debug(
-          `[updateProduct] Yangilangan/yangi rasmlarni bazaga saqlash. Son: ${updatedImages.length}`,
+      try {
+        if (updatedImages.length > 0) {
+          this.logger.debug(
+            `[updateProduct] Yangilangan/yangi rasmlarni bazaga saqlash. Son: ${updatedImages.length}`,
+          );
+          await this.productImageRepository.save(updatedImages);
+          this.logger.debug(`[updateProduct] Rasmlar bazada saqlandi.`);
+        } else {
+          this.logger.debug(
+            `[updateProduct] Saqlash uchun yangilangan/yangi rasmlar mavjud emas.`,
+          );
+        }
+        product.images = updatedImages;
+        this.logger.debug(
+          `[updateProduct] Rasmlarni yangilash jarayoni yakunlandi.`,
         );
-        await this.productImageRepository.save(updatedImages);
-        console.debug(`[updateProduct] Rasmlar bazada saqlandi.`);
-      } else {
-        console.debug(
-          `[updateProduct] Saqlash uchun yangilangan/yangi rasmlar mavjud emas.`,
+      } catch (error) {
+        if (error instanceof QueryFailedError) {
+          this.logger.error(
+            `[updateProduct] Rasmlarni bazaga saqlashda DB xatosi: ${error.message}`,
+            error.stack,
+          );
+          throw new InternalServerErrorException(
+            "Rasmlarni ma'lumotlar bazasiga saqlashda xato yuz berdi.",
+          );
+        }
+        this.logger.error(
+          `[updateProduct] Rasmlarni saqlashda xato yuz berdi. Xato: ${error.message}`,
+          error.stack,
+        );
+        throw new InternalServerErrorException(
+          'Rasmlarni saqlashda xato yuz berdi.',
         );
       }
-
-      product.images = updatedImages; // Mahsulot ob'ektini yangilash
-      console.debug(`[updateProduct] Rasmlarni yangilash jarayoni yakunlandi.`);
     } else {
-      console.debug(
+      this.logger.debug(
         `[updateProduct] 'body.images' mavjud emas yoki array emas, rasmlar yangilanmadi.`,
       );
     }
 
-    // 9. Asosiy rasmni (imageIndex asosida) tanlash — agar kerak bo'lsa
-    // Bu qismda `isMain` kabi flag mavjud bo'lmasa, shunchaki debug xabar berish mumkin.
-    if (
-      typeof product.imageIndex === 'number' &&
-      product.images?.length > product.imageIndex &&
-      product.imageIndex >= 0 // imageIndex manfiy bo'lmasligi kerak
-    ) {
-      const mainImage = product.images[product.imageIndex];
-      console.debug(
-        `[updateProduct] Asosiy rasm tanlandi (imageIndex: ${product.imageIndex}). URL: ${mainImage.url}`,
+    // 9. Asosiy rasmni (imageIndex asosida) tanlash
+    try {
+      // Agar ProductImage entity-da 'isMain' maydoni bo'lsa,
+      // barcha rasmlarni oldin 'isMain=false' ga o'rnatamiz,
+      // keyin esa tanlangan rasmni 'isMain=true' qilamiz.
+      // Agar 'isMain' maydoni yo'q bo'lsa, bu blok faqat logging uchun ishlaydi.
+
+      // Barcha rasmlarning `isMain` flagini `false` qilish (agar mavjud bo'lsa)
+      // Bu bosqichda `product.images` allaqachon yangilangan rasmlar ro'yxatini aks ettiradi.
+      product.images.forEach((img) => {
+        if ('isMain' in img) {
+          (img as ProductImage & { isMain?: boolean }).isMain = false;
+        }
+      });
+      this.logger.debug(
+        `[updateProduct] Barcha rasmlarning 'isMain' flagi 'false' ga o'rnatildi (agar mavjud bo'lsa).`,
       );
-      // Agar ProductImage entity-da isMain fieldi bo'lsa, bu yerda uni true qilish mumkin
-      // mainImage.isMain = true;
-      // Agar o'zgarishlar saqlanishi kerak bo'lsa, bu yerda yana save operatsiyasi bajarilishi mumkin
-      // await this.productImageRepository.save(mainImage);
-    } else {
-      console.debug(
-        `[updateProduct] Asosiy rasm tanlanmadi (imageIndex noto'g'ri yoki rasmlar mavjud emas). imageIndex: ${product.imageIndex}, Images count: ${product.images?.length || 0}`,
+
+      if (
+        typeof product.imageIndex === 'number' &&
+        product.imageIndex >= 0 &&
+        product.images?.length > product.imageIndex
+      ) {
+        const mainImage = product.images[product.imageIndex];
+        this.logger.debug(
+          `[updateProduct] Asosiy rasm tanlash uchun index belgilandi: ${product.imageIndex}. URL: ${mainImage.url}`,
+        );
+
+        // Agar ProductImage entity-da 'isMain' maydoni mavjud bo'lsa, uni belgilash
+        if ('isMain' in mainImage) {
+          (mainImage as ProductImage & { isMain: boolean }).isMain = true; // Asosiy rasmni belgilash
+          await this.productImageRepository.save(mainImage); // O'zgarishni bazaga saqlash
+          this.logger.debug(
+            `[updateProduct] Asosiy rasm (ID: ${mainImage.id}) 'isMain: true' ga belgilandi va saqlandi.`,
+          );
+        } else {
+          this.logger.warn(
+            `[updateProduct] ProductImage entity-da 'isMain' maydoni topilmadi. Asosiy rasm belgilanmadi.`,
+          );
+        }
+      } else {
+        this.logger.debug(
+          `[updateProduct] Asosiy rasm tanlanmadi (imageIndex noto'g'ri, manfiy yoki rasmlar mavjud emas). imageIndex: ${product.imageIndex}, Images count: ${product.images?.length || 0}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `[updateProduct] Asosiy rasmni belgilashda xato yuz berdi. Xato: ${error.message}`,
+        error.stack,
+      );
+      throw new InternalServerErrorException(
+        'Asosiy rasmni belgilashda xato yuz berdi.',
       );
     }
 
     // 10. Mahsulotni saqlash va natijani qaytarish
-    console.debug(`[updateProduct] Mahsulotni yakuniy saqlash...`);
-    const savedProduct = await this.productRepository.save(product);
-    console.debug(
-      `[updateProduct] Mahsulot muvaffaqiyatli yangilandi. ID: ${savedProduct.id}`,
-    );
-    return savedProduct;
+    this.logger.debug(`[updateProduct] Mahsulotni yakuniy saqlash...`);
+    try {
+      const savedProduct = await this.productRepository.save(product);
+      this.logger.debug(
+        `[updateProduct] Mahsulot muvaffaqiyatli yangilandi. ID: ${savedProduct.id}`,
+      );
+      return savedProduct;
+    } catch (error) {
+      if (error instanceof QueryFailedError) {
+        this.logger.error(
+          `[updateProduct] Mahsulotni yakuniy saqlashda DB xatosi: ${error.message}`,
+          error.stack,
+        );
+        throw new InternalServerErrorException(
+          "Mahsulotni ma'lumotlar bazasida yangilashda xato yuz berdi.",
+        );
+      }
+      this.logger.error(
+        `[updateProduct] Mahsulotni yakuniy saqlashda xato yuz berdi. Xato: ${error.message}`,
+        error.stack,
+      );
+      throw new InternalServerErrorException(
+        'Mahsulotni yangilashda kutilmagan xato yuz berdi.',
+      );
+    }
   }
 }
