@@ -774,7 +774,7 @@ export class ProductService {
     try {
       const product = await queryRunner.manager.findOne(Product, {
         where: { id },
-        relations: ['images', 'productProperties'],
+        relations: ['images', 'productProperties'], // ⚠️ 'district', 'region' yo‘q
       });
 
       if (!product) throw new NotFoundException('Product not found');
@@ -782,20 +782,23 @@ export class ProductService {
       const uploadedUrls: string[] = [];
       const newFiles = files || [];
 
+      // Fayllarni yuklash
       for (const file of newFiles) {
         const url = await this.uploadService.uploadFile(file);
         await this.fileService.saveFile(url);
         uploadedUrls.push(url);
       }
 
-      // Append uploaded images to body.images
+      // Rasmni qo‘shish
       body.images = Array.isArray(body.images) ? body.images : [];
       const maxOrder =
         product.images?.reduce((max, i) => Math.max(max, i.order ?? 0), 0) || 0;
+
       uploadedUrls.forEach((url, i) => {
         body.images.push({ url, order: maxOrder + i + 1 });
       });
 
+      // Yangilanadigan maydonlar
       const toNumber = (val: any) =>
         typeof val === 'string' ? parseInt(val, 10) : val;
 
@@ -832,7 +835,8 @@ export class ProductService {
             : body[key];
         }
       }
-      // Build propertyValues from properties array
+
+      // Propertylarni yangilash
       if (Array.isArray(body.properties)) {
         await queryRunner.manager.delete(ProductProperty, {
           product: { id: product.id },
@@ -842,7 +846,6 @@ export class ProductService {
 
         for (const prop of body.properties) {
           const propertyId = parseInt(prop.propertyId, 10);
-
           const propertyEntity = await queryRunner.manager.findOne(Property, {
             where: { id: propertyId },
           });
@@ -876,38 +879,7 @@ export class ProductService {
         product.productProperties = propertyEntities;
       }
 
-      // Validate and persist new productProperties
-      if (
-        typeof body.propertyValues === 'object' &&
-        body.propertyValues !== null
-      ) {
-        await queryRunner.manager.delete(ProductProperty, {
-          product: { id: product.id },
-        });
-
-        const productProperties: ProductProperty[] = [];
-
-        for (const [name, value] of Object.entries(body.propertyValues)) {
-          const property = await queryRunner.manager.findOne(Property, {
-            where: { name, category: { id: product.categoryId } },
-          });
-          if (!property) continue;
-
-          const prop = new ProductProperty();
-          prop.productId = product.id;
-          prop.propertyId = property.id;
-          prop.property = property;
-
-          if (typeof value === 'object' && value !== null) {
-            prop.value = value as Record<string, string>;
-            productProperties.push(prop); // ✅ endi bu yerda xatolik bo‘lmaydi
-          }
-        }
-        await queryRunner.manager.save(productProperties);
-        product.productProperties = productProperties;
-      }
-
-      // Handle images update
+      // Eski rasmlarni olib tashlash
       const existingImages = await queryRunner.manager.find(ProductImage, {
         where: { product: { id: product.id } },
       });
@@ -916,11 +888,14 @@ export class ProductService {
       const toDelete = existingImages.filter(
         (i) => !incomingIds.includes(i.id),
       );
+
       for (const url of toDelete.map((i) => i.url)) {
         await this.fileService.deleteFileByUrl(url);
       }
+
       await queryRunner.manager.remove(toDelete);
 
+      // Yangi va mavjud rasmlarni saqlash
       const updatedImages: ProductImage[] = [];
       let orderCounter = 1;
       for (const img of body.images) {
@@ -939,20 +914,22 @@ export class ProductService {
           updatedImages.push(newImg);
         }
       }
+
       await queryRunner.manager.save(updatedImages);
       product.images = updatedImages;
 
-      // Final save
+      // Yakuniy saqlash
       const savedProduct = await queryRunner.manager.save(product);
 
-      // Prevent circular reference before returning
-      if (savedProduct.productProperties) {
-        for (const url of toDelete.map((i) => i.url)) {
-          await this.fileService.deleteFileByUrl(url);
-        }
+      // Circular reference oldini olish
+      for (const prop of savedProduct.productProperties) {
+        delete (prop as any).product;
       }
 
+      delete (savedProduct as any).district;
+      delete (savedProduct as any).region;
       await queryRunner.commitTransaction();
+
       return savedProduct;
     } catch (err) {
       await queryRunner.rollbackTransaction();
