@@ -15,6 +15,8 @@ import { UploadService } from './../file/uploadService';
 import { ProductImage } from './../product/entities/Product-Image.entity';
 import { FileEntity } from './../file/entities/file.entity';
 import { Like } from './../like/entities/like.entity';
+import { ProductPropertyDto } from 'src/product/dto/create-product.dto';
+import { ProductProperty } from 'src/product/entities/product-property.entity';
 
 @Module({
   imports: [
@@ -28,6 +30,7 @@ import { Like } from './../like/entities/like.entity';
       ProductImage,
       FileEntity,
       Like,
+      ProductProperty,
     ]),
   ],
   providers: [
