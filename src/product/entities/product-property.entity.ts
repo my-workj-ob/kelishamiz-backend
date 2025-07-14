@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { Property } from '../../category/entities/property.entity';
 import { Product } from './product.entity';
+import { Exclude } from 'class-transformer';
 
 @Entity()
 export class ProductProperty {
@@ -17,6 +18,7 @@ export class ProductProperty {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'productId' })
+  @Exclude() // bu maydon javobga kirmaydi
   product: Product;
 
   @Column()
