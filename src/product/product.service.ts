@@ -774,7 +774,7 @@ export class ProductService {
     try {
       const product = await queryRunner.manager.findOne(Product, {
         where: { id },
-        relations: ['images', 'productProperties'], // ⚠️ 'district', 'region' yo‘q
+        relations: ['images', 'productProperties', 'region', 'district'],
       });
 
       if (!product) throw new NotFoundException('Product not found');
@@ -922,12 +922,12 @@ export class ProductService {
       const savedProduct = await queryRunner.manager.save(product);
 
       // Circular reference oldini olish
-      for (const prop of savedProduct.productProperties) {
-        delete (prop as any).product;
-      }
+      // for (const prop of savedProduct.productProperties) {
+      //   delete (prop as any).product;
+      // }
 
-      delete (savedProduct as any).district;
-      delete (savedProduct as any).region;
+      // delete (savedProduct as any).district;
+      // delete (savedProduct as any).region;
       await queryRunner.commitTransaction();
 
       return savedProduct;
