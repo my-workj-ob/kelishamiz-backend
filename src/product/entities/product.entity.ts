@@ -18,7 +18,7 @@ import { Comment } from './../../comments/entities/comments.entity';
 import { District } from './../../location/entities/district.entity';
 import { Region } from './../../location/entities/region.entity';
 import { Profile } from './../../profile/enities/profile.entity';
-import { ProductProperty } from './product-property-entity';
+import { ProductProperty } from './product-property.entity';
 import { ProductImage } from './Product-Image.entity';
 import { ChatRoom } from './../../chat/entities/chat-room.entity';
 @Entity()

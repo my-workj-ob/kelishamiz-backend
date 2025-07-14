@@ -5,7 +5,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Property } from './../../category/entities/property.entity';
+import { Property } from '../../category/entities/property.entity';
 import { Product } from './product.entity';
 
 @Entity()

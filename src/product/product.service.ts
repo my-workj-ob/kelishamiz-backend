@@ -11,6 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {
   DeleteResult,
   EntityNotFoundError,
+  Equal,
   ILike,
   In,
   MoreThan,
@@ -26,7 +27,7 @@ import {
   TopProductDto,
 } from './dto/create-product.dto';
 import { GetProductsDto } from './dto/filter-product.dto';
-import { ProductProperty } from './entities/product-property-entity';
+import { ProductProperty } from './entities/product-property.entity';
 import { Product } from './entities/product.entity';
 import { FileService } from './../file/file.service';
 import { UploadService } from './../file/uploadService';
@@ -41,8 +42,10 @@ export class ProductService {
     private categoryRepository: Repository<Category>,
     @InjectRepository(Profile)
     private profileRepository: Repository<Profile>,
-    @InjectRepository(Property)
+    @InjectRepository(ProductProperty)
     private productPropertyRepository: Repository<ProductProperty>,
+    @InjectRepository(Property)
+    private propertyRepository: Repository<Property>, // ← bu yerda!
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private readonly fileService: FileService,
@@ -831,13 +834,12 @@ export class ProductService {
       await this.productPropertyRepository.delete({ product: { id } });
 
       const newProperties: ProductProperty[] = [];
+
       for (const [propertyName, value] of Object.entries(body.propertyValues)) {
-        const property = await this.productPropertyRepository.findOne({
+        const property = await this.propertyRepository.findOne({
           where: {
-            property: {
-              name: propertyName,
-              category: { id: product.categoryId },
-            },
+            name: propertyName,
+            category: { id: product.categoryId },
           },
         });
 
@@ -848,7 +850,9 @@ export class ProductService {
 
         const productProperty = new ProductProperty();
         productProperty.product = product;
-        productProperty.property = property.property;
+        productProperty.productId = product.id;
+        productProperty.property = property;
+        productProperty.propertyId = property.id;
 
         if (typeof value === 'object' && value !== null) {
           productProperty.value = value as Record<string, string>;
