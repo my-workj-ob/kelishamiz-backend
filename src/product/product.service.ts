@@ -770,7 +770,7 @@ export class ProductService {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
-
+    await queryRunner.commitTransaction();
     try {
       const product = await queryRunner.manager.findOne(Product, {
         where: { id },
