@@ -101,17 +101,6 @@ export class Product {
   @Column({ nullable: true })
   viewCount: number;
 
-  // ProductProperty entity-sida `product`ga qayta ishora bo'lsa, u yerda @Exclude() ishlatish kerak.
-  @OneToMany(
-    () => ProductProperty,
-    (productProperty) => productProperty.product,
-    {
-      cascade: ['insert', 'update', 'remove'], // YOKI cascade: true
-      eager: true, // Ma'lumotlarni o'qiyotganda ham olib kelish uchun foydali
-    },
-  )
-  productProperties: ProductProperty[];
-
   @Column({ type: 'jsonb', nullable: true })
   propertyValues: Record<string, any>;
 
