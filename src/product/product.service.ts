@@ -906,34 +906,37 @@ export class ProductService {
       this.logger.debug(
         `[updateProduct][Properties] Updating product properties process started.`,
       );
-      if (Array.isArray(body.properties)) {
+      this.logger.debug(
+        `[updateProduct][Properties] Updating product properties process started.`,
+      );
+
+      // DTO body.properties ni allaqachon JSON massiviga aylantirgan bo'lishi kerak.
+      // Shuning uchun bu yerda faqat massiv ekanligini va bo'sh emasligini tekshiramiz.
+      if (Array.isArray(body.properties) && body.properties.length > 0) {
         this.logger.debug(
           `[updateProduct][Properties] Deleting old product properties for product ID: ${product.id}`,
         );
         await queryRunner.manager.delete(ProductProperty, {
-          // Faqat bitta delete operatsiyasi
           product: { id: product.id },
         });
         this.logger.debug(
           `[updateProduct][Properties] Old product properties deleted successfully.`,
         );
-        // ... (Bu yerdagi ikkilangan DELETE qismi o'chirib tashlandi) ...
 
         const newProductProperties: ProductProperty[] = [];
 
-        // Har bir kiruvchi propertyni qayta ishlash
+        // body.properties endi to'g'ridan-to'g'ri ProductPropertyUpdateItemDto[] massivi bo'ladi
         for (const propData of body.properties) {
-          // ... qolgan kod avvalgidek ...
           this.logger.debug(
             `[updateProduct][Properties] Processing incoming property data: ${JSON.stringify(propData)}`,
           );
 
-          const propertyId = toNumber(propData.propertyId);
+          const propertyId = toNumber(propData.propertyId); // 'this.toNumber' deb o'zgartirilgan bo'lishi kerak
           if (isNaN(propertyId)) {
             this.logger.warn(
               `[updateProduct][Properties] Invalid propertyId format: '${propData.propertyId}'. Skipping this property.`,
             );
-            continue; // Noto'g'ri ID bo'lsa, o'tkazib yuborish
+            continue;
           }
 
           const propertyEntity = await queryRunner.manager.findOne(Property, {
@@ -944,7 +947,7 @@ export class ProductService {
             this.logger.warn(
               `[updateProduct][Properties] Property with ID ${propertyId} not found for category ${product.categoryId}. Skipping this property.`,
             );
-            continue; // Topilmasa, o'tkazib yuborish
+            continue;
           }
           this.logger.debug(
             `[updateProduct][Properties] Found matching Property entity: ${propertyEntity.name} (ID: ${propertyId})`,
@@ -956,55 +959,17 @@ export class ProductService {
           productProperty.property = propertyEntity;
           productProperty.propertyId = propertyEntity.id;
 
-          // Property qiymatini parse qilish va o'rnatish
-          let parsedValue: Record<string, string>; // JSONB uchun aniqroq tur
-          try {
-            // propData.value ning asl turini tekshirish
-            this.logger.debug(
-              `[updateProduct][Properties] Incoming value for ${propertyEntity.name} (ID:${propertyId}): Type=${typeof propData.value}, Value=${JSON.stringify(propData.value)}`,
-            );
-
-            if (typeof propData.value === 'string') {
-              // Agar string bo'lsa, JSON.parse qilishga urinish
-              parsedValue = JSON.parse(propData.value);
-              this.logger.debug(
-                `[updateProduct][Properties] Successfully parsed string value to object for ${propertyEntity.name}: ${JSON.stringify(parsedValue)}`,
-              );
-            } else if (
-              typeof propData.value === 'object' &&
-              propData.value !== null
-            ) {
-              // Agar allaqachon obyekt bo'lib kelgan bo'lsa (bu sizning oxirgi loglaringizga mos keladi)
-              parsedValue = propData.value;
-              this.logger.debug(
-                `[updateProduct][Properties] Value is already an object for ${propertyEntity.name}: ${JSON.stringify(parsedValue)}`,
-              );
-            } else if (
-              propData.value !== undefined &&
-              propData.value !== null
-            ) {
-              // Oddiy qiymatlarni { value: "..." } formatiga o'tkazish
-              parsedValue = { value: String(propData.value) };
-              this.logger.debug(
-                `[updateProduct][Properties] Converted simple value to object for ${propertyEntity.name}: ${JSON.stringify(parsedValue)}`,
-              );
-            } else {
-              this.logger.warn(
-                `[updateProduct][Properties] Invalid or missing value for Property ID ${propertyId}. Skipping this property.`,
-              );
-              continue; // Qiymat noto'g'ri bo'lsa, o'tkazib yuborish
-            }
-
-            productProperty.value = parsedValue;
+          // DTO allaqachon `propData.value` ni obyektga aylantirgan
+          if (typeof propData.value === 'object' && propData.value !== null) {
+            productProperty.value = propData.value;
             this.logger.debug(
               `[updateProduct][Properties] Final value set for ${propertyEntity.name}: ${JSON.stringify(productProperty.value)}`,
             );
-          } catch (parseError) {
-            this.logger.error(
-              `[updateProduct][Properties] Failed to parse value for Property ID ${propertyId} (Value: ${JSON.stringify(propData.value)}). Error: ${parseError.message}. Skipping.`,
-              parseError.stack, // Xatoning stack trace'ini ham ko'rsatish
+          } else {
+            this.logger.warn(
+              `[updateProduct][Properties] Unexpected value format for Property ID ${propertyId}. Value: ${JSON.stringify(propData.value)}. Skipping this property.`,
             );
-            continue; // Parsingda xato bo'lsa, o'tkazib yuborish
+            continue;
           }
 
           newProductProperties.push(productProperty);
@@ -1031,8 +996,9 @@ export class ProductService {
           `[updateProduct][Properties] Product properties update finished. Product entity's productProperties updated in memory.`,
         );
       } else {
-        this.logger.warn(
-          `[updateProduct][Properties] 'properties' array is missing or invalid in body. Clearing existing product properties.`,
+        // Agar 'properties' maydoni umuman berilmagan bo'lsa yoki valid massiv bo'lmasa
+        this.logger.debug(
+          `[updateProduct][Properties] No 'properties' data provided or valid, clearing existing product properties.`,
         );
         await queryRunner.manager.delete(ProductProperty, {
           product: { id: product.id },

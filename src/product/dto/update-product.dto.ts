@@ -4,8 +4,13 @@ import {
   IsNumber,
   IsBoolean,
   IsArray,
+  ValidateNested, // <--- Qo'shish kerak
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Type, Transform } from 'class-transformer'; // <--- Qo'shish kerak
+
+// Yangi DTO-larni import qiling
+import { ProductPropertyUpdateItemDto } from './product-update.dto';
 
 export class UpdateProductDto {
   @ApiPropertyOptional({
@@ -112,12 +117,35 @@ export class UpdateProductDto {
   @IsOptional()
   topExpiresAt?: Date;
 
+  // <<< ASOSIY O'ZGARISH AYNAN SHU YERDA >>>
   @ApiPropertyOptional({
-    example: { color: 'black', memory: '256GB' },
-    description: 'Custom property value lar (JSON formatda)',
+    example:
+      '[{"propertyId":2,"type":"STRING","value":{"key":"Marka","value":"yyjjhh"}}]',
+    description: 'Mahsulot xususiyatlari (JSON string yoki massiv)',
+    type: String, // Swagger uchun string bo'lishi mumkinligini ko'rsatish
   })
   @IsOptional()
-  propertyValues?: Record<string, any>;
+  @IsString() // Kelayotgan qiymat string bo'lishi mumkin
+  @Transform(({ value }) => {
+    // Bu qiymatni avtomatik parse qiladi
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (e) {
+        // Parse qilishda xato bo'lsa, xato holatini saqlab qolish
+        return value;
+      }
+    }
+    return value; // Agar string bo'lmasa, uni o'z holida qoldirish
+  })
+  @IsArray() // Transformatsiya qilingandan keyin massiv bo'lishi kerak
+  @ValidateNested({ each: true }) // Massivdagi har bir elementni validatsiya qilish
+  @Type(() => ProductPropertyUpdateItemDto) // Har bir elementni ushbu DTO turiga o'tkazish
+  properties?: ProductPropertyUpdateItemDto[]; // <-- Maydon nomini 'properties' ga o'zgartiring
+  // <<< ASOSIY O'ZGARISH YAKUNI >>>
 
   @ApiPropertyOptional({
     example: ['/uploads/image1.jpg', '/uploads/image2.jpg'],
