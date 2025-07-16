@@ -901,7 +901,6 @@ export class ProductService {
         `[updateProduct] Region and district objects update finished.`,
       );
 
-      // --- 3. Propertylarni yangilash qismi ---
       this.logger.debug(
         `[updateProduct][Properties] Updating product properties process started.`,
       );
@@ -910,16 +909,19 @@ export class ProductService {
           `[updateProduct][Properties] Deleting old product properties for product ID: ${product.id}`,
         );
         await queryRunner.manager.delete(ProductProperty, {
+          // Faqat bitta delete operatsiyasi
           product: { id: product.id },
         });
         this.logger.debug(
           `[updateProduct][Properties] Old product properties deleted successfully.`,
         );
+        // ... (Bu yerdagi ikkilangan DELETE qismi o'chirib tashlandi) ...
 
         const newProductProperties: ProductProperty[] = [];
 
         // Har bir kiruvchi propertyni qayta ishlash
         for (const propData of body.properties) {
+          // ... qolgan kod avvalgidek ...
           this.logger.debug(
             `[updateProduct][Properties] Processing incoming property data: ${JSON.stringify(propData)}`,
           );
