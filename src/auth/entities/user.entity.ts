@@ -87,9 +87,11 @@ export class User {
   @Column({ nullable: true })
   districtId?: number;
   // Foydalanuvchi ishtirok etgan chat xonalari
-  @ManyToMany(() => ChatRoom, (chatRoom) => chatRoom.participants)
+  @ManyToMany(() => ChatRoom, (chatRoom) => chatRoom.participants, {
+    onDelete: 'CASCADE',
+  })
+  @JoinTable()
   chatRooms: ChatRoom[];
-
   // Foydalanuvchi yuborgan xabarlar
   @OneToMany(() => Message, (message) => message.sender, {
     onDelete: 'CASCADE',

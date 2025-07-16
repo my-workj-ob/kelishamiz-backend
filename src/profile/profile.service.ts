@@ -10,6 +10,7 @@ import { Product } from './../product/entities/product.entity';
 import { UserSearch } from './../search-filter/entities/user-search.entity';
 import { Like } from './../like/entities/like.entity';
 import { Comment } from './../comments/entities/comments.entity';
+import { ChatRoom } from './../chat/entities/chat-room.entity';
 
 @Injectable()
 export class ProfileService {
@@ -28,6 +29,8 @@ export class ProfileService {
     @InjectRepository(Like) private readonly likeRepository: Repository<Like>,
     @InjectRepository(UserSearch)
     private readonly searchRepository: Repository<UserSearch>, // agar bor bo‘lsa
+    @InjectRepository(ChatRoom)
+    private readonly chatRoomParticipantRepository: Repository<ChatRoom>,
   ) {}
 
   async create(createProfileDto: CreateProfileDto): Promise<Profile> {
@@ -84,7 +87,7 @@ export class ProfileService {
   // user.service.ts
   async removeUser(userId: number): Promise<void> {
     console.log(userId, 'User ID to remove');
-    
+
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: [
@@ -123,6 +126,7 @@ export class ProfileService {
     // 3. Delete user searches
     await this.searchRepository.delete({ user: { id: userId } });
 
+    await this.userRepository.delete(userId);
     // 4. Delete profile comments and likes
     if (user.profile?.comments?.length) {
       await this.commentRepository.delete(
@@ -146,6 +150,10 @@ export class ProfileService {
       await this.profileRepository.delete(user.profile.id);
     }
 
+    await this.dataSource.query(
+      `DELETE FROM chat_room_participants_user WHERE "userId" = $1`,
+      [userId],
+    );
     // 7. Delete user itself
     await this.userRepository.delete(userId);
   }
