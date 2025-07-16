@@ -30,6 +30,6 @@ export class ProductImage {
   product: Product;
 
   // Agar ProductImage entity-sida productId ustuni bo'lsa, uni ham qo'shing.
-  @Column()
+  @Column({nullable: true})
   productId: number;
 }
