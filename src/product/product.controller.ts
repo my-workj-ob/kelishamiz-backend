@@ -549,6 +549,31 @@ export class ProductController {
     console.log('Qabul qilingan body (raw, DTO tomonidan):', body); // Hali `properties` string bo'lishi kerak
 
     // --- properties maydonini qo'lda parse qilish ---
+    console.log('Parsing body.properties:', body.properties);
+    console.debug(
+      `[updateProduct][Properties] Incoming properties data: ${JSON.stringify(body.properties)}`,
+    );
+    if (typeof body.properties === 'string') {
+      try {
+        body.properties = JSON.parse(body.properties);
+        if (!Array.isArray(body.properties)) {
+          // Agar string parse qilinsa-yu, lekin massiv bo'lmasa
+          throw new BadRequestException(
+            "Invalid 'properties' JSON format: Expected an array.",
+          );
+        }
+      } catch (e) {
+        throw new BadRequestException(
+          `Invalid 'properties' JSON format: ${e.message}`,
+        );
+      }
+    } else if (!Array.isArray(body.properties)) {
+      // Agar u allaqachon massiv bo'lmasa
+      throw new BadRequestException(
+        "Invalid 'properties' format: Must be a JSON string or array.",
+      );
+    }
+
     let parsedProperties: any[] = [];
     if (body.properties) {
       // properties mavjud bo'lsa
