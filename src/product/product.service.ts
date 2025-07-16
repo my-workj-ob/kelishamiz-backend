@@ -88,7 +88,7 @@ export class ProductService {
       .leftJoinAndSelect('product.likes', 'likes')
       .orderBy('product.isTop', 'DESC')
       .addOrderBy('product.createdAt', 'DESC')
-      .addOrderBy('images.order', 'ASC');
+      .addOrderBy('images.order', 'ASC')
 
     // Faqat publish qilingan mahsulotlar (admin bo'lmasa)
     if (!isAdmin) {
@@ -780,17 +780,15 @@ export class ProductService {
   async updateProduct(
     id: number,
     body: any,
-    files?: Express.Multer.File[], // Multer yuborgan fayllar massivi
+    files?: Express.Multer.File[],
   ): Promise<any> {
     this.logger.debug(`[updateProduct] Updating product ID: ${id}`);
 
-    // Tranzaksiya boshlash
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // Mahsulotni relations bilan birga topish
       const product = await queryRunner.manager.findOne(Product, {
         where: { id },
         relations: ['images', 'productProperties', 'region', 'district'],
@@ -802,10 +800,10 @@ export class ProductService {
       }
       this.logger.debug(`[updateProduct] Product found. ID: ${product.id}`);
 
-      // --- 1. Asosiy mahsulot maydonlarini yangilash ---
       const toNumber = (val: any) =>
         typeof val === 'string' ? parseInt(val, 10) : val;
 
+      // --- 1. Asosiy mahsulot maydonlarini yangilash ---
       const updatableFields = [
         'title',
         'description',
@@ -905,9 +903,7 @@ export class ProductService {
 
       // --- 3. Propertylarni yangilash qismi ---
       this.logger.debug(`[updateProduct] Updating product properties...`);
-      // Agar body.properties arrayi kelgan bo'lsa
       if (Array.isArray(body.properties)) {
-        // Eski propertylarni o'chirish
         this.logger.debug(
           `[updateProduct] Deleting old product properties for product ID: ${product.id}`,
         );
@@ -918,14 +914,13 @@ export class ProductService {
 
         const newProductProperties: ProductProperty[] = [];
 
-        // Yangi propertylarni qo'shish
         for (const propData of body.properties) {
           const propertyId = toNumber(propData.propertyId);
           if (isNaN(propertyId)) {
             this.logger.warn(
               `[updateProduct] Invalid propertyId format in body.properties: ${propData.propertyId}. Skipping.`,
             );
-            continue; // Noto'g'ri ID bo'lsa, o'tkazib yuborish
+            continue;
           }
 
           const propertyEntity = await queryRunner.manager.findOne(Property, {
@@ -936,7 +931,7 @@ export class ProductService {
             this.logger.warn(
               `[updateProduct] Property with ID ${propertyId} not found for category ${product.categoryId}. Skipping.`,
             );
-            continue; // Topilmasa, o'tkazib yuborish
+            continue;
           }
           this.logger.debug(
             `[updateProduct] Found Property: ${propertyEntity.name} (ID: ${propertyId})`,
@@ -948,14 +943,12 @@ export class ProductService {
           productProperty.property = propertyEntity;
           productProperty.propertyId = propertyEntity.id;
 
-          // Property qiymatini to'g'ri formatlash (JSON obyekt sifatida)
           if (typeof propData.value === 'object' && propData.value !== null) {
             productProperty.value = propData.value;
             this.logger.debug(
               `[updateProduct] Property value set for ${propertyEntity.name}: ${JSON.stringify(propData.value)}`,
             );
           } else if (propData.value !== undefined && propData.value !== null) {
-            // Oddiy qiymatlarni { value: "..." } formatiga o'tkazish
             productProperty.value = { value: String(propData.value) };
             this.logger.debug(
               `[updateProduct] Simple property value converted to object for ${propertyEntity.name}: ${JSON.stringify(productProperty.value)}`,
@@ -964,13 +957,12 @@ export class ProductService {
             this.logger.warn(
               `[updateProduct] Invalid or missing value for Property ID ${propertyId}. Expected object or basic type. Skipping.`,
             );
-            continue; // Qiymat noto'g'ri bo'lsa, o'tkazib yuborish
+            continue;
           }
 
           newProductProperties.push(productProperty);
         }
 
-        // Yangi propertylarni saqlash
         if (newProductProperties.length > 0) {
           this.logger.debug(
             `[updateProduct] Saving ${newProductProperties.length} new product properties.`,
@@ -982,12 +974,11 @@ export class ProductService {
             `[updateProduct] No new product properties to save.`,
           );
         }
-        product.productProperties = newProductProperties; // Mahsulotga bog'lash
+        product.productProperties = newProductProperties;
         this.logger.debug(
           `[updateProduct] Product properties update finished.`,
         );
       } else {
-        // Agar body.properties arrayi berilmagan bo'lsa yoki noto'g'ri bo'lsa, barcha propertylarni o'chirish
         this.logger.debug(
           `[updateProduct] No properties array provided in body or invalid format. Product properties will be cleared.`,
         );
@@ -1003,34 +994,31 @@ export class ProductService {
       // --- 4. Rasmlarni yangilash qismi ---
       this.logger.debug(`[updateProduct] Handling product images update...`);
 
-      // Bazadagi joriy rasmlarni olish
       const existingImagesInDB = await queryRunner.manager.find(ProductImage, {
         where: { product: { id: product.id } },
-        order: { order: 'ASC' }, // Tartib bo'yicha saralash muhim
+        order: { order: 'ASC', id: 'DESC' },
       });
       this.logger.debug(
         `[updateProduct] Found ${existingImagesInDB.length} existing images in DB.`,
       );
 
-      // Frontenddan kelgan mavjud rasmlar (JSON array, id, url, order bilan)
       const incomingExistingImages = Array.isArray(body.images)
         ? body.images
         : [];
 
-      // Yangi yuklangan fayllarni yuklash xizmatiga yuborish
       const newlyUploadedFileUrls: {
         url: string;
         file: Express.Multer.File;
       }[] = [];
-      const newFiles = files || []; // Agar fayllar bo'lmasa, bo'sh massiv
+      const newFiles = files || [];
 
       this.logger.debug(
         `[updateProduct] Uploading new files (${newFiles.length})...`,
       );
       for (const file of newFiles) {
         try {
-          const url = await this.uploadService.uploadFile(file); // Faylni yuklash
-          await this.fileService.saveFile(url); // Fayl URL'ini DBga saqlash
+          const url = await this.uploadService.uploadFile(file);
+          await this.fileService.saveFile(url);
           newlyUploadedFileUrls.push({ url, file });
           this.logger.debug(
             `[updateProduct] File uploaded successfully: ${url}`,
@@ -1040,7 +1028,6 @@ export class ProductService {
             `[updateProduct] Failed to upload file ${file.originalname}: ${uploadError.message}`,
             uploadError.stack,
           );
-          // Fayl yuklashda xato bo'lsa, butun tranzaksiyani bekor qilish
           throw new InternalServerErrorException(
             `Failed to upload file: ${file.originalname}`,
           );
@@ -1050,9 +1037,8 @@ export class ProductService {
         `[updateProduct] ${newlyUploadedFileUrls.length} new files uploaded.`,
       );
 
-      const imagesToProcess: ProductImage[] = []; // Yakuniy saqlanadigan rasmlar
-      const imagesToDeleteFromDB: ProductImage[] = []; // Bazadan o'chiriladigan rasmlar
-      // Frontenddan kelgan rasmlarning ID'larini tez qidirish uchun Set yaratish
+      const imagesToProcess: ProductImage[] = [];
+      const imagesToDeleteFromDB: ProductImage[] = [];
       const imageIdsFromIncomingBody = new Set(
         incomingExistingImages
           .map((img: { id?: number }) => img.id)
@@ -1062,10 +1048,8 @@ export class ProductService {
           ),
       );
 
-      // 4.1. O'chirilishi kerak bo'lgan eski rasmlarni aniqlash
       for (const dbImage of existingImagesInDB) {
         if (!imageIdsFromIncomingBody.has(dbImage.id)) {
-          // Bu rasm frontenddan kelgan ro'yxatda yo'q, demak uni o'chirish kerak
           imagesToDeleteFromDB.push(dbImage);
           this.logger.debug(
             `[updateProduct] Image marked for deletion (not in incoming body): ${dbImage.id}`,
@@ -1073,13 +1057,12 @@ export class ProductService {
         }
       }
 
-      // 4.2. O'chirilgan rasmlarni DB va fayl saqlash joyidan o'chirish
       for (const imgToDel of imagesToDeleteFromDB) {
         this.logger.debug(
           `[updateProduct] Deleting file from storage: ${imgToDel.url}`,
         );
         try {
-          await this.fileService.deleteFileByUrl(imgToDel.url); // Faylni saqlash joyidan o'chirish
+          await this.fileService.deleteFileByUrl(imgToDel.url);
           this.logger.debug(
             `[updateProduct] File deleted from storage: ${imgToDel.url}`,
           );
@@ -1088,25 +1071,22 @@ export class ProductService {
             `[updateProduct] Failed to delete file from storage: ${imgToDel.url}. Error: ${fileDeleteError.message}`,
             fileDeleteError.stack,
           );
-          // Fayl o'chirishda xato bo'lsa ham, jarayonni davom ettiramiz (critical emas)
         }
       }
       if (imagesToDeleteFromDB.length > 0) {
-        await queryRunner.manager.remove(imagesToDeleteFromDB); // Bazadan o'chirish
+        await queryRunner.manager.remove(imagesToDeleteFromDB);
         this.logger.debug(
           `[updateProduct] ${imagesToDeleteFromDB.length} images deleted from DB.`,
         );
       }
 
-      // 4.3. Mavjud rasmlarni yangilash va yangi rasmlarni (body.images orqali kelgan) qo'shish
       for (const incomingImg of incomingExistingImages) {
         const existingImage = existingImagesInDB.find(
           (dbImg) => dbImg.id === incomingImg.id,
         );
 
         if (existingImage) {
-          // Mavjud rasmni yangilash (URL va ORDER)
-          existingImage.url = incomingImg.url; // Frontend URL o'zgartirgan bo'lishi mumkin
+          existingImage.url = incomingImg.url;
           existingImage.order = toNumber(incomingImg.order);
           if (isNaN(existingImage.order)) {
             this.logger.warn(
@@ -1119,7 +1099,6 @@ export class ProductService {
             `[updateProduct] Existing image ${existingImage.id} updated. Order: ${existingImage.order}`,
           );
         } else {
-          // Agar body.images'dan kelgan rasm IDsi bazada topilmasa (yangi rasm yoki eski o'chirilgan)
           this.logger.warn(
             `[updateProduct] Incoming image ID ${incomingImg.id} not found in DB. Treating as new image from body.`,
           );
@@ -1140,19 +1119,17 @@ export class ProductService {
         }
       }
 
-      // 4.4. Yangi yuklangan fayllarni (Express.Multer.File[]) ProductImage obyektlariga aylantirib qo'shish
       for (const uploadedFile of newlyUploadedFileUrls) {
         const newImg = new ProductImage();
         newImg.url = uploadedFile.url;
         newImg.product = product;
-        newImg.order = 0; // Vaqtinchalik 0 ga o'rnatiladi, keyinroq umumiy tartiblanadi
+        newImg.order = 0;
         imagesToProcess.push(newImg);
         this.logger.debug(
           `[updateProduct] Newly uploaded file added to process. URL: ${newImg.url}`,
         );
       }
 
-      // Rasmlar sonini cheklash (maksimal 10 ta rasm)
       if (imagesToProcess.length > 10) {
         this.logger.warn(
           `[updateProduct] Total image count exceeds 10. Throwing BadRequestException.`,
@@ -1160,23 +1137,20 @@ export class ProductService {
         throw new BadRequestException('Rasmlar soni 10 tadan oshmasligi kerak');
       }
 
-      // 4.5. Barcha rasmlarni (mavjud + yangi) order bo'yicha saralash va yakuniy, ketma-ket order berish
-      imagesToProcess.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); // Avval mavjud order bo'yicha saralash
+      imagesToProcess.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       for (let i = 0; i < imagesToProcess.length; i++) {
-        imagesToProcess[i].order = i; // Keyin 0 dan boshlab ketma-ket yangi order berish
+        imagesToProcess[i].order = i;
       }
       this.logger.debug(
         `[updateProduct] Re-ordered ${imagesToProcess.length} images for final save.`,
       );
 
-      // 4.6. Barcha yangi va yangilangan rasmlarni DBga saqlash
       if (imagesToProcess.length > 0) {
         await queryRunner.manager.save(imagesToProcess);
         this.logger.debug(
           `[updateProduct] Saved/updated ${imagesToProcess.length} images in DB.`,
         );
       } else {
-        // Agar rasmlar qolmagan bo'lsa, ProductImage tabledan butunlay o'chirish
         await queryRunner.manager.delete(ProductImage, {
           product: { id: product.id },
         });
@@ -1185,48 +1159,57 @@ export class ProductService {
         );
       }
 
-      product.images = imagesToProcess; // Mahsulotga yangilangan rasmlar ro'yxatini bog'lash
+      product.images = imagesToProcess;
       this.logger.debug(
         `[updateProduct] All images processed. Total: ${product.images.length}.`,
       );
 
+      // --- 5. imageIndex ning validligini tekshirish va sozlash ---
+      this.logger.debug(`[updateProduct] Handling imageIndex...`);
+      let effectiveImageIndex: number; // Endi boshlang'ich qiymat bermaymiz
+
+      const parsedImageIndex = toNumber(body.imageIndex);
       this.logger.debug(
         `[DEBUG] Raw body.imageIndex: ${body.imageIndex}, Type: ${typeof body.imageIndex}`,
       );
-      const parsedImageIndex = toNumber(body.imageIndex);
       this.logger.debug(
         `[DEBUG] After toNumber, parsedImageIndex: ${parsedImageIndex}, Type: ${typeof parsedImageIndex}`,
       );
-      // --- 5. imageIndex ning validligini tekshirish va sozlash ---
-      this.logger.debug(`[updateProduct] Handling imageIndex...`);
-      let effectiveImageIndex: number = 0;
-      // --- 5. imageIndex ning validligini tekshirish va sozlash ---
+
+      // Agar body.imageIndex berilgan bo'lsa va raqamga to'g'ri aylansa
       if (body.imageIndex !== undefined && !isNaN(parsedImageIndex)) {
-        this.logger.debug(`[DEBUG] Condition 1 (is defined and not NaN) met.`);
         effectiveImageIndex = parsedImageIndex;
         this.logger.debug(
-          `[DEBUG] effectiveImageIndex after Condition 1: ${effectiveImageIndex}`,
+          `[DEBUG] imageIndex provided and parsed: ${effectiveImageIndex}`,
         );
       } else {
-        this.logger.debug(
-          `[DEBUG] Condition 1 (is defined and not NaN) NOT met. Falling to default.`,
+        // Agar imageIndex berilmagan bo'lsa yoki noto'g'ri formatda bo'lsa, default qiymat berish
+        this.logger.warn(
+          `[updateProduct] imageIndex not provided or invalid format (${body.imageIndex}). Defaulting.`,
         );
-        // ...
+        effectiveImageIndex = product.images.length > 0 ? 0 : -1;
+        this.logger.debug(
+          `[DEBUG] imageIndex defaulted to: ${effectiveImageIndex}`,
+        );
       }
 
+      // effectiveImageIndex'ni rasmlar soni chegaralari ichida ekanligini tekshirish
       if (
         effectiveImageIndex < 0 ||
         effectiveImageIndex >= product.images.length
       ) {
-        this.logger.debug(
-          `[DEBUG] Condition 2 (out of bounds) met. Adjusting.`,
+        this.logger.warn(
+          `[updateProduct] Calculated imageIndex (${effectiveImageIndex}) is out of bounds for current images array (length: ${product.images.length}). Adjusting.`,
         );
-        // ...
+        product.imageIndex = product.images.length > 0 ? 0 : -1;
+        this.logger.debug(
+          `[DEBUG] imageIndex adjusted to: ${product.imageIndex}`,
+        );
       } else {
-        this.logger.debug(
-          `[DEBUG] Condition 2 (out of bounds) NOT met. Assigning.`,
-        );
         product.imageIndex = effectiveImageIndex;
+        this.logger.debug(
+          `[DEBUG] Final imageIndex set to: ${product.imageIndex}`,
+        );
       }
 
       // --- 6. Yakuniy mahsulotni saqlash ---
