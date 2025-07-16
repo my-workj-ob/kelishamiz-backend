@@ -491,7 +491,7 @@ export class ProductService {
       sortOrder = 'DESC',
       paymentType,
       currencyType,
-      negotiable,
+      // negotiable,
       regionId,
       districtId,
       page = 1,
@@ -540,9 +540,9 @@ export class ProductService {
       });
     }
 
-    if (negotiable !== null && negotiable !== undefined) {
-      queryBuilder.andWhere('product.negotiable = :negotiable', { negotiable });
-    }
+    // if (negotiable !== null && negotiable !== undefined) {
+    //   queryBuilder.andWhere('product.negotiable = :negotiable', { negotiable });
+    // }
 
     if (districtId) {
       queryBuilder.andWhere('product.districtId = :districtId', { districtId });
