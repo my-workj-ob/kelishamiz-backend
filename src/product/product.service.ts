@@ -912,6 +912,11 @@ export class ProductService {
 
       // DTO body.properties ni allaqachon JSON massiviga aylantirgan bo'lishi kerak.
       // Shuning uchun bu yerda faqat massiv ekanligini va bo'sh emasligini tekshiramiz.
+      console.log(body.properties);
+      this.logger.debug(
+        `[updateProduct][Properties] Incoming properties data: ${JSON.stringify(body.properties)}`,
+      );
+
       if (Array.isArray(body.properties) && body.properties.length > 0) {
         this.logger.debug(
           `[updateProduct][Properties] Deleting old product properties for product ID: ${product.id}`,
