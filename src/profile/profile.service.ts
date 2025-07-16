@@ -83,6 +83,8 @@ export class ProfileService {
 
   // user.service.ts
   async removeUser(userId: number): Promise<void> {
+    console.log(userId, 'User ID to remove');
+    
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: [
