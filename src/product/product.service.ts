@@ -797,7 +797,7 @@ export class ProductService {
     try {
       const product = await queryRunner.manager.findOne(Product, {
         where: { id },
-        relations: ['images', 'productProperties', "productProperties.property",  'propertyValues',  'region', 'district'],
+        relations: ['images', 'productProperties', "productProperties.property",  'region', 'district'],
       });
 
       if (!product) {
