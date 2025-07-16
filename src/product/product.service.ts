@@ -1000,7 +1000,7 @@ export class ProductService {
             `[updateProduct][Properties] No valid new product properties found to save.`,
           );
         }
-        product.productProperties = newProductProperties;
+        product.propertyValues = newProductProperties;
         this.logger.debug(
           `[updateProduct][Properties] Product properties update finished. Product entity's productProperties updated in memory.`,
         );
@@ -1012,7 +1012,7 @@ export class ProductService {
         await queryRunner.manager.delete(ProductProperty, {
           product: { id: product.id },
         });
-        product.productProperties = [];
+        product.propertyValues = [];
         this.logger.debug(
           `[updateProduct][Properties] Existing product properties cleared from DB and product entity.`,
         );
