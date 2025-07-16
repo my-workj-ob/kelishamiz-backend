@@ -922,6 +922,7 @@ export class ProductService {
       );
 
       if (Array.isArray(body.properties) && body.properties.length > 0) {
+        product.propertyValues = body.properties;
         this.logger.debug(
           `[updateProduct][Properties] Deleting old product properties for product ID: ${product.id}`,
         );
@@ -1000,19 +1001,20 @@ export class ProductService {
             `[updateProduct][Properties] No valid new product properties found to save.`,
           );
         }
-        product.productProperties = newProductProperties;
+        product.propertyValues = newProductProperties;
         this.logger.debug(
           `[updateProduct][Properties] Product properties update finished. Product entity's productProperties updated in memory.`,
         );
       } else {
         // Agar 'properties' maydoni umuman berilmagan bo'lsa yoki valid massiv bo'lmasa
+        product.propertyValues = [];
         this.logger.debug(
           `[updateProduct][Properties] No 'properties' data provided or valid, clearing existing product properties.`,
         );
         await queryRunner.manager.delete(ProductProperty, {
           product: { id: product.id },
         });
-        product.productProperties = [];
+        product.propertyValues = [];
         this.logger.debug(
           `[updateProduct][Properties] Existing product properties cleared from DB and product entity.`,
         );
@@ -1255,11 +1257,10 @@ export class ProductService {
 
       await queryRunner.commitTransaction();
       this.logger.debug(`[updateProduct] Transaction committed successfully.`); // <-- Shu qatorni qo'shing
-      
+
       return instanceToPlain(savedProduct, {
         excludeExtraneousValues: true,
       });
-      
     } catch (err) {
       // Xato yuz bersa, tranzaksiyani bekor qilish
       await queryRunner.rollbackTransaction();
