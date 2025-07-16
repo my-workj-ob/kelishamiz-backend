@@ -860,23 +860,20 @@ export class ProductService {
         product.districtId = district.id;
       }
 
-      // Update product properties
       this.logger.debug(`[updateProduct] Deleting old product properties...`);
       await queryRunner.manager.delete(ProductProperty, {
         product: { id: product.id },
       });
+
       const productProperties: ProductProperty[] = [];
+      const propertyValues: Record<string, any> = {};
 
       if (Array.isArray(body.properties)) {
         for (const prop of body.properties) {
           const propertyId = toNumber(prop.propertyId);
           const property = await queryRunner.manager.findOne(Property, {
-            where: {
-              id: propertyId,
-              category: { id: product.categoryId },
-            },
+            where: { id: propertyId, category: { id: product.categoryId } },
           });
-
           if (
             !property ||
             typeof prop.value !== 'object' ||
@@ -887,16 +884,17 @@ export class ProductService {
             );
             continue;
           }
-
           const pp = new ProductProperty();
           pp.product = product;
-          pp.productId = product.id;
+          pp.productId = product.id; // qo'shildi: productId aniq belgilanmoqda
           pp.property = property;
-          pp.propertyId = property.id;
+          pp.propertyId = property.id; // qo'shildi: propertyId aniq belgilanmoqda
           pp.value = prop.value;
-
           productProperties.push(pp);
-          this.logger.debug(`[updateProduct] Added property: ${property.name}`);
+          propertyValues[property.name] = prop.value.value ?? prop.value; // Asosiy qiymatni olish (value ichidagi 'value' ni)
+          this.logger.debug(
+            `[updateProduct] Added property: ${property.name} = ${JSON.stringify(prop.value)}`,
+          );
         }
 
         if (productProperties.length > 0) {
@@ -905,12 +903,10 @@ export class ProductService {
             `[updateProduct] Saved ${productProperties.length} properties.`,
           );
         }
-
-        product.propertyValues = productProperties.map((pp) => ({
-          propertyId: pp.propertyId,
-          value: pp.value,
-        }));
       }
+
+      product.productProperties = productProperties;
+      product.propertyValues = propertyValues; // Shu yerda propertyValues ni to'ldiryapmiz
 
       // Handle image processing
       this.logger.debug(`[updateProduct] Processing images...`);
