@@ -17,7 +17,6 @@ export class ProductProperty {
   @ManyToOne(() => Product, (product) => product.productProperties, {
     onDelete: 'CASCADE',
   })
-  
   @JoinColumn({ name: 'productId' })
   @Exclude() // bu maydon javobga kirmaydi
   product: Product;
@@ -33,5 +32,5 @@ export class ProductProperty {
   propertyId: number;
 
   @Column('jsonb')
-  value: Record<string, string>;
+  value: Record<string, any>;
 }

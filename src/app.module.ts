@@ -55,7 +55,8 @@ import { PaymeModule } from './payme/payme.module';
       url: process.env.DATABASE_URL,
       autoLoadEntities: true,
       entities: [Category, Product, User, FileEntity, Comment, UserSearch],
-      synchronize: true,
+      synchronize: false, // Productionda FALSE bo'lishi kerak!
+      logging: ['query', 'error', 'log'], // Shu qatorni qo'shing
     }),
 
     CacheModule.registerAsync({
