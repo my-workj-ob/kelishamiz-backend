@@ -69,7 +69,7 @@ export class ProductService {
     page = 1,
     pageSize = 10,
     likedIds: number[] = [],
-    isAdmin: boolean = false, // <-- Yangi parametr
+    isAdmin: boolean = false,
   ): Promise<{
     data: (Product & { isLike: boolean })[];
     total: number;
@@ -78,34 +78,36 @@ export class ProductService {
   }> {
     const skip = (page - 1) * pageSize;
 
-    const whereCondition: any = {};
+    const queryBuilder = this.productRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('category.parent', 'parentCategory')
+      .leftJoinAndSelect('product.profile', 'profile')
+      .leftJoinAndSelect('product.district', 'district')
+      .leftJoinAndSelect('product.images', 'images')
+      .leftJoinAndSelect('product.likes', 'likes')
+      .orderBy('product.isTop', 'DESC')
+      .addOrderBy('product.createdAt', 'DESC')
+      .addOrderBy('images.order', 'ASC');
+
+    // Faqat publish qilingan mahsulotlar (admin bo'lmasa)
     if (!isAdmin) {
-      whereCondition.isPublish = true; // Faqat ADMIN bo'lmaganda publish qilinganlarni ko'rsatish
+      queryBuilder.where('product.isPublish = :isPublish', {
+        isPublish: true,
+      });
     }
 
-    const [products, total] = await this.productRepository.findAndCount({
-      skip,
-      take: pageSize,
-      where: whereCondition, // <-- isPublish shartini shu yerga qo'ydik
-      relations: [
-        'category',
-        'category.parent',
-        'profile',
-        'district',
-        'images',
-        'likes',
-      ],
-      order: { isTop: 'DESC', createdAt: 'DESC', images: { order: 'ASC' } },
-    });
+    // Total count
+    const total = await queryBuilder.getCount();
 
+    // Pagination
+    const products = await queryBuilder.skip(skip).take(pageSize).getMany();
+
+    // isLike flag
     const result = products.map((product) => {
-      let isLike = false;
-
-      if (userId) {
-        isLike = product.likes?.some((user) => user.id === userId) ?? false;
-      } else if (likedIds.length > 0) {
-        isLike = likedIds.includes(product.id);
-      }
+      const isLike = userId
+        ? product.likes?.some((user) => user.id === userId)
+        : likedIds.includes(product.id);
 
       return {
         ...product,
