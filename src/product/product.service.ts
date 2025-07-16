@@ -833,6 +833,9 @@ export class ProductService {
           product[key] = ['categoryId', 'profileId'].includes(key)
             ? toNumber(body[key])
             : body[key];
+          this.logger.debug(
+            `[updateProduct] Field ${key} set to ${product[key]}`,
+          );
         }
       }
 
@@ -859,6 +862,7 @@ export class ProductService {
       }
 
       // Update product properties
+      this.logger.debug(`[updateProduct] Deleting old product properties...`);
       await queryRunner.manager.delete(ProductProperty, {
         product: { id: product.id },
       });
@@ -874,22 +878,31 @@ export class ProductService {
             !property ||
             typeof prop.value !== 'object' ||
             prop.value === null
-          )
+          ) {
+            this.logger.warn(
+              `[updateProduct] Skipping invalid property ID: ${propertyId}`,
+            );
             continue;
+          }
           const pp = new ProductProperty();
           pp.product = product;
           pp.property = property;
           pp.value = prop.value;
           productProperties.push(pp);
+          this.logger.debug(`[updateProduct] Added property: ${property.name}`);
         }
 
         if (productProperties.length > 0) {
           await queryRunner.manager.save(productProperties);
+          this.logger.debug(
+            `[updateProduct] Saved ${productProperties.length} properties.`,
+          );
         }
         product.propertyValues = productProperties;
       }
 
       // Handle image processing
+      this.logger.debug(`[updateProduct] Processing images...`);
       const existingImages = await queryRunner.manager.find(ProductImage, {
         where: { product: { id: product.id } },
         order: { order: 'ASC', id: 'DESC' },
@@ -904,8 +917,9 @@ export class ProductService {
       for (const img of imagesToDelete) {
         try {
           await this.fileService.deleteFileByUrl(img.url);
+          this.logger.debug(`[updateProduct] Deleted image file: ${img.url}`);
         } catch (err) {
-          this.logger.warn(`Failed to delete file: ${img.url}`);
+          this.logger.warn(`[updateProduct] Failed to delete file: ${img.url}`);
         }
       }
       await queryRunner.manager.remove(imagesToDelete);
@@ -918,6 +932,7 @@ export class ProductService {
         newImg.order = isNaN(toNumber(img.order)) ? 0 : toNumber(img.order);
         newImg.product = product;
         imagesToSave.push(newImg);
+        this.logger.debug(`[updateProduct] Prepared image: ${newImg.url}`);
       }
 
       if (files?.length) {
@@ -929,6 +944,9 @@ export class ProductService {
           newImg.product = product;
           newImg.order = 0;
           imagesToSave.push(newImg);
+          this.logger.debug(
+            `[updateProduct] Uploaded and prepared image: ${url}`,
+          );
         }
       }
 
@@ -943,6 +961,7 @@ export class ProductService {
 
       await queryRunner.manager.save(imagesToSave);
       product.images = imagesToSave;
+      this.logger.debug(`[updateProduct] Saved ${imagesToSave.length} images.`);
 
       // Handle imageIndex
       const imgIndex = toNumber(body.imageIndex);
