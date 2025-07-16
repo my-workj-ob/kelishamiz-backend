@@ -542,13 +542,12 @@ export class ProductController {
   })
   async updateProduct(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: any,
+    @Body() body: UpdateProductDto, // <--- `any` o'rniga DTO dan foydalaning
     @UploadedFiles() files: Express.Multer.File[],
   ) {
-    console.log('Qabul qilingan fayllar:', files); // Debugging uchun
-    console.log('Qabul qilingan body:', body); // Debugging uchun
+    console.log('Qabul qilingan fayllar:', files);
+    console.log('Qabul qilingan body (DTO tomonidan parse qilingan):', body);
     return this.productService.updateProduct(id, body, files);
   }
-
   // ... constructor va service injection
 }
