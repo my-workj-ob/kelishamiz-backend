@@ -785,7 +785,11 @@ export class ProductService {
     files?: Express.Multer.File[],
   ): Promise<any> {
     this.logger.debug(`[updateProduct] Updating product ID: ${id}`);
+    const toNumber = (val: any) =>
+      typeof val === 'string' ? parseInt(val, 10) : val; // Mana shu yerda e'lon qilinganligiga ishonch hosil qiling
 
+    // ...
+  
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
