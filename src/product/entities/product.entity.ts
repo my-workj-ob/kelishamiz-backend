@@ -74,7 +74,10 @@ export class Product {
   profileId: number;
 
   // ProductImage entity-sida `product`ga qayta ishora bo'lsa, u yerda @Exclude() ishlatish kerak.
-  @OneToMany(() => ProductImage, (image) => image.product, { cascade: true })
+  @OneToMany(() => ProductImage, (image) => image.product, {
+    eager: true,
+    cascade: true,
+  })
   images: ProductImage[]; // Rasmlar uchun yangi relation
 
   @ApiProperty({
@@ -147,7 +150,7 @@ export class Product {
   @Column({ default: false })
   ownProduct: boolean;
 
-  @Column({ default: 0, nullable: true })
+  @Column({ type: 'int', default: 0, nullable: true })
   imageIndex: number;
 
   // ChatRoom entity-sida `product`ga qayta ishora bo'lsa, u yerda @Exclude() ishlatish kerak.
