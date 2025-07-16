@@ -56,7 +56,7 @@ import { PaymeModule } from './payme/payme.module';
       autoLoadEntities: true,
       entities: [Category, Product, User, FileEntity, Comment, UserSearch],
       synchronize: false, // Productionda FALSE bo'lishi kerak!
-      logging: ['query', 'error', 'log'], // Shu qatorni qo'shing
+      logging: true,
     }),
 
     CacheModule.registerAsync({
