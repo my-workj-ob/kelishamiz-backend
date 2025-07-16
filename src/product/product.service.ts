@@ -769,7 +769,6 @@ export class ProductService {
     return this.productRepository.save(product);
   }
 
-  // NestJS service method: Fully rewritten updateProduct with circular reference fix
   /**
    * Mahsulotni barcha bog'liq ma'lumotlari, shu jumladan rasmlar va propertylari bilan yangilaydi.
    *
@@ -860,13 +859,13 @@ export class ProductService {
         product.districtId = district.id;
       }
 
+      // Update product properties
       this.logger.debug(`[updateProduct] Deleting old product properties...`);
       await queryRunner.manager.delete(ProductProperty, {
         product: { id: product.id },
       });
-
       const productProperties: ProductProperty[] = [];
-      const propertyValues: Record<string, any> = {};
+
       if (Array.isArray(body.properties)) {
         for (const prop of body.properties) {
           const propertyId = toNumber(prop.propertyId);
@@ -906,8 +905,6 @@ export class ProductService {
           );
         }
       }
-      product.productProperties = productProperties;
-      product.propertyValues = propertyValues; // Shu yerda propertyValues ni to'ldiryapmiz
 
       // Handle image processing
       this.logger.debug(`[updateProduct] Processing images...`);
