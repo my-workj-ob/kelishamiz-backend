@@ -920,7 +920,7 @@ export class ProductService {
             this.logger.warn(
               `[updateProduct] Invalid propertyId format in body.properties: ${propData.propertyId}. Skipping.`,
             );
-            continue;
+            continue; // Noto'g'ri ID bo'lsa, o'tkazib yuborish
           }
 
           const propertyEntity = await queryRunner.manager.findOne(Property, {
@@ -931,7 +931,7 @@ export class ProductService {
             this.logger.warn(
               `[updateProduct] Property with ID ${propertyId} not found for category ${product.categoryId}. Skipping.`,
             );
-            continue;
+            continue; // Topilmasa, o'tkazib yuborish
           }
           this.logger.debug(
             `[updateProduct] Found Property: ${propertyEntity.name} (ID: ${propertyId})`,
@@ -943,22 +943,48 @@ export class ProductService {
           productProperty.property = propertyEntity;
           productProperty.propertyId = propertyEntity.id;
 
-          if (typeof propData.value === 'object' && propData.value !== null) {
-            productProperty.value = propData.value;
-            this.logger.debug(
-              `[updateProduct] Property value set for ${propertyEntity.name}: ${JSON.stringify(propData.value)}`,
+          // --- MUAMMONI HAL QILISH UCHUN YANGILANGAN QISM ---
+          let parsedValue: any;
+          try {
+            // Agar value string bo'lib kelgan bo'lsa, uni JSON qilib parse qilishga urinish
+            if (typeof propData.value === 'string') {
+              parsedValue = JSON.parse(propData.value);
+              this.logger.debug(
+                `[updateProduct] Parsed string property value for ${propertyEntity.name}: ${JSON.stringify(parsedValue)}`,
+              );
+            } else if (
+              typeof propData.value === 'object' &&
+              propData.value !== null
+            ) {
+              // Agar allaqachon obyekt bo'lib kelgan bo'lsa (JSON Content-Type orqali kelishi mumkin)
+              parsedValue = propData.value;
+              this.logger.debug(
+                `[updateProduct] Object property value set for ${propertyEntity.name}: ${JSON.stringify(parsedValue)}`,
+              );
+            } else if (
+              propData.value !== undefined &&
+              propData.value !== null
+            ) {
+              // Oddiy qiymatlarni { value: "..." } formatiga o'tkazish
+              parsedValue = { value: String(propData.value) };
+              this.logger.debug(
+                `[updateProduct] Simple property value converted to object for ${propertyEntity.name}: ${JSON.stringify(parsedValue)}`,
+              );
+            } else {
+              this.logger.warn(
+                `[updateProduct] Invalid or missing value for Property ID ${propertyId}. Expected object or basic type. Skipping.`,
+              );
+              continue; // Qiymat noto'g'ri bo'lsa, o'tkazib yuborish
+            }
+
+            productProperty.value = parsedValue;
+          } catch (parseError) {
+            this.logger.error(
+              `[updateProduct] Failed to parse property value for Property ID ${propertyId}: ${propData.value}. Error: ${parseError.message}`,
             );
-          } else if (propData.value !== undefined && propData.value !== null) {
-            productProperty.value = { value: String(propData.value) };
-            this.logger.debug(
-              `[updateProduct] Simple property value converted to object for ${propertyEntity.name}: ${JSON.stringify(productProperty.value)}`,
-            );
-          } else {
-            this.logger.warn(
-              `[updateProduct] Invalid or missing value for Property ID ${propertyId}. Expected object or basic type. Skipping.`,
-            );
-            continue;
+            continue; // Parsingda xato bo'lsa, o'tkazib yuborish
           }
+          // --- YANGILANGAN QISM TUGADI ---
 
           newProductProperties.push(productProperty);
         }
