@@ -38,6 +38,7 @@ import { UploadService } from './../file/uploadService';
 import { ProductImage } from './entities/Product-Image.entity';
 import { District } from 'src/location/entities/district.entity';
 import { Region } from 'src/location/entities/region.entity';
+import { instanceToPlain } from 'class-transformer';
 
 @Injectable()
 export class ProductService {
@@ -1202,7 +1203,13 @@ export class ProductService {
 
       await queryRunner.commitTransaction();
 
-      return savedProduct;
+      // Oldin bor edi:
+      // return savedProduct;
+
+      // O‘rniga yozasiz:
+      return instanceToPlain(savedProduct, {
+        excludeExtraneousValues: true,
+      });
     } catch (err) {
       await queryRunner.rollbackTransaction();
       this.logger.error(
