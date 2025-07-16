@@ -906,7 +906,7 @@ export class ProductService {
       }
 
       product.productProperties = productProperties;
-      product.propertyValues = propertyValues; // Shu yerda propertyValues ni to'ldiryapmiz
+      // product.propertyValues = propertyValues; // Shu yerda propertyValues ni to'ldiryapmiz
 
       // Handle image processing
       this.logger.debug(`[updateProduct] Processing images...`);
