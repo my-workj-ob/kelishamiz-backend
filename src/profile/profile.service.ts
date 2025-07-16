@@ -82,10 +82,9 @@ export class ProfileService {
   }
 
   // user.service.ts
-  async removeUser(id: number): Promise<void> {
-    console.log('Deleting user with ID:', id); // 👈 qo‘shing
+  async removeUser(userId: number): Promise<void> {
     const user = await this.userRepository.findOne({
-      where: { id },
+      where: { id: userId },
       relations: [
         'profile',
         'profile.products',
@@ -93,6 +92,9 @@ export class ProfileService {
         'profile.comments',
         'likes',
         'searches',
+        'messages',
+        'notifications',
+        'transactions',
       ],
     });
 
@@ -100,41 +102,50 @@ export class ProfileService {
       throw new NotFoundException('User not found');
     }
 
+    // 1. Delete likes from join table
     await this.dataSource
       .createQueryBuilder()
       .delete()
-      .from('product_likes_user') // Many-to-Many join table name
-      .where('userId = :userId', { userId: id })
+      .from('product_likes_user')
+      .where('userId = :userId', { userId })
       .execute();
 
-    // 3. Remove searches (agar bogʻlangan bo‘lsa)
-    await this.searchRepository.delete({ user: { id } });
+    // 2. Delete user-viewed-products, if you have such table
+    await this.dataSource
+      .createQueryBuilder()
+      .delete()
+      .from('user_viewed_product')
+      .where('userId = :userId', { userId })
+      .execute();
 
-    // 4. Remove profile’s products
-    if (user.profile?.products?.length) {
-      const productIds = user.profile.products.map((p) => p.id);
-      await this.productRepository.delete(productIds);
-    }
+    // 3. Delete user searches
+    await this.searchRepository.delete({ user: { id: userId } });
 
-    // 5. Remove profile's comments and likes
+    // 4. Delete profile comments and likes
     if (user.profile?.comments?.length) {
-      const commentIds = user.profile.comments.map((c) => c.id);
-      await this.commentRepository.delete(commentIds);
+      await this.commentRepository.delete(
+        user.profile.comments.map((c) => c.id),
+      );
     }
 
     if (user.profile?.likes?.length) {
-      const likeIds = user.profile.likes.map((l) => l.id);
-      await this.likeRepository.delete(likeIds);
+      await this.likeRepository.delete(user.profile.likes.map((l) => l.id));
     }
 
-    if (user.profile) {
-      if (user.profile?.id !== undefined) {
-        console.log(user.profile);
-        await this.profileRepository.delete(user.profile.id);
-      }
+    // 5. Delete profile products
+    if (user.profile?.products?.length) {
+      await this.productRepository.delete(
+        user.profile.products.map((p) => p.id),
+      );
     }
 
-    await this.userRepository.delete(id);
+    // 6. Delete profile itself
+    if (user.profile?.id) {
+      await this.profileRepository.delete(user.profile.id);
+    }
+
+    // 7. Delete user itself
+    await this.userRepository.delete(userId);
   }
 
   async findByUser(userId: number): Promise<Profile | any> {
