@@ -105,7 +105,10 @@ export class Product {
   @OneToMany(
     () => ProductProperty,
     (productProperty) => productProperty.product,
-    { cascade: true },
+    {
+      cascade: ['insert', 'update', 'remove'], // YOKI cascade: true
+      eager: true, // Ma'lumotlarni o'qiyotganda ham olib kelish uchun foydali
+    },
   )
   productProperties: ProductProperty[];
 

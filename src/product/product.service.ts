@@ -789,7 +789,7 @@ export class ProductService {
       typeof val === 'string' ? parseInt(val, 10) : val; // Mana shu yerda e'lon qilinganligiga ishonch hosil qiling
 
     // ...
-  
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -1246,12 +1246,20 @@ export class ProductService {
         `[updateProduct] Product ${savedProduct.id} successfully updated in DB.`,
       );
 
+      await queryRunner.manager.save(product);
       // ...
+
+      this.logger.debug(
+        `[updateProduct] Product (ID: ${id}) and its relations saved.`,
+      );
+
       await queryRunner.commitTransaction();
       this.logger.debug(`[updateProduct] Transaction committed successfully.`); // <-- Shu qatorni qo'shing
+      
       return instanceToPlain(savedProduct, {
         excludeExtraneousValues: true,
       });
+      
     } catch (err) {
       // Xato yuz bersa, tranzaksiyani bekor qilish
       await queryRunner.rollbackTransaction();
