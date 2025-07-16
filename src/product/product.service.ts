@@ -910,7 +910,7 @@ export class ProductService {
         );
         await queryRunner.manager.delete(ProductProperty, {
           // Faqat bitta delete operatsiyasi
-          product: { id: product.id },
+          product: { id: Number(product.id) },
         });
         this.logger.debug(
           `[updateProduct][Properties] Old product properties deleted successfully.`,
@@ -935,7 +935,10 @@ export class ProductService {
           }
 
           const propertyEntity = await queryRunner.manager.findOne(Property, {
-            where: { id: propertyId, category: { id: product.categoryId } },
+            where: {
+              id: Number(propertyId),
+              category: { id: Number(product.categoryId) },
+            },
           });
 
           if (!propertyEntity) {
@@ -955,7 +958,7 @@ export class ProductService {
           productProperty.propertyId = propertyEntity.id;
 
           // Property qiymatini parse qilish va o'rnatish
-          let parsedValue: Record<string, string>; // JSONB uchun aniqroq tur
+          let parsedValue: Record<string, any>; // JSONB uchun aniqroq tur
           try {
             // propData.value ning asl turini tekshirish
             this.logger.debug(
