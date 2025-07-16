@@ -901,27 +901,26 @@ export class ProductService {
         `[updateProduct] Region and district objects update finished.`,
       );
 
+      // --- 3. Propertylarni yangilash qismi ---
       this.logger.debug(
         `[updateProduct][Properties] Updating product properties process started.`,
       );
+
+      // Propertylarni faqat `body.properties` mavjud bo'lsa yangilang
       if (Array.isArray(body.properties)) {
         this.logger.debug(
           `[updateProduct][Properties] Deleting old product properties for product ID: ${product.id}`,
         );
         await queryRunner.manager.delete(ProductProperty, {
-          // Faqat bitta delete operatsiyasi
           product: { id: Number(product.id) },
         });
         this.logger.debug(
           `[updateProduct][Properties] Old product properties deleted successfully.`,
         );
-        // ... (Bu yerdagi ikkilangan DELETE qismi o'chirib tashlandi) ...
 
         const newProductProperties: ProductProperty[] = [];
 
-        // Har bir kiruvchi propertyni qayta ishlash
         for (const propData of body.properties) {
-          // ... qolgan kod avvalgidek ...
           this.logger.debug(
             `[updateProduct][Properties] Processing incoming property data: ${JSON.stringify(propData)}`,
           );
@@ -931,7 +930,7 @@ export class ProductService {
             this.logger.warn(
               `[updateProduct][Properties] Invalid propertyId format: '${propData.propertyId}'. Skipping this property.`,
             );
-            continue; // Noto'g'ri ID bo'lsa, o'tkazib yuborish
+            continue;
           }
 
           const propertyEntity = await queryRunner.manager.findOne(Property, {
@@ -945,7 +944,7 @@ export class ProductService {
             this.logger.warn(
               `[updateProduct][Properties] Property with ID ${propertyId} not found for category ${product.categoryId}. Skipping this property.`,
             );
-            continue; // Topilmasa, o'tkazib yuborish
+            continue;
           }
           this.logger.debug(
             `[updateProduct][Properties] Found matching Property entity: ${propertyEntity.name} (ID: ${propertyId})`,
@@ -957,16 +956,13 @@ export class ProductService {
           productProperty.property = propertyEntity;
           productProperty.propertyId = propertyEntity.id;
 
-          // Property qiymatini parse qilish va o'rnatish
-          let parsedValue: Record<string, any>; // JSONB uchun aniqroq tur
+          let parsedValue: Record<string, any>;
           try {
-            // propData.value ning asl turini tekshirish
             this.logger.debug(
               `[updateProduct][Properties] Incoming value for ${propertyEntity.name} (ID:${propertyId}): Type=${typeof propData.value}, Value=${JSON.stringify(propData.value)}`,
             );
 
             if (typeof propData.value === 'string') {
-              // Agar string bo'lsa, JSON.parse qilishga urinish
               parsedValue = JSON.parse(propData.value);
               this.logger.debug(
                 `[updateProduct][Properties] Successfully parsed string value to object for ${propertyEntity.name}: ${JSON.stringify(parsedValue)}`,
@@ -975,7 +971,6 @@ export class ProductService {
               typeof propData.value === 'object' &&
               propData.value !== null
             ) {
-              // Agar allaqachon obyekt bo'lib kelgan bo'lsa (bu sizning oxirgi loglaringizga mos keladi)
               parsedValue = propData.value;
               this.logger.debug(
                 `[updateProduct][Properties] Value is already an object for ${propertyEntity.name}: ${JSON.stringify(parsedValue)}`,
@@ -984,7 +979,6 @@ export class ProductService {
               propData.value !== undefined &&
               propData.value !== null
             ) {
-              // Oddiy qiymatlarni { value: "..." } formatiga o'tkazish
               parsedValue = { value: String(propData.value) };
               this.logger.debug(
                 `[updateProduct][Properties] Converted simple value to object for ${propertyEntity.name}: ${JSON.stringify(parsedValue)}`,
@@ -993,7 +987,7 @@ export class ProductService {
               this.logger.warn(
                 `[updateProduct][Properties] Invalid or missing value for Property ID ${propertyId}. Skipping this property.`,
               );
-              continue; // Qiymat noto'g'ri bo'lsa, o'tkazib yuborish
+              continue;
             }
 
             productProperty.value = parsedValue;
@@ -1003,9 +997,9 @@ export class ProductService {
           } catch (parseError) {
             this.logger.error(
               `[updateProduct][Properties] Failed to parse value for Property ID ${propertyId} (Value: ${JSON.stringify(propData.value)}). Error: ${parseError.message}. Skipping.`,
-              parseError.stack, // Xatoning stack trace'ini ham ko'rsatish
+              parseError.stack,
             );
-            continue; // Parsingda xato bo'lsa, o'tkazib yuborish
+            continue;
           }
 
           newProductProperties.push(productProperty);
@@ -1032,236 +1026,240 @@ export class ProductService {
           `[updateProduct][Properties] Product properties update finished. Product entity's productProperties updated in memory.`,
         );
       } else {
-        this.logger.warn(
-          `[updateProduct][Properties] 'properties' array is missing or invalid in body. Clearing existing product properties.`,
-        );
-        await queryRunner.manager.delete(ProductProperty, {
-          product: { id: product.id },
-        });
-        product.productProperties = [];
         this.logger.debug(
-          `[updateProduct][Properties] Existing product properties cleared from DB and product entity.`,
+          `[updateProduct][Properties] 'properties' array is missing or invalid in body. Skipping property update. Existing properties will remain unchanged.`,
         );
+        // Agar body.properties kelmasa, mavjud propertylarga teginilmaydi
       }
 
       // --- 4. Rasmlarni yangilash qismi ---
-      this.logger.debug(`[updateProduct] Handling product images update...`);
+      // Rasmlarni faqat `files` yoki `body.images` mavjud bo'lsa yangilang
+      if ((files && files.length > 0) || Array.isArray(body.images)) {
+        this.logger.debug(`[updateProduct] Handling product images update...`);
 
-      const existingImagesInDB = await queryRunner.manager.find(ProductImage, {
-        where: { product: { id: product.id } },
-        order: { order: 'ASC', id: 'DESC' },
-      });
-      this.logger.debug(
-        `[updateProduct] Found ${existingImagesInDB.length} existing images in DB.`,
-      );
-
-      const incomingExistingImages = Array.isArray(body.images)
-        ? body.images
-        : [];
-
-      const newlyUploadedFileUrls: {
-        url: string;
-        file: Express.Multer.File;
-      }[] = [];
-      const newFiles = files || [];
-
-      this.logger.debug(
-        `[updateProduct] Uploading new files (${newFiles.length})...`,
-      );
-      for (const file of newFiles) {
-        try {
-          const url = await this.uploadService.uploadFile(file);
-          await this.fileService.saveFile(url);
-          newlyUploadedFileUrls.push({ url, file });
-          this.logger.debug(
-            `[updateProduct] File uploaded successfully: ${url}`,
-          );
-        } catch (uploadError) {
-          this.logger.error(
-            `[updateProduct] Failed to upload file ${file.originalname}: ${uploadError.message}`,
-            uploadError.stack,
-          );
-          throw new InternalServerErrorException(
-            `Failed to upload file: ${file.originalname}`,
-          );
-        }
-      }
-      this.logger.debug(
-        `[updateProduct] ${newlyUploadedFileUrls.length} new files uploaded.`,
-      );
-
-      const imagesToProcess: ProductImage[] = [];
-      const imagesToDeleteFromDB: ProductImage[] = [];
-      const imageIdsFromIncomingBody = new Set(
-        incomingExistingImages
-          .map((img: { id?: number }) => img.id)
-          .filter(
-            (id: number | undefined): id is number =>
-              id !== undefined && id !== null,
-          ),
-      );
-
-      for (const dbImage of existingImagesInDB) {
-        if (!imageIdsFromIncomingBody.has(dbImage.id)) {
-          imagesToDeleteFromDB.push(dbImage);
-          this.logger.debug(
-            `[updateProduct] Image marked for deletion (not in incoming body): ${dbImage.id}`,
-          );
-        }
-      }
-
-      for (const imgToDel of imagesToDeleteFromDB) {
+        const existingImagesInDB = await queryRunner.manager.find(
+          ProductImage,
+          {
+            where: { product: { id: product.id } },
+            order: { order: 'ASC', id: 'DESC' },
+          },
+        );
         this.logger.debug(
-          `[updateProduct] Deleting file from storage: ${imgToDel.url}`,
+          `[updateProduct] Found ${existingImagesInDB.length} existing images in DB.`,
         );
-        try {
-          await this.fileService.deleteFileByUrl(imgToDel.url);
-          this.logger.debug(
-            `[updateProduct] File deleted from storage: ${imgToDel.url}`,
-          );
-        } catch (fileDeleteError) {
-          this.logger.error(
-            `[updateProduct] Failed to delete file from storage: ${imgToDel.url}. Error: ${fileDeleteError.message}`,
-            fileDeleteError.stack,
-          );
-        }
-      }
-      if (imagesToDeleteFromDB.length > 0) {
-        await queryRunner.manager.remove(imagesToDeleteFromDB);
+
+        const incomingExistingImages = Array.isArray(body.images)
+          ? body.images
+          : [];
+
+        const newlyUploadedFileUrls: {
+          url: string;
+          file: Express.Multer.File;
+        }[] = [];
+        const newFiles = files || [];
+
         this.logger.debug(
-          `[updateProduct] ${imagesToDeleteFromDB.length} images deleted from DB.`,
+          `[updateProduct] Uploading new files (${newFiles.length})...`,
         );
-      }
-
-      for (const incomingImg of incomingExistingImages) {
-        const existingImage = existingImagesInDB.find(
-          (dbImg) => dbImg.id === incomingImg.id,
-        );
-
-        if (existingImage) {
-          existingImage.url = incomingImg.url;
-          existingImage.order = toNumber(incomingImg.order);
-          if (isNaN(existingImage.order)) {
-            this.logger.warn(
-              `[updateProduct] Invalid order for existing image ID ${incomingImg.id}. Defaulting to 0.`,
+        for (const file of newFiles) {
+          try {
+            const url = await this.uploadService.uploadFile(file);
+            await this.fileService.saveFile(url);
+            newlyUploadedFileUrls.push({ url, file });
+            this.logger.debug(
+              `[updateProduct] File uploaded successfully: ${url}`,
             );
-            existingImage.order = 0;
+          } catch (uploadError) {
+            this.logger.error(
+              `[updateProduct] Failed to upload file ${file.originalname}: ${uploadError.message}`,
+              uploadError.stack,
+            );
+            throw new InternalServerErrorException(
+              `Failed to upload file: ${file.originalname}`,
+            );
           }
-          imagesToProcess.push(existingImage);
+        }
+        this.logger.debug(
+          `[updateProduct] ${newlyUploadedFileUrls.length} new files uploaded.`,
+        );
+
+        const imagesToProcess: ProductImage[] = [];
+        const imagesToDeleteFromDB: ProductImage[] = [];
+        const imageIdsFromIncomingBody = new Set(
+          incomingExistingImages
+            .map((img: { id?: number }) => img.id)
+            .filter(
+              (id: number | undefined): id is number =>
+                id !== undefined && id !== null,
+            ),
+        );
+
+        for (const dbImage of existingImagesInDB) {
+          if (!imageIdsFromIncomingBody.has(dbImage.id)) {
+            imagesToDeleteFromDB.push(dbImage);
+            this.logger.debug(
+              `[updateProduct] Image marked for deletion (not in incoming body): ${dbImage.id}`,
+            );
+          }
+        }
+
+        for (const imgToDel of imagesToDeleteFromDB) {
           this.logger.debug(
-            `[updateProduct] Existing image ${existingImage.id} updated. Order: ${existingImage.order}`,
+            `[updateProduct] Deleting file from storage: ${imgToDel.url}`,
+          );
+          try {
+            await this.fileService.deleteFileByUrl(imgToDel.url);
+            this.logger.debug(
+              `[updateProduct] File deleted from storage: ${imgToDel.url}`,
+            );
+          } catch (fileDeleteError) {
+            this.logger.error(
+              `[updateProduct] Failed to delete file from storage: ${imgToDel.url}. Error: ${fileDeleteError.message}`,
+              fileDeleteError.stack,
+            );
+          }
+        }
+        if (imagesToDeleteFromDB.length > 0) {
+          await queryRunner.manager.remove(imagesToDeleteFromDB);
+          this.logger.debug(
+            `[updateProduct] ${imagesToDeleteFromDB.length} images deleted from DB.`,
+          );
+        }
+
+        for (const incomingImg of incomingExistingImages) {
+          const existingImage = existingImagesInDB.find(
+            (dbImg) => dbImg.id === incomingImg.id,
+          );
+
+          if (existingImage) {
+            existingImage.url = incomingImg.url;
+            existingImage.order = toNumber(incomingImg.order);
+            if (isNaN(existingImage.order)) {
+              this.logger.warn(
+                `[updateProduct] Invalid order for existing image ID ${incomingImg.id}. Defaulting to 0.`,
+              );
+              existingImage.order = 0;
+            }
+            imagesToProcess.push(existingImage);
+            this.logger.debug(
+              `[updateProduct] Existing image ${existingImage.id} updated. Order: ${existingImage.order}`,
+            );
+          } else {
+            this.logger.warn(
+              `[updateProduct] Incoming image ID ${incomingImg.id} not found in DB. Treating as new image from body.`,
+            );
+            const newImg = new ProductImage();
+            newImg.url = incomingImg.url;
+            newImg.product = product;
+            newImg.order = toNumber(incomingImg.order);
+            if (isNaN(newImg.order)) {
+              this.logger.warn(
+                `[updateProduct] Invalid order for new image (from body) URL ${incomingImg.url}. Defaulting to 0.`,
+              );
+              newImg.order = 0;
+            }
+            imagesToProcess.push(newImg);
+            this.logger.debug(
+              `[updateProduct] New image (from body) added. URL: ${newImg.url}, Order: ${newImg.order}`,
+            );
+          }
+        }
+
+        for (const uploadedFile of newlyUploadedFileUrls) {
+          const newImg = new ProductImage();
+          newImg.url = uploadedFile.url;
+          newImg.product = product;
+          newImg.order = 0;
+          imagesToProcess.push(newImg);
+          this.logger.debug(
+            `[updateProduct] Newly uploaded file added to process. URL: ${newImg.url}`,
+          );
+        }
+
+        if (imagesToProcess.length > 10) {
+          this.logger.warn(
+            `[updateProduct] Total image count exceeds 10. Throwing BadRequestException.`,
+          );
+          throw new BadRequestException(
+            'Rasmlar soni 10 tadan oshmasligi kerak',
+          );
+        }
+
+        imagesToProcess.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        for (let i = 0; i < imagesToProcess.length; i++) {
+          imagesToProcess[i].order = i;
+        }
+        this.logger.debug(
+          `[updateProduct] Re-ordered ${imagesToProcess.length} images for final save.`,
+        );
+
+        if (imagesToProcess.length > 0) {
+          await queryRunner.manager.save(imagesToProcess);
+          this.logger.debug(
+            `[updateProduct] Saved/updated ${imagesToProcess.length} images in DB.`,
+          );
+        } else {
+          await queryRunner.manager.delete(ProductImage, {
+            product: { id: product.id },
+          });
+          this.logger.debug(
+            `[updateProduct] All images removed as list is empty.`,
+          );
+        }
+
+        product.images = imagesToProcess; // Product entity'sida ham yangilash
+        this.logger.debug(
+          `[updateProduct] All images processed. Total: ${product.images.length}.`,
+        );
+
+        // --- 5. imageIndex ning validligini tekshirish va sozlash ---
+        this.logger.debug(`[updateProduct] Handling imageIndex...`);
+        let effectiveImageIndex: number;
+
+        const parsedImageIndex = toNumber(body.imageIndex);
+        this.logger.debug(
+          `[DEBUG] Raw body.imageIndex: ${body.imageIndex}, Type: ${typeof body.imageIndex}`,
+        );
+        this.logger.debug(
+          `[DEBUG] After toNumber, parsedImageIndex: ${parsedImageIndex}, Type: ${typeof parsedImageIndex}`,
+        );
+
+        if (body.imageIndex !== undefined && !isNaN(parsedImageIndex)) {
+          effectiveImageIndex = parsedImageIndex;
+          this.logger.debug(
+            `[DEBUG] imageIndex provided and parsed: ${effectiveImageIndex}`,
           );
         } else {
           this.logger.warn(
-            `[updateProduct] Incoming image ID ${incomingImg.id} not found in DB. Treating as new image from body.`,
+            `[updateProduct] imageIndex not provided or invalid format (${body.imageIndex}). Defaulting.`,
           );
-          const newImg = new ProductImage();
-          newImg.url = incomingImg.url;
-          newImg.product = product;
-          newImg.order = toNumber(incomingImg.order);
-          if (isNaN(newImg.order)) {
-            this.logger.warn(
-              `[updateProduct] Invalid order for new image (from body) URL ${incomingImg.url}. Defaulting to 0.`,
-            );
-            newImg.order = 0;
-          }
-          imagesToProcess.push(newImg);
+          effectiveImageIndex = product.images.length > 0 ? 0 : -1;
           this.logger.debug(
-            `[updateProduct] New image (from body) added. URL: ${newImg.url}, Order: ${newImg.order}`,
+            `[DEBUG] imageIndex defaulted to: ${effectiveImageIndex}`,
           );
         }
-      }
 
-      for (const uploadedFile of newlyUploadedFileUrls) {
-        const newImg = new ProductImage();
-        newImg.url = uploadedFile.url;
-        newImg.product = product;
-        newImg.order = 0;
-        imagesToProcess.push(newImg);
-        this.logger.debug(
-          `[updateProduct] Newly uploaded file added to process. URL: ${newImg.url}`,
-        );
-      }
-
-      if (imagesToProcess.length > 10) {
-        this.logger.warn(
-          `[updateProduct] Total image count exceeds 10. Throwing BadRequestException.`,
-        );
-        throw new BadRequestException('Rasmlar soni 10 tadan oshmasligi kerak');
-      }
-
-      imagesToProcess.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      for (let i = 0; i < imagesToProcess.length; i++) {
-        imagesToProcess[i].order = i;
-      }
-      this.logger.debug(
-        `[updateProduct] Re-ordered ${imagesToProcess.length} images for final save.`,
-      );
-
-      if (imagesToProcess.length > 0) {
-        await queryRunner.manager.save(imagesToProcess);
-        this.logger.debug(
-          `[updateProduct] Saved/updated ${imagesToProcess.length} images in DB.`,
-        );
+        if (
+          effectiveImageIndex < 0 ||
+          effectiveImageIndex >= product.images.length
+        ) {
+          this.logger.warn(
+            `[updateProduct] Calculated imageIndex (${effectiveImageIndex}) is out of bounds for current images array (length: ${product.images.length}). Adjusting.`,
+          );
+          product.imageIndex = product.images.length > 0 ? 0 : -1;
+          this.logger.debug(
+            `[DEBUG] imageIndex adjusted to: ${product.imageIndex}`,
+          );
+        } else {
+          product.imageIndex = effectiveImageIndex;
+          this.logger.debug(
+            `[DEBUG] Final imageIndex set to: ${product.imageIndex}`,
+          );
+        }
       } else {
-        await queryRunner.manager.delete(ProductImage, {
-          product: { id: product.id },
-        });
+        // Rasmlar yangilanmagan bo'lsa, imageIndexga tegmaymiz
         this.logger.debug(
-          `[updateProduct] All images removed as list is empty.`,
-        );
-      }
-
-      product.images = imagesToProcess;
-      this.logger.debug(
-        `[updateProduct] All images processed. Total: ${product.images.length}.`,
-      );
-
-      // --- 5. imageIndex ning validligini tekshirish va sozlash ---
-      this.logger.debug(`[updateProduct] Handling imageIndex...`);
-      let effectiveImageIndex: number; // Endi boshlang'ich qiymat bermaymiz
-
-      const parsedImageIndex = toNumber(body.imageIndex);
-      this.logger.debug(
-        `[DEBUG] Raw body.imageIndex: ${body.imageIndex}, Type: ${typeof body.imageIndex}`,
-      );
-      this.logger.debug(
-        `[DEBUG] After toNumber, parsedImageIndex: ${parsedImageIndex}, Type: ${typeof parsedImageIndex}`,
-      );
-
-      // Agar body.imageIndex berilgan bo'lsa va raqamga to'g'ri aylansa
-      if (body.imageIndex !== undefined && !isNaN(parsedImageIndex)) {
-        effectiveImageIndex = parsedImageIndex;
-        this.logger.debug(
-          `[DEBUG] imageIndex provided and parsed: ${effectiveImageIndex}`,
-        );
-      } else {
-        // Agar imageIndex berilmagan bo'lsa yoki noto'g'ri formatda bo'lsa, default qiymat berish
-        this.logger.warn(
-          `[updateProduct] imageIndex not provided or invalid format (${body.imageIndex}). Defaulting.`,
-        );
-        effectiveImageIndex = product.images.length > 0 ? 0 : -1;
-        this.logger.debug(
-          `[DEBUG] imageIndex defaulted to: ${effectiveImageIndex}`,
-        );
-      }
-
-      // effectiveImageIndex'ni rasmlar soni chegaralari ichida ekanligini tekshirish
-      if (
-        effectiveImageIndex < 0 ||
-        effectiveImageIndex >= product.images.length
-      ) {
-        this.logger.warn(
-          `[updateProduct] Calculated imageIndex (${effectiveImageIndex}) is out of bounds for current images array (length: ${product.images.length}). Adjusting.`,
-        );
-        product.imageIndex = product.images.length > 0 ? 0 : -1;
-        this.logger.debug(
-          `[DEBUG] imageIndex adjusted to: ${product.imageIndex}`,
-        );
-      } else {
-        product.imageIndex = effectiveImageIndex;
-        this.logger.debug(
-          `[DEBUG] Final imageIndex set to: ${product.imageIndex}`,
+          `[updateProduct] No image files or body.images provided. Skipping image update and imageIndex handling.`,
         );
       }
 
@@ -1272,27 +1270,23 @@ export class ProductService {
         `[updateProduct] Product ${savedProduct.id} successfully updated in DB.`,
       );
 
-      // ...
       await queryRunner.commitTransaction();
-      this.logger.debug(`[updateProduct] Transaction committed successfully.`); // <-- Shu qatorni qo'shing
+      this.logger.debug(`[updateProduct] Transaction committed successfully.`);
       return instanceToPlain(savedProduct, {
         excludeExtraneousValues: true,
       });
     } catch (err) {
-      // Xato yuz bersa, tranzaksiyani bekor qilish
       await queryRunner.rollbackTransaction();
       this.logger.error(
         `[updateProduct] Error during product update for ID ${id}: ${err.message}`,
         err.stack,
       );
-      // Xatolik turini tekshirib, mos xatolikni qaytarish
       throw err instanceof HttpException
         ? err
         : new InternalServerErrorException(
             'Failed to update product due to an unexpected error.',
           );
     } finally {
-      // Tranzaksiya resurslarini bo'shatish
       await queryRunner.release();
       this.logger.debug(`[updateProduct] QueryRunner released.`);
     }
