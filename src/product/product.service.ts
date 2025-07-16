@@ -768,7 +768,6 @@ export class ProductService {
 
     return this.productRepository.save(product);
   }
-
   /**
    * Mahsulotni barcha bog'liq ma'lumotlari, shu jumladan rasmlar va propertylari bilan yangilaydi.
    *
@@ -808,7 +807,6 @@ export class ProductService {
         throw new NotFoundException('Product not found');
       }
 
-      // Update main fields
       const updatableFields = [
         'title',
         'description',
@@ -837,7 +835,6 @@ export class ProductService {
         }
       }
 
-      // Update region
       if (body.regionId !== undefined) {
         const regionId = toNumber(body.regionId);
         const region = await queryRunner.manager.findOne(Region, {
@@ -848,7 +845,6 @@ export class ProductService {
         product.regionId = region.id;
       }
 
-      // Update district
       if (body.districtId !== undefined) {
         const districtId = toNumber(body.districtId);
         const district = await queryRunner.manager.findOne(District, {
@@ -859,7 +855,6 @@ export class ProductService {
         product.districtId = district.id;
       }
 
-      // Update product properties
       this.logger.debug(`[updateProduct] Deleting old product properties...`);
       await queryRunner.manager.delete(ProductProperty, {
         product: { id: product.id },
@@ -870,10 +865,7 @@ export class ProductService {
         for (const prop of body.properties) {
           const propertyId = toNumber(prop.propertyId);
           const property = await queryRunner.manager.findOne(Property, {
-            where: {
-              id: propertyId,
-              category: { id: product.categoryId },
-            },
+            where: { id: propertyId, category: { id: product.categoryId } },
           });
 
           if (
@@ -888,10 +880,10 @@ export class ProductService {
           }
 
           const pp = new ProductProperty();
-          pp.product = product;
           pp.productId = product.id;
-          pp.property = property;
+          pp.product = product;
           pp.propertyId = property.id;
+          pp.property = property;
           pp.value = prop.value;
 
           productProperties.push(pp);
@@ -906,7 +898,6 @@ export class ProductService {
         }
       }
 
-      // Handle image processing
       this.logger.debug(`[updateProduct] Processing images...`);
       const existingImages = await queryRunner.manager.find(ProductImage, {
         where: { product: { id: product.id } },
@@ -936,6 +927,7 @@ export class ProductService {
         newImg.url = img.url;
         newImg.order = isNaN(toNumber(img.order)) ? 0 : toNumber(img.order);
         newImg.product = product;
+        newImg.productId = product.id;
         imagesToSave.push(newImg);
         this.logger.debug(`[updateProduct] Prepared image: ${newImg.url}`);
       }
@@ -947,6 +939,7 @@ export class ProductService {
           const newImg = new ProductImage();
           newImg.url = url;
           newImg.product = product;
+          newImg.productId = product.id;
           newImg.order = 0;
           imagesToSave.push(newImg);
           this.logger.debug(
@@ -968,7 +961,6 @@ export class ProductService {
       product.images = imagesToSave;
       this.logger.debug(`[updateProduct] Saved ${imagesToSave.length} images.`);
 
-      // Handle imageIndex
       const imgIndex = toNumber(body.imageIndex);
       product.imageIndex =
         !isNaN(imgIndex) && imgIndex >= 0 && imgIndex < product.images.length
