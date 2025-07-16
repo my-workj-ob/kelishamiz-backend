@@ -16,6 +16,7 @@ import { District } from './../location/entities/district.entity';
 import { Product } from './../product/entities/product.entity';
 import { Like } from './../like/entities/like.entity';
 import { UserSearch } from './../search-filter/entities/user-search.entity';
+import { ChatRoom } from './../chat/entities/chat-room.entity';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { UserSearch } from './../search-filter/entities/user-search.entity';
       Product,
       Like,
       UserSearch,
+      ChatRoom
     ]),
     PassportModule,
     JwtModule.register({
