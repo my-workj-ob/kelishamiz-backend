@@ -1188,30 +1188,43 @@ export class ProductService {
         `[updateProduct] All images processed. Total: ${product.images.length}.`,
       );
 
+      this.logger.debug(
+        `[DEBUG] Raw body.imageIndex: ${body.imageIndex}, Type: ${typeof body.imageIndex}`,
+      );
+      const parsedImageIndex = toNumber(body.imageIndex);
+      this.logger.debug(
+        `[DEBUG] After toNumber, parsedImageIndex: ${parsedImageIndex}, Type: ${typeof parsedImageIndex}`,
+      );
       // --- 5. imageIndex ning validligini tekshirish va sozlash ---
-      if (typeof body.imageIndex === 'number' && !isNaN(body.imageIndex)) {
-        product.imageIndex = toNumber(body.imageIndex);
-        // Agar imageIndex chegaradan tashqarida bo'lsa, uni to'g'irlash
-        if (
-          product.imageIndex < 0 ||
-          product.imageIndex >= product.images.length
-        ) {
-          this.logger.warn(
-            `[updateProduct] Provided imageIndex (${product.imageIndex}) is out of bounds for current images array (length: ${product.images.length}). Adjusting.`,
-          );
-          product.imageIndex = product.images.length > 0 ? 0 : -1; // Agar rasm bo'lsa 0, bo'lmasa -1
-        }
+      this.logger.debug(`[updateProduct] Handling imageIndex...`);
+      let effectiveImageIndex: number = 0;
+      // --- 5. imageIndex ning validligini tekshirish va sozlash ---
+      if (body.imageIndex !== undefined && !isNaN(parsedImageIndex)) {
+        this.logger.debug(`[DEBUG] Condition 1 (is defined and not NaN) met.`);
+        effectiveImageIndex = parsedImageIndex;
+        this.logger.debug(
+          `[DEBUG] effectiveImageIndex after Condition 1: ${effectiveImageIndex}`,
+        );
       } else {
-        // Agar imageIndex berilmagan bo'lsa, default qiymat berish
-        if (product.images.length > 0) {
-          product.imageIndex = 0;
-          this.logger.debug(
-            `[updateProduct] imageIndex not provided or invalid, set to 0 as default.`,
-          );
-        } else {
-          product.imageIndex = -1; // Rasmlar yo'q bo'lsa -1
-          this.logger.debug(`[updateProduct] No images, imageIndex set to -1.`);
-        }
+        this.logger.debug(
+          `[DEBUG] Condition 1 (is defined and not NaN) NOT met. Falling to default.`,
+        );
+        // ...
+      }
+
+      if (
+        effectiveImageIndex < 0 ||
+        effectiveImageIndex >= product.images.length
+      ) {
+        this.logger.debug(
+          `[DEBUG] Condition 2 (out of bounds) met. Adjusting.`,
+        );
+        // ...
+      } else {
+        this.logger.debug(
+          `[DEBUG] Condition 2 (out of bounds) NOT met. Assigning.`,
+        );
+        product.imageIndex = effectiveImageIndex;
       }
 
       // --- 6. Yakuniy mahsulotni saqlash ---
