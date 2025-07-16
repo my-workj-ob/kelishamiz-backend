@@ -274,8 +274,8 @@ export class ProductService {
       }
 
       qb.leftJoinAndSelect('product.profile', 'profile')
-        .leftJoinAndSelect('product.productProperties', 'productProperties')
-        .leftJoinAndSelect('productProperties.property', 'property')
+        .leftJoinAndSelect('product.propertyValues', 'propertyValues')
+        .leftJoinAndSelect('propertyValues.property', 'property')
         .leftJoinAndSelect('product.images', 'images')
         .take(20);
       const products = await qb.getMany();
@@ -797,7 +797,7 @@ export class ProductService {
     try {
       const product = await queryRunner.manager.findOne(Product, {
         where: { id },
-        relations: ['images', 'productProperties', 'region', 'district'],
+        relations: ['images', 'productProperties', "productProperties.property",  'propertyValues',  'region', 'district'],
       });
 
       if (!product) {
@@ -970,7 +970,7 @@ export class ProductService {
             `[updateProduct][Properties] No valid new product properties found to save.`,
           );
         }
-        product.productProperties = newProductProperties; // <-- Bu yerda product.productProperties relationini yangilash
+        product.propertyValues = newProductProperties; // <-- Bu yerda product.productProperties relationini yangilash
         this.logger.debug(
           `[updateProduct][Properties] Product properties update finished. Product entity's productProperties updated in memory.`,
         );
@@ -981,7 +981,7 @@ export class ProductService {
         await queryRunner.manager.delete(ProductProperty, {
           product: { id: product.id },
         });
-        product.productProperties = []; // <-- Bu yerda product.productProperties relationini tozalash
+        product.propertyValues = []; // <-- Bu yerda product.productProperties relationini tozalash
         this.logger.debug(
           `[updateProduct][Properties] Existing product properties cleared from DB and product entity.`,
         );
