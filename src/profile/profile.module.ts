@@ -15,8 +15,8 @@ import { UploadService } from './../file/uploadService';
 import { ProductImage } from './../product/entities/Product-Image.entity';
 import { FileEntity } from './../file/entities/file.entity';
 import { Like } from './../like/entities/like.entity';
-import { ProductPropertyDto } from 'src/product/dto/create-product.dto';
-import { ProductProperty } from 'src/product/entities/product-property.entity';
+import { ProductProperty } from './../product/entities/product-property.entity';
+import { ChatRoom } from './../chat/entities/chat-room.entity';
 
 @Module({
   imports: [
@@ -31,6 +31,7 @@ import { ProductProperty } from 'src/product/entities/product-property.entity';
       FileEntity,
       Like,
       ProductProperty,
+      ChatRoom
     ]),
   ],
   providers: [
