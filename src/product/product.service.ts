@@ -855,6 +855,9 @@ export class ProductService {
         product.districtId = district.id;
       }
 
+      // 🔐 Save product before saving relations
+      await queryRunner.manager.save(product);
+
       this.logger.debug(`[updateProduct] Deleting old product properties...`);
       await queryRunner.manager.delete(ProductProperty, {
         product: { id: product.id },
@@ -865,7 +868,7 @@ export class ProductService {
         for (const prop of body.properties) {
           const propertyId = toNumber(prop.propertyId);
           const property = await queryRunner.manager.findOne(Property, {
-            where: { id: propertyId, category: { id: product.categoryId } },
+            where: { id: propertyId, category: {id: product.categoryId} },
           });
 
           if (
