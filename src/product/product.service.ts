@@ -88,7 +88,10 @@ export class ProductService {
       .leftJoinAndSelect('product.likes', 'likes')
       .orderBy('product.isTop', 'DESC')
       .addOrderBy('product.createdAt', 'DESC')
-      .addOrderBy('images.order', 'ASC');
+      .addOrderBy('images.order', 'ASC')
+      .orderBy('product.createdAt', 'DESC') // ← bu yerga e'tibor bering
+      .addOrderBy('image.order', 'ASC') // ← rasm orderini ham saqlaymiz
+      .orderBy('product.updatedAt', 'DESC');
 
     // Faqat publish qilingan mahsulotlar (admin bo'lmasa)
     if (!isAdmin) {
