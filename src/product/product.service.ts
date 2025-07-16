@@ -87,11 +87,10 @@ export class ProductService {
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.likes', 'likes')
       .orderBy('product.isTop', 'DESC')
-      .addOrderBy('product.createdAt', 'DESC')
       .addOrderBy('images.order', 'ASC')
-      .orderBy('product.createdAt', 'DESC') // ← bu yerga e'tibor bering
+      .orderBy('product.createdAt', 'ASC') // ← bu yerga e'tibor bering
       .addOrderBy('image.order', 'ASC') // ← rasm orderini ham saqlaymiz
-      .orderBy('product.updatedAt', 'DESC');
+      .orderBy('product.updatedAt', 'ASC');
 
     // Faqat publish qilingan mahsulotlar (admin bo'lmasa)
     if (!isAdmin) {
