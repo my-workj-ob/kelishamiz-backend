@@ -542,12 +542,55 @@ export class ProductController {
   })
   async updateProduct(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: UpdateProductDto, // <--- `any` o'rniga DTO dan foydalaning
+    @Body() body: UpdateProductDto, // DTO dan foydalanishda davom etamiz
     @UploadedFiles() files: Express.Multer.File[],
   ) {
     console.log('Qabul qilingan fayllar:', files);
-    console.log('Qabul qilingan body (DTO tomonidan parse qilingan):', body);
-    return this.productService.updateProduct(id, body, files);
+    console.log('Qabul qilingan body (raw, DTO tomonidan):', body); // Hali `properties` string bo'lishi kerak
+
+    // --- properties maydonini qo'lda parse qilish ---
+    let parsedProperties: any[] = [];
+    if (body.properties) {
+      // properties mavjud bo'lsa
+      if (typeof body.properties === 'string') {
+        try {
+          parsedProperties = JSON.parse(body.properties);
+          if (!Array.isArray(parsedProperties)) {
+            // Agar string parse qilinsa-yu, lekin massiv bo'lmasa
+            throw new BadRequestException(
+              "Invalid 'properties' JSON format: Expected an array.",
+            );
+          }
+        } catch (e) {
+          throw new BadRequestException(
+            `Invalid 'properties' JSON format: ${e.message}`,
+          );
+        }
+      } else if (Array.isArray(body.properties)) {
+        // Agar u allaqachon massiv bo'lsa (kamdan-kam, lekin ehtimol)
+        parsedProperties = body.properties;
+      } else {
+        // Agar boshqa kutilmagan turda bo'lsa
+        throw new BadRequestException(
+          "Invalid 'properties' format: Must be a JSON string or array.",
+        );
+      }
+    }
+    // --- Parsing tugadi ---
+
+    // Asl body ob'ektini yangilangan `properties` bilan almashtirish
+    const updatedBody = {
+      ...body,
+      properties: parsedProperties,
+    };
+
+    console.log(
+      'Servicega yuborilayotgan body (parse qilingan properties bilan):',
+      updatedBody,
+    );
+
+    // Endi ProductServicega parse qilingan ma'lumotni yuboramiz
+    return this.productService.updateProduct(id, updatedBody, files);
   }
   // ... constructor va service injection
 }
