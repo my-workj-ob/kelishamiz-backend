@@ -21,7 +21,7 @@ export class ProductProperty {
   @Exclude() // bu maydon javobga kirmaydi
   product: Product;
 
-  @Column({nullable: true})
+  @Column({ nullable: true })
   productId: number;
 
   @ManyToOne(() => Property, { eager: true })
