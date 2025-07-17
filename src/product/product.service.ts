@@ -860,20 +860,24 @@ export class ProductService {
       const productProperties: ProductProperty[] = [];
       const propertyValues: Record<string, any> = {};
 
+      if (typeof body.properties === 'string') {
+        try {
+          body.properties = JSON.parse(body.properties);
+        } catch (err) {
+          throw new BadRequestException('Invalid JSON format for properties');
+        }
+      }
+
       if (Array.isArray(body.properties)) {
         for (const prop of body.properties) {
           const propertyId = toNumber(prop.propertyId);
           const property = await queryRunner.manager.findOne(Property, {
-            where: { id: propertyId, category: { id: product.categoryId } },
+            where: { id: propertyId },
           });
 
-          if (
-            !property ||
-            typeof prop.value !== 'object' ||
-            prop.value === null
-          ) {
+          if (!property || typeof prop.value?.value === 'undefined') {
             this.logger.warn(
-              `[updateProduct] Skipping invalid property or malformed value: ${JSON.stringify(prop)}`,
+              `[updateProduct] Invalid or missing value: ${JSON.stringify(prop)}`,
             );
             continue;
           }
@@ -883,31 +887,19 @@ export class ProductService {
           pp.productId = product.id;
           pp.property = property;
           pp.propertyId = property.id;
-          pp.value = prop.value;
+          pp.value = prop.value.value;
+
           productProperties.push(pp);
 
-          // Flatten for frontend use
-          if ('key' in prop.value && 'value' in prop.value) {
-            propertyValues[prop.value.key] = prop.value.value;
-          } else {
-            propertyValues[property.name] = prop.value;
-          }
-
+          propertyValues[prop.value.key || property.name] = prop.value.value;
           this.logger.debug(
-            `[updateProduct] Added property: ${property.name} = ${JSON.stringify(prop.value)}`,
+            `[updateProduct] Set ${property.name} = ${prop.value.value}`,
           );
         }
 
         if (productProperties.length > 0) {
           await queryRunner.manager.save(productProperties);
-          this.logger.debug(
-            `[updateProduct] Saved ${productProperties.length} properties.`,
-          );
         }
-      } else if (body.properties !== undefined && body.properties !== null) {
-        this.logger.warn(
-          `[updateProduct] 'properties' is not an array: ${JSON.stringify(body.properties)}`,
-        );
       }
 
       product.productProperties = productProperties;
