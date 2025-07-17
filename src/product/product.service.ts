@@ -769,14 +769,6 @@ export class ProductService {
     return this.productRepository.save(product);
   }
 
-  /**
-   * Mahsulotni barcha bog'liq ma'lumotlari, shu jumladan rasmlar va propertylari bilan yangilaydi.
-   *
-   * @param id Yangilanadigan mahsulot IDsi.
-   * @param body Mahsulotning asosiy ma'lumotlari, propertylar va mavjud rasmlarning JSON ro'yxati.
-   * @param files Yangi yuklangan rasm fayllari.
-   * @returns Yangilangan mahsulot obyekti.
-   */
   async updateProduct(
     id: number,
     body: any,
@@ -784,7 +776,6 @@ export class ProductService {
   ): Promise<any> {
     this.logger.debug(`[updateProduct] Starting product update. ID: ${id}`);
 
-    // Helper function to safely convert to number
     const toNumber = (val: any) =>
       typeof val === 'string' ? parseInt(val, 10) : val;
 
@@ -798,7 +789,7 @@ export class ProductService {
         relations: [
           'images',
           'productProperties',
-          'productProperties.property', // Ensure property details are loaded for name access
+          'productProperties.property',
           'region',
           'district',
         ],
@@ -809,7 +800,7 @@ export class ProductService {
         throw new NotFoundException('Product not found');
       }
 
-      // --- Update Main Product Fields ---
+      // --- Update main fields ---
       const updatableFields = [
         'title',
         'description',
@@ -838,7 +829,7 @@ export class ProductService {
         }
       }
 
-      // --- Update Region ---
+      // --- Update region ---
       if (body.regionId !== undefined) {
         const regionId = toNumber(body.regionId);
         const region = await queryRunner.manager.findOne(Region, {
@@ -849,7 +840,7 @@ export class ProductService {
         product.regionId = region.id;
       }
 
-      // --- Update District ---
+      // --- Update district ---
       if (body.districtId !== undefined) {
         const districtId = toNumber(body.districtId);
         const district = await queryRunner.manager.findOne(District, {
@@ -860,33 +851,31 @@ export class ProductService {
         product.districtId = district.id;
       }
 
-      // --- Handle Product Properties ---
+      // --- Handle product properties ---
       this.logger.debug(`[updateProduct] Deleting old product properties...`);
       await queryRunner.manager.delete(ProductProperty, {
         product: { id: product.id },
       });
 
       const productProperties: ProductProperty[] = [];
-      const propertyValues: Record<string, any> = {}; // This will store key-value pairs for propertyNames
+      const propertyValues: Record<string, any> = {};
 
       if (Array.isArray(body.properties)) {
         for (const prop of body.properties) {
           const propertyId = toNumber(prop.propertyId);
-          // Fetch the Property entity to get its name and validate its existence
           const property = await queryRunner.manager.findOne(Property, {
             where: { id: propertyId, category: { id: product.categoryId } },
           });
 
-          // Validate property existence and the structure of the 'value' field
           if (
             !property ||
             typeof prop.value !== 'object' ||
             prop.value === null
           ) {
             this.logger.warn(
-              `[updateProduct] Skipping invalid property (ID: ${propertyId}) or malformed value: ${JSON.stringify(prop.value)}`,
+              `[updateProduct] Skipping invalid property or malformed value: ${JSON.stringify(prop)}`,
             );
-            continue; // Skip to the next property in the loop
+            continue;
           }
 
           const pp = new ProductProperty();
@@ -897,13 +886,8 @@ export class ProductService {
           pp.value = prop.value;
           productProperties.push(pp);
 
-          // Correct flattened key-value structure for propertyValues
-          if (
-            typeof prop.value === 'object' &&
-            prop.value !== null &&
-            'key' in prop.value &&
-            'value' in prop.value
-          ) {
+          // Flatten for frontend use
+          if ('key' in prop.value && 'value' in prop.value) {
             propertyValues[prop.value.key] = prop.value.value;
           } else {
             propertyValues[property.name] = prop.value;
@@ -922,109 +906,101 @@ export class ProductService {
         }
       } else if (body.properties !== undefined && body.properties !== null) {
         this.logger.warn(
-          `[updateProduct] 'body.properties' is not an array. Skipping property update. Received: ${JSON.stringify(body.properties)}`,
+          `[updateProduct] 'properties' is not an array: ${JSON.stringify(body.properties)}`,
         );
       }
 
       product.productProperties = productProperties;
-      product.propertyValues = propertyValues; // Attach the flattened property values to the product
+      product.propertyValues = propertyValues; // Only for response, not saved in DB
 
-      // --- Handle Product Images ---
+      // --- Handle images ---
       this.logger.debug(`[updateProduct] Processing images...`);
       const existingImages = await queryRunner.manager.find(ProductImage, {
         where: { product: { id: product.id } },
-        order: { order: 'ASC', id: 'DESC' }, // Keep existing order or id for stable deletion
+        order: { order: 'ASC', id: 'DESC' },
       });
 
       const bodyImages = Array.isArray(body.images) ? body.images : [];
-      const imageIds = new Set(bodyImages.map((img: any) => img.id)); // IDs of images that should remain
+      const imageIds = new Set(bodyImages.map((img: any) => img.id));
 
-      // Identify images to delete (not present in the new body.images array)
+      // Delete images no longer used
       const imagesToDelete = existingImages.filter(
         (img) => !imageIds.has(img.id),
       );
       for (const img of imagesToDelete) {
         try {
-          await this.fileService.deleteFileByUrl(img.url); // Delete file from storage
+          await this.fileService.deleteFileByUrl(img.url);
           this.logger.debug(`[updateProduct] Deleted image file: ${img.url}`);
         } catch (err) {
           this.logger.warn(
-            `[updateProduct] Failed to delete file: ${img.url}. Error: ${err.message}`,
+            `[updateProduct] Failed to delete file: ${img.url}, Error: ${err.message}`,
           );
         }
       }
-      await queryRunner.manager.remove(imagesToDelete); // Delete image records from DB
+      await queryRunner.manager.remove(imagesToDelete);
 
       const imagesToSave: ProductImage[] = [];
-      // Process existing images that are kept, updating their order if provided
+
+      // Update or keep existing images
       for (const img of bodyImages) {
         const existing = existingImages.find((e) => e.id === img.id);
-        const newImg = existing ? existing : new ProductImage(); // Reuse existing entity or create new
+        const newImg = existing ? existing : new ProductImage();
         newImg.url = img.url;
         newImg.order = isNaN(toNumber(img.order)) ? 0 : toNumber(img.order);
-        newImg.product = product; // Link to the product
+        newImg.product = product;
         imagesToSave.push(newImg);
         this.logger.debug(
           `[updateProduct] Prepared existing image: ${newImg.url}`,
         );
       }
 
-      // Process newly uploaded files
+      // Process uploaded files
       if (files?.length) {
         for (const file of files) {
-          const url = await this.uploadService.uploadFile(file); // Upload file and get URL
-          await this.fileService.saveFile(url); // Save URL to a file record if your system does that
+          const url = await this.uploadService.uploadFile(file);
+          await this.fileService.saveFile(url);
           const newImg = new ProductImage();
           newImg.url = url;
           newImg.product = product;
-          newImg.order = 0; // Default order for new images, will be re-ordered later
+          newImg.order = 0;
           imagesToSave.push(newImg);
-          this.logger.debug(
-            `[updateProduct] Uploaded and prepared new image: ${url}`,
-          );
+          this.logger.debug(`[updateProduct] Uploaded new image: ${url}`);
         }
       }
 
-      // Validate total image count
       if (imagesToSave.length > 10) {
         throw new BadRequestException('Rasmlar soni 10 tadan oshmasligi kerak');
       }
 
-      // Re-order images based on their 'order' property and assign sequential order
       imagesToSave.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       for (let i = 0; i < imagesToSave.length; i++) {
         imagesToSave[i].order = i;
       }
 
-      await queryRunner.manager.save(imagesToSave); // Save all updated/new image records
-      product.images = imagesToSave; // Update the product's images relationship
-      this.logger.debug(`[updateProduct] Saved ${imagesToSave.length} images.`);
+      await queryRunner.manager.save(imagesToSave);
+      product.images = imagesToSave;
 
-      // --- Handle Main Image Index ---
+      // --- Main image index ---
       const imgIndex = toNumber(body.imageIndex);
       product.imageIndex =
         !isNaN(imgIndex) && imgIndex >= 0 && imgIndex < product.images.length
           ? imgIndex
           : product.images.length > 0
             ? 0
-            : -1; // Default to 0 if images exist, otherwise -1
+            : -1;
 
-      // --- Final Save and Commit ---
+      // --- Final save ---
       const savedProduct = await queryRunner.manager.save(product);
       await queryRunner.commitTransaction();
       this.logger.debug(`[updateProduct] Product update committed. ID: ${id}`);
 
-      // Return the plain object to avoid circular references in JSON serialization
+      // Return plain object with only exposed fields
       return instanceToPlain(savedProduct, {
-        excludeExtraneousValues: true, // Only include properties marked with @Expose()
+        excludeExtraneousValues: true,
       });
     } catch (err) {
       await queryRunner.rollbackTransaction();
-      this.logger.error(
-        `[updateProduct] Error during product update: ${err.message}`,
-        err.stack,
-      );
-      // Re-throw known HTTP exceptions or wrap others in a generic error
+      this.logger.error(`[updateProduct] Error: ${err.message}`, err.stack);
       throw err instanceof HttpException
         ? err
         : new InternalServerErrorException('Unexpected error occurred.');
