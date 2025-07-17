@@ -868,7 +868,7 @@ export class ProductService {
         for (const prop of body.properties) {
           const propertyId = toNumber(prop.propertyId);
           const property = await queryRunner.manager.findOne(Property, {
-            where: { id: propertyId, category: {id: product.categoryId} },
+            where: { id: propertyId, category: { id: product.categoryId } },
           });
 
           if (
@@ -883,7 +883,7 @@ export class ProductService {
           }
 
           const pp = new ProductProperty();
-          pp.productId = product.id;
+          // pp.productId = product.id;
           pp.product = product;
           pp.propertyId = property.id;
           pp.property = property;
