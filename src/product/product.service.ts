@@ -867,38 +867,46 @@ export class ProductService {
           throw new BadRequestException('Invalid JSON format for properties');
         }
       }
+      if (body.properties && typeof body.properties === 'string') {
+        try {
+          const parsedProperties = JSON.parse(body.properties);
 
-      if (Array.isArray(body.properties)) {
-        for (const prop of body.properties) {
-          const propertyId = toNumber(prop.propertyId);
-          const property = await queryRunner.manager.findOne(Property, {
-            where: { id: propertyId },
+          const preparedProperties = parsedProperties.map((prop) => {
+            const propertyId = prop.propertyId;
+            const type = prop.type;
+            let value = prop.value;
+
+            // Agar value oddiy string/number/boolean bo‘lsa — json formatga keltiramiz
+            if (typeof value !== 'object' || value === null) {
+              value = {
+                key: prop.value?.key ?? `Property-${propertyId}`,
+                value: value,
+              };
+            } else if (!value.key || !value.value) {
+              value = {
+                key: prop.value?.key ?? `Property-${propertyId}`,
+                value: prop.value?.value ?? '',
+              };
+            }
+
+            return {
+              propertyId,
+              type,
+              value,
+            };
           });
 
-          if (!property || typeof prop.value?.value === 'undefined') {
-            this.logger.warn(
-              `[updateProduct] Invalid or missing value: ${JSON.stringify(prop)}`,
-            );
-            continue;
-          }
-
-          const pp = new ProductProperty();
-          pp.product = product;
-          pp.productId = product.id;
-          pp.property = property;
-          pp.propertyId = property.id;
-          pp.value = prop.value.value;
-
-          productProperties.push(pp);
-
-          propertyValues[prop.value.key || property.name] = prop.value.value;
-          this.logger.debug(
-            `[updateProduct] Set ${property.name} = ${prop.value.value}`,
-          );
-        }
-
-        if (productProperties.length > 0) {
-          await queryRunner.manager.save(productProperties);
+          product.productProperties = preparedProperties.map((prop) => {
+            const pp = new ProductProperty();
+            pp.propertyId = prop.propertyId;
+            pp.type = prop.type;
+            pp.value = prop.value; // value: { key: string, value: any }
+            pp.product = product;
+            return pp;
+          });
+        } catch (err) {
+          this.logger.error('Failed to parse properties:', err);
+          throw new BadRequestException('Invalid properties format');
         }
       }
 
