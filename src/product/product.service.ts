@@ -860,49 +860,44 @@ export class ProductService {
 
       // 6. Product propertiesni tayyorlash
       let productProperties: ProductProperty[] = [];
-      const propertyValues: Record<string, any> = {};
+      let propertyValues: Record<string, any> = {};
 
       if (body.properties) {
         if (typeof body.properties === 'string') {
           try {
             body.properties = JSON.parse(body.properties);
-          } catch (err) {
+          } catch {
             throw new BadRequestException('Invalid JSON format for properties');
           }
         }
 
         if (Array.isArray(body.properties)) {
-          // 1. Har bir property uchun productId ni avtomatik olish uchun product obyektini beramiz
-          productProperties = body.properties.map((prop) => {
-            const propertyId = toNumber(prop.propertyId);
-            const type = prop.type;
-            let value = prop.value;
-
-            if (typeof value !== 'object' || value === null) {
-              value = { key: `Property-${propertyId}`, value };
-            } else if (!value.key || !value.value) {
-              value = {
-                key: value.key ?? `Property-${propertyId}`,
-                value: value.value ?? '',
-              };
+          for (const prop of body.properties) {
+            // propertyValues ni to'ldirish
+            if (
+              prop.value &&
+              typeof prop.value === 'object' &&
+              'key' in prop.value
+            ) {
+              propertyValues[prop.value.key] = prop.value.value;
+            } else {
+              propertyValues[`Property-${prop.propertyId}`] = prop.value;
             }
 
+            // productProperties ni yaratish
             const pp = new ProductProperty();
-            pp.propertyId = propertyId;
-            pp.type = type;
-            pp.value = value;
-            pp.product = product; // shu yerda product berilgan
+            pp.propertyId = Number(prop.propertyId);
+            pp.type = prop.type;
+            pp.value = prop.value;
+            pp.product = product; // bog'lash uchun
 
-            return pp;
-          });
-
-          // 2. Agar cascade yo‘q bo‘lsa, save ni alohida qiling
-          await queryRunner.manager.save(productProperties);
+            productProperties.push(pp);
+          }
         }
       }
 
+      product.propertyValues = propertyValues;
       product.productProperties = productProperties;
-      product.propertyValues = propertyValues; // Faqat response uchun
       console.debug('productProperties: ', productProperties);
       console.debug('propertyValues: ', propertyValues);
 
@@ -984,7 +979,7 @@ export class ProductService {
       // 9. Oxirgi saqlash va commit
       console.debug('productProperties: ', product.productProperties);
       console.debug('propertyValues: ', propertyValues);
-      product.propertyValues = []; // Bazaga saqlanmaydi
+      // product.propertyValues = []; // Bazaga saqlanmaydi
       const savedProduct = await queryRunner.manager.save(product);
       await queryRunner.commitTransaction();
 
