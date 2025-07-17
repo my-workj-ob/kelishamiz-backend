@@ -985,7 +985,7 @@ export class ProductService {
       // 9. Oxirgi saqlash va commit
       console.debug('productProperties: ', productProperties);
       console.debug('propertyValues: ', propertyValues);
-      product.propertyValues = {}; // Bazaga saqlanmaydi
+      product.propertyValues = []; // Bazaga saqlanmaydi
       const savedProduct = await queryRunner.manager.save(product);
       await queryRunner.commitTransaction();
 
