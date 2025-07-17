@@ -21,7 +21,6 @@ import { Profile } from './../../profile/enities/profile.entity';
 import { ProductProperty } from './product-property.entity';
 import { ProductImage } from './Product-Image.entity';
 import { ChatRoom } from './../../chat/entities/chat-room.entity';
-import { Exclude, Expose } from 'class-transformer'; // <-- class-transformer importlari
 
 @Entity()
 export class Product {
