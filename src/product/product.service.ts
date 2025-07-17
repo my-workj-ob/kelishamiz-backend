@@ -973,6 +973,7 @@ export class ProductService {
             : -1;
 
       const savedProduct = await queryRunner.manager.save(product);
+      product.id = savedProduct.id; 
       await queryRunner.commitTransaction();
       this.logger.debug(`[updateProduct] Product update committed. ID: ${id}`);
 
