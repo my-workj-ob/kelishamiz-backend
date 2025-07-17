@@ -888,6 +888,7 @@ export class ProductService {
           pp.propertyId = property.id;
           pp.property = property;
           pp.value = prop.value;
+          console.log("product", pp);
 
           productProperties.push(pp);
           this.logger.debug(`[updateProduct] Added property: ${property.name}`);
@@ -973,7 +974,7 @@ export class ProductService {
             : -1;
 
       const savedProduct = await queryRunner.manager.save(product);
-      product.id = savedProduct.id; 
+      product.id = savedProduct.id;
       await queryRunner.commitTransaction();
       this.logger.debug(`[updateProduct] Product update committed. ID: ${id}`);
 
