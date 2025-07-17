@@ -18,7 +18,7 @@ export class ProductProperty {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'productId' })
-  @Exclude() // bu maydon javobga kirmaydi
+  @Exclude()
   product: Product;
 
   @Column({ nullable: true })
@@ -30,6 +30,9 @@ export class ProductProperty {
 
   @Column()
   propertyId: number;
+
+  @Column({ type: 'varchar', length: 20 })
+  type: string;
 
   @Column('jsonb')
   value: Record<string, any>;
