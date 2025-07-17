@@ -863,7 +863,6 @@ export class ProductService {
       const propertyValues: Record<string, any> = {};
 
       if (body.properties) {
-        // Agar string bo‘lsa, parse qilamiz
         if (typeof body.properties === 'string') {
           try {
             body.properties = JSON.parse(body.properties);
@@ -878,7 +877,6 @@ export class ProductService {
             const type = prop.type;
             let value = prop.value;
 
-            // Agar value oddiy tipda bo‘lsa object formatga o‘tkazamiz
             if (typeof value !== 'object' || value === null) {
               value = {
                 key: prop.value?.key ?? `Property-${propertyId}`,
@@ -891,10 +889,9 @@ export class ProductService {
               };
             }
 
-            // Response uchun propertyValues to'ldirish (faqat client uchun)
+            // Response uchun to'ldirish (clientga yuboriladi, DB ga emas)
             propertyValues[value.key] = value.value;
 
-            // ProductProperty entity yaratish
             const pp = new ProductProperty();
             pp.product = product;
             pp.propertyId = propertyId;
@@ -906,7 +903,7 @@ export class ProductService {
       }
 
       product.productProperties = productProperties;
-      product.propertyValues = propertyValues; // faqat response uchun
+      product.propertyValues = propertyValues; // Faqat response uchun
 
       // 7. Rasmlarni qayta ishlash
       this.logger.debug(`[updateProduct] Processing images...`);
