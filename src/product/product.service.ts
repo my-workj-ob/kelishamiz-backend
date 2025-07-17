@@ -781,7 +781,7 @@ export class ProductService {
     body: any,
     files?: Express.Multer.File[],
   ): Promise<any> {
-    this.logger.debug(`[updateProduct] Starting product update. ID: ${id}`);
+    this.logger.debug(`[updateProduct] Start. ID: ${id}`);
 
     const toNumber = (val: any) =>
       typeof val === 'string' ? parseInt(val, 10) : val;
@@ -807,6 +807,7 @@ export class ProductService {
         throw new NotFoundException('Product not found');
       }
 
+      // ✅ Update simple fields
       const updatableFields = [
         'title',
         'description',
@@ -829,16 +830,14 @@ export class ProductService {
           product[key] = ['categoryId', 'profileId'].includes(key)
             ? toNumber(body[key])
             : body[key];
-          this.logger.debug(
-            `[updateProduct] Field ${key} set to ${product[key]}`,
-          );
+          this.logger.debug(`[updateProduct] ${key} = ${product[key]}`);
         }
       }
 
+      // ✅ Region and district
       if (body.regionId !== undefined) {
-        const regionId = toNumber(body.regionId);
         const region = await queryRunner.manager.findOne(Region, {
-          where: { id: regionId },
+          where: { id: toNumber(body.regionId) },
         });
         if (!region) throw new NotFoundException('Region not found');
         product.region = region;
@@ -846,22 +845,24 @@ export class ProductService {
       }
 
       if (body.districtId !== undefined) {
-        const districtId = toNumber(body.districtId);
         const district = await queryRunner.manager.findOne(District, {
-          where: { id: districtId },
+          where: { id: toNumber(body.districtId) },
         });
         if (!district) throw new NotFoundException('District not found');
         product.district = district;
         product.districtId = district.id;
       }
 
-      // 🔐 Save product before saving relations
+      // 🛑 Save product before relations
       await queryRunner.manager.save(product);
+      this.logger.debug(`[updateProduct] Product saved before relations.`);
 
-      this.logger.debug(`[updateProduct] Deleting old product properties...`);
+      // 🔁 Delete old properties
       await queryRunner.manager.delete(ProductProperty, {
         product: { id: product.id },
       });
+      this.logger.debug(`[updateProduct] Old product properties deleted.`);
+
       const productProperties: ProductProperty[] = [];
 
       if (Array.isArray(body.properties)) {
@@ -877,32 +878,32 @@ export class ProductService {
             prop.value === null
           ) {
             this.logger.warn(
-              `[updateProduct] Skipping invalid property ID: ${propertyId}`,
+              `[updateProduct] Invalid property skipped: ${propertyId}`,
             );
             continue;
           }
 
           const pp = new ProductProperty();
-          // pp.productId = product.id;
           pp.product = product;
-          pp.propertyId = property.id;
           pp.property = property;
+          pp.propertyId = property.id;
           pp.value = prop.value;
-          console.log("product", pp);
 
           productProperties.push(pp);
-          this.logger.debug(`[updateProduct] Added property: ${property.name}`);
+          this.logger.debug(
+            `[updateProduct] Property added: ${property.name} (${property.id})`,
+          );
         }
 
-        if (productProperties.length > 0) {
+        if (productProperties.length) {
           await queryRunner.manager.save(productProperties);
           this.logger.debug(
-            `[updateProduct] Saved ${productProperties.length} properties.`,
+            `[updateProduct] ${productProperties.length} properties saved.`,
           );
         }
       }
 
-      this.logger.debug(`[updateProduct] Processing images...`);
+      // 📸 Images
       const existingImages = await queryRunner.manager.find(ProductImage, {
         where: { product: { id: product.id } },
         order: { order: 'ASC', id: 'DESC' },
@@ -914,48 +915,57 @@ export class ProductService {
       const imagesToDelete = existingImages.filter(
         (img) => !imageIds.has(img.id),
       );
+
       for (const img of imagesToDelete) {
         try {
           await this.fileService.deleteFileByUrl(img.url);
           this.logger.debug(`[updateProduct] Deleted image file: ${img.url}`);
         } catch (err) {
-          this.logger.warn(`[updateProduct] Failed to delete file: ${img.url}`);
+          this.logger.warn(`[updateProduct] Failed to delete: ${img.url}`);
         }
       }
+
       await queryRunner.manager.remove(imagesToDelete);
+      this.logger.debug(
+        `[updateProduct] Removed ${imagesToDelete.length} old images.`,
+      );
 
       const imagesToSave: ProductImage[] = [];
+
       for (const img of bodyImages) {
         const existing = existingImages.find((e) => e.id === img.id);
         const newImg = existing ? existing : new ProductImage();
         newImg.url = img.url;
         newImg.order = isNaN(toNumber(img.order)) ? 0 : toNumber(img.order);
         newImg.product = product;
-        newImg.productId = product.id;
         imagesToSave.push(newImg);
-        this.logger.debug(`[updateProduct] Prepared image: ${newImg.url}`);
+        this.logger.debug(
+          `[updateProduct] Prepared existing/new image: ${img.url}`,
+        );
       }
 
+      // 🆕 Upload new images
       if (files?.length) {
         for (const file of files) {
           const url = await this.uploadService.uploadFile(file);
           await this.fileService.saveFile(url);
+
           const newImg = new ProductImage();
           newImg.url = url;
-          newImg.product = product;
-          newImg.productId = product.id;
           newImg.order = 0;
+          newImg.product = product;
           imagesToSave.push(newImg);
-          this.logger.debug(
-            `[updateProduct] Uploaded and prepared image: ${url}`,
-          );
+
+          this.logger.debug(`[updateProduct] Uploaded and added: ${url}`);
         }
       }
 
+      // ❗ Max 10 images
       if (imagesToSave.length > 10) {
         throw new BadRequestException('Rasmlar soni 10 tadan oshmasligi kerak');
       }
 
+      // 🔢 Reorder images
       imagesToSave.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       for (let i = 0; i < imagesToSave.length; i++) {
         imagesToSave[i].order = i;
@@ -963,8 +973,9 @@ export class ProductService {
 
       await queryRunner.manager.save(imagesToSave);
       product.images = imagesToSave;
-      this.logger.debug(`[updateProduct] Saved ${imagesToSave.length} images.`);
+      this.logger.debug(`[updateProduct] ${imagesToSave.length} images saved.`);
 
+      // 🖼 imageIndex
       const imgIndex = toNumber(body.imageIndex);
       product.imageIndex =
         !isNaN(imgIndex) && imgIndex >= 0 && imgIndex < product.images.length
@@ -974,16 +985,15 @@ export class ProductService {
             : -1;
 
       const savedProduct = await queryRunner.manager.save(product);
-      product.id = savedProduct.id;
       await queryRunner.commitTransaction();
-      this.logger.debug(`[updateProduct] Product update committed. ID: ${id}`);
 
+      this.logger.debug(`[updateProduct] ✅ Product updated. ID: ${id}`);
       return instanceToPlain(savedProduct, {
         excludeExtraneousValues: true,
       });
     } catch (err) {
       await queryRunner.rollbackTransaction();
-      this.logger.error(`[updateProduct] Error: ${err.message}`, err.stack);
+      this.logger.error(`[updateProduct] ❌ Error: ${err.message}`, err.stack);
       throw err instanceof HttpException
         ? err
         : new InternalServerErrorException('Unexpected error occurred.');
