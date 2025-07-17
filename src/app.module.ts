@@ -55,7 +55,7 @@ import { PaymeModule } from './payme/payme.module';
       url: process.env.DATABASE_URL,
       autoLoadEntities: true,
       entities: [Category, Product, User, FileEntity, Comment, UserSearch],
-      synchronize: false, // Productionda FALSE bo'lishi kerak!
+      synchronize: true, // Productionda FALSE bo'lishi kerak!
       logging: true,
     }),
 
