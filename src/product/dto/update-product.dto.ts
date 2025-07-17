@@ -120,24 +120,19 @@ export class UpdateProductDto {
   // <<< ASOSIY O'ZGARISH AYNAN SHU YERDA >>>
   // ...
   @ApiPropertyOptional({
-    example:
-      '[{"propertyId":2,"type":"STRING","value":{"key":"Marka","value":"yyjjhh"}}]',
-    description: 'Mahsulot xususiyatlari (JSON string yoki massiv)',
-    type: String,
-  })
-  @IsOptional()
-  @IsString() // Hali ham string sifatida kelishini kutamiz
-  // @Transform({ value }) => { ... }) // <--- BU QISMNI OLIB TASHLANG
-  @IsArray() // Lekin ProductServicega borishdan oldin massiv bo'lishi kerak
-  @ValidateNested({ each: true })
-  @Type(() => ProductPropertyUpdateItemDto)
-  properties?: ProductPropertyUpdateItemDto[];
-  @ApiPropertyOptional({
-    example: ['/uploads/image1.jpg', '/uploads/image2.jpg'],
-    description: 'Rasmlar URL yoki fayl yo‘llari ro‘yxati, tartib bilan',
-    type: [String],
+    example: [
+      {
+        propertyId: 2,
+        type: 'STRING',
+        value: { key: 'Marka', value: 'yyjjhh' },
+      },
+    ],
+    description: 'Mahsulot xususiyatlari (massiv ko‘rinishda)',
+    type: [ProductPropertyUpdateItemDto],
   })
   @IsOptional()
   @IsArray()
-  images?: string[];
+  @ValidateNested({ each: true })
+  @Type(() => ProductPropertyUpdateItemDto)
+  properties?: ProductPropertyUpdateItemDto[];
 }
