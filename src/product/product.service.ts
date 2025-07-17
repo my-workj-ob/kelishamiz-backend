@@ -891,14 +891,24 @@ export class ProductService {
 
           const pp = new ProductProperty();
           pp.product = product;
-          pp.productId = product.id; // Explicitly set productId for relationships
+          pp.productId = product.id;
           pp.property = property;
-          pp.propertyId = property.id; // Explicitly set propertyId for relationships
-          pp.value = prop.value; // Store the full 'value' object (e.g., { key: "Marka", value: "ttyu" })
+          pp.propertyId = property.id;
+          pp.value = prop.value;
           productProperties.push(pp);
 
-          // Populate propertyValues with the actual value for easier access
-          propertyValues[property.name] = prop.value.value ?? prop.value;
+          // Correct flattened key-value structure for propertyValues
+          if (
+            typeof prop.value === 'object' &&
+            prop.value !== null &&
+            'key' in prop.value &&
+            'value' in prop.value
+          ) {
+            propertyValues[prop.value.key] = prop.value.value;
+          } else {
+            propertyValues[property.name] = prop.value;
+          }
+
           this.logger.debug(
             `[updateProduct] Added property: ${property.name} = ${JSON.stringify(prop.value)}`,
           );
