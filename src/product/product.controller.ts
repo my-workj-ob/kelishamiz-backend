@@ -8,6 +8,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpException,
+  HttpStatus,
   Inject,
   NotFoundException,
   Param,
@@ -542,80 +544,91 @@ export class ProductController {
   })
   async updateProduct(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: UpdateProductDto, // DTO dan foydalanishda davom etamiz
-    @UploadedFiles() files: Express.Multer.File[],
+    @Body() body: any, // Barcha form-data maydonlari shu body ichida string sifatida keladi
+    @UploadedFiles() files: Array<Express.Multer.File>, // Yuklangan fayllar
   ) {
-    console.log('Qabul qilingan fayllar:', files);
-    console.log('Qabul qilingan body (raw, DTO tomonidan):', body); // Hali `properties` string bo'lishi kerak
+    console.log('Received body:', body); // Debugging uchun
+    console.log('Received files:', files); // Debugging uchun
 
-    // --- properties maydonini qo'lda parse qilish ---
-    console.log('Parsing body.properties:', body.properties);
-    console.debug(
-      `[updateProduct][Properties] Incoming properties data: ${JSON.stringify(body.properties)}`,
-    );
-    if (typeof body.properties === 'string') {
-      try {
+    // --- Faylsiz (JSON) maydonlarni to'g'ri turga o'tkazish ---
+
+    // 1. JSON string bo'lib kelgan massivlarni parse qilish
+    try {
+      if (typeof body.properties === 'string') {
         body.properties = JSON.parse(body.properties);
-        if (!Array.isArray(body.properties)) {
-          // Agar string parse qilinsa-yu, lekin massiv bo'lmasa
-          throw new BadRequestException(
-            "Invalid 'properties' JSON format: Expected an array.",
-          );
-        }
-      } catch (e) {
-        throw new BadRequestException(
-          `Invalid 'properties' JSON format: ${e.message}`,
-        );
       }
-    } else if (!Array.isArray(body.properties)) {
-      // Agar u allaqachon massiv bo'lmasa
-      throw new BadRequestException(
-        "Invalid 'properties' format: Must be a JSON string or array.",
+      if (typeof body.images === 'string') {
+        body.images = JSON.parse(body.images);
+      }
+    } catch (parseError) {
+      throw new HttpException(
+        `Failed to parse JSON fields (properties/images): ${parseError.message}`,
+        HttpStatus.BAD_REQUEST,
       );
     }
 
-    let parsedProperties: any[] = [];
-    if (body.properties) {
-      // properties mavjud bo'lsa
-      if (typeof body.properties === 'string') {
-        try {
-          parsedProperties = JSON.parse(body.properties);
-          if (!Array.isArray(parsedProperties)) {
-            // Agar string parse qilinsa-yu, lekin massiv bo'lmasa
-            throw new BadRequestException(
-              "Invalid 'properties' JSON format: Expected an array.",
-            );
-          }
-        } catch (e) {
-          throw new BadRequestException(
-            `Invalid 'properties' JSON format: ${e.message}`,
-          );
-        }
-      } else if (Array.isArray(body.properties)) {
-        // Agar u allaqachon massiv bo'lsa (kamdan-kam, lekin ehtimol)
-        parsedProperties = body.properties;
-      } else {
-        // Agar boshqa kutilmagan turda bo'lsa
-        throw new BadRequestException(
-          "Invalid 'properties' format: Must be a JSON string or array.",
-        );
-      }
-    }
-    // --- Parsing tugadi ---
-
-    // Asl body ob'ektini yangilangan `properties` bilan almashtirish
-    const updatedBody = {
-      ...body,
-      properties: parsedProperties,
+    // 2. Raqamli maydonlarni Parse qilish
+    // NaN bo'lsa, undefined ga o'tkazish, shunda servis uni e'tiborsiz qoldiradi
+    const parseNumber = (value: any) => {
+      const num = parseFloat(value);
+      return isNaN(num) ? undefined : num;
+    };
+    const parseIntSafe = (value: any) => {
+      const num = parseInt(value, 10);
+      return isNaN(num) ? undefined : num;
     };
 
-    console.log(
-      'Servicega yuborilayotgan body (parse qilingan properties bilan):',
-      updatedBody,
-    );
+    if (body.price !== undefined) body.price = parseNumber(body.price);
+    if (body.minPrice !== undefined) body.minPrice = parseNumber(body.minPrice);
+    if (body.maxPrice !== undefined) body.maxPrice = parseNumber(body.maxPrice);
 
-    // Endi ProductServicega parse qilingan ma'lumotni yuboramiz
-    return this.productService.updateProduct(id, updatedBody, files);
+    if (body.categoryId !== undefined)
+      body.categoryId = parseIntSafe(body.categoryId);
+    if (body.profileId !== undefined)
+      body.profileId = parseIntSafe(body.profileId);
+    if (body.regionId !== undefined)
+      body.regionId = parseIntSafe(body.regionId);
+    if (body.districtId !== undefined)
+      body.districtId = parseIntSafe(body.districtId);
+    if (body.imageIndex !== undefined)
+      body.imageIndex = parseIntSafe(body.imageIndex);
+
+    // 3. Boolean maydonlarni Parse qilish
+    // 'true' stringidan true, 'false' stringidan false, boshqalardan undefined
+    const parseBoolean = (value: any) => {
+      if (value === 'true') return true;
+      if (value === 'false') return false;
+      return undefined;
+    };
+
+    if (body.negotiable !== undefined)
+      body.negotiable = parseBoolean(body.negotiable);
+    if (body.ownProduct !== undefined)
+      body.ownProduct = parseBoolean(body.ownProduct);
+    if (body.isTop !== undefined) body.isTop = parseBoolean(body.isTop);
+    if (body.isPublish !== undefined)
+      body.isPublish = parseBoolean(body.isPublish);
+
+    // 4. Sanani Parse qilish
+    if (
+      body.topExpiresAt !== undefined &&
+      typeof body.topExpiresAt === 'string'
+    ) {
+      try {
+        const date = new Date(body.topExpiresAt);
+        if (!isNaN(date.getTime())) {
+          // Valid date
+          body.topExpiresAt = date;
+        } else {
+          body.topExpiresAt = undefined; // Invalid date string
+        }
+      } catch (dateParseError) {
+        body.topExpiresAt = undefined; // Catch any parsing errors
+      }
+    }
+
+    // Servisga to'g'ri turdagi ma'lumotlar bilan murojaat qilish
+    return this.productService.updateProduct(id, body, files);
   }
   // ... constructor va service injection
 }
