@@ -784,6 +784,7 @@ export class ProductService {
     await queryRunner.startTransaction();
 
     try {
+      // 1. Mahsulotni o‘qish (relations bilan)
       const product = await queryRunner.manager.findOne(Product, {
         where: { id },
         relations: [
@@ -800,7 +801,7 @@ export class ProductService {
         throw new NotFoundException('Product not found');
       }
 
-      // --- Update main fields ---
+      // 2. Asosiy maydonlarni yangilash
       const updatableFields = [
         'title',
         'description',
@@ -829,7 +830,7 @@ export class ProductService {
         }
       }
 
-      // --- Update region ---
+      // 3. Region yangilash
       if (body.regionId !== undefined) {
         const regionId = toNumber(body.regionId);
         const region = await queryRunner.manager.findOne(Region, {
@@ -840,7 +841,7 @@ export class ProductService {
         product.regionId = region.id;
       }
 
-      // --- Update district ---
+      // 4. District yangilash
       if (body.districtId !== undefined) {
         const districtId = toNumber(body.districtId);
         const district = await queryRunner.manager.findOne(District, {
@@ -851,32 +852,33 @@ export class ProductService {
         product.districtId = district.id;
       }
 
-      // --- Handle product properties ---
+      // 5. Product propertiesni tozalash (avvalgi ma'lumotlar o'chiriladi)
       this.logger.debug(`[updateProduct] Deleting old product properties...`);
       await queryRunner.manager.delete(ProductProperty, {
         product: { id: product.id },
       });
 
-      const productProperties: ProductProperty[] = [];
+      // 6. Product propertiesni tayyorlash
+      let productProperties: ProductProperty[] = [];
       const propertyValues: Record<string, any> = {};
 
-      if (typeof body.properties === 'string') {
-        try {
-          body.properties = JSON.parse(body.properties);
-        } catch (err) {
-          throw new BadRequestException('Invalid JSON format for properties');
+      if (body.properties) {
+        // Agar string bo‘lsa, parse qilamiz
+        if (typeof body.properties === 'string') {
+          try {
+            body.properties = JSON.parse(body.properties);
+          } catch (err) {
+            throw new BadRequestException('Invalid JSON format for properties');
+          }
         }
-      }
-      if (body.properties && typeof body.properties === 'string') {
-        try {
-          const parsedProperties = JSON.parse(body.properties);
 
-          const preparedProperties = parsedProperties.map((prop) => {
-            const propertyId = prop.propertyId;
+        if (Array.isArray(body.properties)) {
+          productProperties = body.properties.map((prop) => {
+            const propertyId = toNumber(prop.propertyId);
             const type = prop.type;
             let value = prop.value;
 
-            // Agar value oddiy string/number/boolean bo‘lsa — json formatga keltiramiz
+            // Agar value oddiy tipda bo‘lsa object formatga o‘tkazamiz
             if (typeof value !== 'object' || value === null) {
               value = {
                 key: prop.value?.key ?? `Property-${propertyId}`,
@@ -884,36 +886,29 @@ export class ProductService {
               };
             } else if (!value.key || !value.value) {
               value = {
-                key: prop.value?.key ?? `Property-${propertyId}`,
-                value: prop.value?.value ?? '',
+                key: value.key ?? `Property-${propertyId}`,
+                value: value.value ?? '',
               };
             }
 
-            return {
-              propertyId,
-              type,
-              value,
-            };
-          });
+            // Response uchun propertyValues to'ldirish (faqat client uchun)
+            propertyValues[value.key] = value.value;
 
-          product.productProperties = preparedProperties.map((prop) => {
+            // ProductProperty entity yaratish
             const pp = new ProductProperty();
-            pp.propertyId = prop.propertyId;
-            pp.type = prop.type;
-            pp.value = prop.value; // value: { key: string, value: any }
             pp.product = product;
+            pp.propertyId = propertyId;
+            pp.type = type;
+            pp.value = value;
             return pp;
           });
-        } catch (err) {
-          this.logger.error('Failed to parse properties:', err);
-          throw new BadRequestException('Invalid properties format');
         }
       }
 
       product.productProperties = productProperties;
-      product.propertyValues = propertyValues; // Only for response, not saved in DB
+      product.propertyValues = propertyValues; // faqat response uchun
 
-      // --- Handle images ---
+      // 7. Rasmlarni qayta ishlash
       this.logger.debug(`[updateProduct] Processing images...`);
       const existingImages = await queryRunner.manager.find(ProductImage, {
         where: { product: { id: product.id } },
@@ -923,7 +918,7 @@ export class ProductService {
       const bodyImages = Array.isArray(body.images) ? body.images : [];
       const imageIds = new Set(bodyImages.map((img: any) => img.id));
 
-      // Delete images no longer used
+      // Keraksiz rasmlarni o'chirish
       const imagesToDelete = existingImages.filter(
         (img) => !imageIds.has(img.id),
       );
@@ -939,9 +934,10 @@ export class ProductService {
       }
       await queryRunner.manager.remove(imagesToDelete);
 
+      // Rasm saqlash uchun massiv
       const imagesToSave: ProductImage[] = [];
 
-      // Update or keep existing images
+      // Mavjud rasmlarni yangilash yoki saqlash
       for (const img of bodyImages) {
         const existing = existingImages.find((e) => e.id === img.id);
         const newImg = existing ? existing : new ProductImage();
@@ -954,7 +950,7 @@ export class ProductService {
         );
       }
 
-      // Process uploaded files
+      // Yangi fayllarni yuklash
       if (files?.length) {
         for (const file of files) {
           const url = await this.uploadService.uploadFile(file);
@@ -973,14 +969,12 @@ export class ProductService {
       }
 
       imagesToSave.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      for (let i = 0; i < imagesToSave.length; i++) {
-        imagesToSave[i].order = i;
-      }
+      imagesToSave.forEach((img, index) => (img.order = index));
 
       await queryRunner.manager.save(imagesToSave);
       product.images = imagesToSave;
 
-      // --- Main image index ---
+      // 8. Asosiy rasm indexini yangilash
       const imgIndex = toNumber(body.imageIndex);
       product.imageIndex =
         !isNaN(imgIndex) && imgIndex >= 0 && imgIndex < product.images.length
@@ -989,12 +983,14 @@ export class ProductService {
             ? 0
             : -1;
 
-      // --- Final save ---
+      // 9. Oxirgi saqlash va commit
+      product.propertyValues = {}; // Bazaga saqlanmaydi
       const savedProduct = await queryRunner.manager.save(product);
       await queryRunner.commitTransaction();
+
       this.logger.debug(`[updateProduct] Product update committed. ID: ${id}`);
 
-      // Return plain object with only exposed fields
+      // 10. Natijani tozalangan ko‘rinishda qaytarish
       return instanceToPlain(savedProduct, {
         excludeExtraneousValues: true,
       });
