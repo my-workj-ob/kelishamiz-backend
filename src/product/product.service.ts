@@ -84,6 +84,7 @@ export class ProductService {
       .leftJoinAndSelect('category.parent', 'parentCategory')
       .leftJoinAndSelect('product.profile', 'profile')
       .leftJoinAndSelect('product.district', 'district')
+      .leftJoinAndSelect('product.region', 'region')
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.likes', 'likes')
       .orderBy('product.isTop', 'DESC')
