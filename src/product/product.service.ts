@@ -872,16 +872,14 @@ export class ProductService {
         }
 
         if (Array.isArray(body.properties)) {
+          // 1. Har bir property uchun productId ni avtomatik olish uchun product obyektini beramiz
           productProperties = body.properties.map((prop) => {
             const propertyId = toNumber(prop.propertyId);
             const type = prop.type;
             let value = prop.value;
 
             if (typeof value !== 'object' || value === null) {
-              value = {
-                key: prop.value?.key ?? `Property-${propertyId}`,
-                value: value,
-              };
+              value = { key: `Property-${propertyId}`, value };
             } else if (!value.key || !value.value) {
               value = {
                 key: value.key ?? `Property-${propertyId}`,
@@ -889,16 +887,17 @@ export class ProductService {
               };
             }
 
-            // Response uchun to'ldirish (clientga yuboriladi, DB ga emas)
-            propertyValues[value.key] = value.value;
-
             const pp = new ProductProperty();
-            pp.product = product;
             pp.propertyId = propertyId;
             pp.type = type;
             pp.value = value;
+            pp.product = product; // shu yerda product berilgan
+
             return pp;
           });
+
+          // 2. Agar cascade yo‘q bo‘lsa, save ni alohida qiling
+          await queryRunner.manager.save(productProperties);
         }
       }
 
