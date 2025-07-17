@@ -904,6 +904,8 @@ export class ProductService {
 
       product.productProperties = productProperties;
       product.propertyValues = propertyValues; // Faqat response uchun
+      console.debug('productProperties: ', productProperties);
+      console.debug('propertyValues: ', propertyValues);
 
       // 7. Rasmlarni qayta ishlash
       this.logger.debug(`[updateProduct] Processing images...`);
@@ -981,6 +983,8 @@ export class ProductService {
             : -1;
 
       // 9. Oxirgi saqlash va commit
+      console.debug('productProperties: ', productProperties);
+      console.debug('propertyValues: ', propertyValues);
       product.propertyValues = {}; // Bazaga saqlanmaydi
       const savedProduct = await queryRunner.manager.save(product);
       await queryRunner.commitTransaction();
