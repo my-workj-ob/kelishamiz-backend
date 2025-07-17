@@ -858,10 +858,12 @@ export class ProductService {
         product: { id: product.id },
       });
 
-      // 6. Product propertiesni tayyorlash
       let productProperties: ProductProperty[] = [];
-      let propertyValues: Record<string, any> = {};
-
+      let propertyValues: Array<{
+        type: string;
+        value: { key: string; value: string };
+        propertyId: string;
+      }> = [];
       if (body.properties) {
         if (typeof body.properties === 'string') {
           try {
@@ -873,23 +875,33 @@ export class ProductService {
 
         if (Array.isArray(body.properties)) {
           for (const prop of body.properties) {
-            // propertyValues ni to'ldirish
-            if (
-              prop.value &&
-              typeof prop.value === 'object' &&
-              'key' in prop.value
-            ) {
-              propertyValues[prop.value.key] = prop.value.value;
+            const key = prop.value?.key;
+            const value = prop.value?.value;
+
+            // Faqat 'key' mavjud bo'lsa, propertyValues ga qo'shamiz
+            if (key && value !== undefined) {
+              propertyValues.push({
+                type: prop.type,
+                value: {
+                  key: key,
+                  value: value,
+                },
+                propertyId: prop.propertyId,
+              });
             } else {
-              propertyValues[`Property-${prop.propertyId}`] = prop.value;
+              // Agar 'key' bo'lmasa, o'zgaruvchini saqlaymiz
+              propertyValues.push({
+                type: prop.type,
+                value: prop.value,
+                propertyId: prop.propertyId,
+              });
             }
 
-            // productProperties ni yaratish
             const pp = new ProductProperty();
             pp.propertyId = Number(prop.propertyId);
             pp.type = prop.type;
             pp.value = prop.value;
-            pp.product = product; // bog'lash uchun
+            pp.product = product;
 
             productProperties.push(pp);
           }
@@ -898,6 +910,10 @@ export class ProductService {
 
       product.propertyValues = propertyValues;
       product.productProperties = productProperties;
+
+      console.debug('productProperties: ', productProperties);
+      console.debug('propertyValues: ', propertyValues);
+
       console.debug('productProperties: ', productProperties);
       console.debug('propertyValues: ', propertyValues);
 
