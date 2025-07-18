@@ -52,11 +52,7 @@ import { PaymeModule } from './payme/payme.module';
 
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'ep-cool-boat-a2p8ewnj-pooler.eu-central-1.aws.neon.tech',
-      port: 5432,
-      username: 'neondb_owner',
-      password: 'npg_cbWOXKt59Gmz',
-      database: 'neondb',
+      url: process.env.DATABASE_URL || 'postgres://localhost:5432/kelishamiz',
       ssl: {
         rejectUnauthorized: false,
       },
