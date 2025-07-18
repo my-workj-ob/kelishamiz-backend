@@ -275,6 +275,11 @@ export class ProductService {
       qb.leftJoinAndSelect('product.profile', 'profile')
         .leftJoinAndSelect('product.productProperties', 'productProperties')
         .leftJoinAndSelect('productProperties.property', 'property')
+        .leftJoinAndSelect('productProperties.region', 'region')
+        .leftJoinAndSelect('productProperties.district', 'district')
+        .leftJoinAndSelect('product.category', 'category')
+        .leftJoinAndSelect('product.profile.user', 'user')
+        .leftJoinAndSelect('product.likes', 'likes')
         .leftJoinAndSelect('product.images', 'images')
         .take(20);
       const products = await qb.getMany();
