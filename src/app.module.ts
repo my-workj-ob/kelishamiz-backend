@@ -52,15 +52,19 @@ import { PaymeModule } from './payme/payme.module';
 
     TypeOrmModule.forRoot({
       type: 'postgres',
-      url: process.env.DATABASE_URL,
-      ssl: {
-        rejectUnauthorized: false,
-      },
+      host: 'ep-cool-boat-a2p8ewnj-pooler.eu-central-1.aws.neon.tech',
+      port:5432,
+      username: 'neondb_owner',
+      password: 'npg_cbWOXKt59Gmz',
+      database: 'neondb',
+      ssl:
+        process.env.DB_SSLMODE === 'require'
+          ? { rejectUnauthorized: false }
+          : false,
       autoLoadEntities: true,
       synchronize: true,
       logging: true,
     }),
-
     CacheModule.registerAsync({
       isGlobal: true,
       useFactory: async () => ({
