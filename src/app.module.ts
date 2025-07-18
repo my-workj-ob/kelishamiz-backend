@@ -52,7 +52,7 @@ import { PaymeModule } from './payme/payme.module';
 
     TypeOrmModule.forRoot({
       type: 'postgres',
-      url: process.env.DATABASE_URL || 'postgres://localhost:5432/kelishamiz',
+      url: process.env.DATABASE_URL,
       ssl: {
         rejectUnauthorized: false,
       },
