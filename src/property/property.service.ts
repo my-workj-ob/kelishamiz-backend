@@ -13,7 +13,7 @@ export class PropertyService {
     @InjectRepository(Category) // Category uchun repositoryni inyeksiya qilish
     private categoryRepository: Repository<Category>,
   ) {}
-  //
+    
   async create(createPropertyDto: CreatePropertyDto): Promise<Property> {
     const { categoryId, options, ...propertyData } = createPropertyDto;
 
@@ -41,7 +41,7 @@ export class PropertyService {
     if (!id) {
       throw new NotFoundException('ID berilmagan');
     }
-    // Property mavjudligini tekshirish
+    
     const property = await this.propertyRepository.findOne({
       where: { id },
     });

@@ -1,4 +1,4 @@
-// src/user/user.service.ts
+    
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -107,7 +107,7 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
-    // 1. Remove from many-to-many join tables
+    
     await this.dataSource
       .createQueryBuilder()
       .delete()
@@ -122,33 +122,33 @@ export class UserService {
       .where('userId = :userId', { userId: id }) // ✅ to‘g‘ri id ishlatildi
       .execute();
 
-    // 2. Remove related searches
+    
     await this.searchRepository.delete({ user: { id } });
 
-    // 3. Remove profile’s products
+    
     if (user.profile?.products?.length) {
       const productIds = user.profile.products.map((p) => p.id);
       await this.productRepository.delete(productIds);
     }
 
-    // 4. Remove profile's comments
+    
     if (user.profile?.comments?.length) {
       const commentIds = user.profile.comments.map((c) => c.id);
       await this.commentRepository.delete(commentIds);
     }
 
-    // 5. Remove profile's likes
+    
     if (user.profile?.likes?.length) {
       const likeIds = user.profile.likes.map((l) => l.id);
       await this.likeRepository.delete(likeIds);
     }
 
-    // 6. Remove profile
+    
     if (user.profile?.id !== undefined) {
       await this.profileRepository.delete(user.profile.id);
     }
 
-    // 7. Finally, delete the user
+    
     await this.userRepository.delete(id);
   }
 }

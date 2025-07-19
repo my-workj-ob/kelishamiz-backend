@@ -1,4 +1,4 @@
-// src/banner/banner.service.ts
+    
 import {
   Injectable,
   NotFoundException,
@@ -29,14 +29,14 @@ export class BannerService {
     if (!file) {
       throw new BadRequestException('Rasm fayli yuklanmagan.');
     }
-    // UploadService orqali faylni yuklaymiz
+    
     const imageUrl = await this.uploadService.uploadFile(file); // Faqat URL ni qaytaradi
 
     await this.fileService.saveFile(imageUrl); // Fayl URL'ini bazaga saqlash
     if (!imageUrl) {
       throw new BadRequestException('Rasmni yuklashda xatolik yuz berdi.');
     }
-    // Banner yaratish uchun DTO va yuklangan rasm URLini birlashtiramiz
+    
 
     const banner = this.bannerRepository.create({
       ...createBannerDto,
@@ -70,7 +70,7 @@ export class BannerService {
     const banner = await this.findOne(id);
 
     if (file) {
-      // Agar yangi rasm yuklangan bo'lsa, eskisini Vercel Blob-dan o'chiramiz
+    
       if (banner.imageUrl) {
         try {
           await del(banner.imageUrl); // Eski rasmni o'chirish
@@ -79,7 +79,7 @@ export class BannerService {
             `Eski rasmni o'chirishda xatolik yuz berdi: ${banner.imageUrl}`,
             deleteError,
           );
-          // O'chirish xatosi jarayonni to'xtatmasligi kerak, shuning uchun faqat ogohlantiramiz
+    
         }
       }
       const newImageUrl = await this.uploadService.uploadFile(file);
@@ -106,7 +106,7 @@ export class BannerService {
     await this.bannerRepository.delete(id);
   }
 
-  // Jamoat uchun faol bannerlarni olish
+    
   async findActiveByPlacement(placement: string): Promise<Banner[]> {
     return this.bannerRepository.find({
       where: {

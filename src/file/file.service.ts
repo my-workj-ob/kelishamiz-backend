@@ -25,16 +25,16 @@ export class FileService {
 
   async deleteFileByUrl(fileUrl: string): Promise<void> {
     try {
-      // URL dan fayl yo'lini ajratib olish (masalan, public/uploads/filename.jpg)
-      // URL tuzilmasiga qarab o'zgartiring
+    
+    
       const filePath = this.getFilePathFromUrl(fileUrl);
 
-      // Fayl mavjudligini tekshirish va o'chirish
+    
       if (fs.existsSync(filePath)) {
         await fs.promises.unlink(filePath);
       }
 
-      // Bazadagi yozuvni o'chirish (agar kerak bo'lsa)
+    
       await this.fileRepository.delete({ url: fileUrl });
     } catch (error) {
       throw new InternalServerErrorException(
@@ -44,8 +44,8 @@ export class FileService {
   }
 
   private getFilePathFromUrl(fileUrl: string): string {
-    // Misol uchun: http://domain.com/uploads/file.jpg -> /path/to/project/public/uploads/file.jpg
-    // Sizning fayl joylashuvingizga qarab o'zgartiring
+    
+    
     const basePath = path.resolve(__dirname, '../../public'); // public papka yo'li
     const urlPath = new URL(fileUrl).pathname; // /uploads/file.jpg
 

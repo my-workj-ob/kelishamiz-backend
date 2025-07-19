@@ -29,10 +29,10 @@ export class FileController {
     }
 
     try {
-      // Faylni Vercel Blob-ga yuklash
+    
       const vercelFileUrl = await this.uploadService.uploadFile(file);
 
-      // Fayl URL'ini bazaga saqlash
+    
       await this.fileService.saveFile(vercelFileUrl);
 
       return { url: vercelFileUrl };

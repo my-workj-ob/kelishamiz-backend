@@ -1,4 +1,4 @@
-// location.controller.ts
+    
 import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateDistrictDto, CreateRegionDto } from './dto/location.dto';

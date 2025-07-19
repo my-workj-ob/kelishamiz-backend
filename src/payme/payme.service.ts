@@ -84,7 +84,7 @@ export class PaymeService {
     const isValidAmount = this.validateAmount(params.amount, id);
     if (!isValidAmount) return;
 
-    // Pending tranzaksiyalarni tekshirish
+    
     const pendingTransaction = await this.transactionRepo.findOne({
       where: { userId, status: 'pending' },
     });
@@ -120,7 +120,7 @@ export class PaymeService {
       `[CreateTransaction] Params: ${JSON.stringify(params)}, ID: ${id}`,
     );
 
-    // Mavjud tranzaksiyani tekshirish
+    
     const existingTransaction = await this.transactionRepo.findOne({
       where: { paymeTransactionId: params.id },
       relations: ['user'],
@@ -130,11 +130,11 @@ export class PaymeService {
       return this.handleExistingTransaction(existingTransaction, id);
     }
 
-    // Foydalanuvchi ID sini tekshirish
+    
     const userId = this.parseUserId(params.account?.user_id, id);
     if (!userId) return;
 
-    // Foydalanuvchi hisobida pending tranzaksiyalarni tekshirish
+    
     const pendingTransaction = await this.transactionRepo.findOne({
       where: { userId, status: 'pending' },
     });
@@ -155,21 +155,21 @@ export class PaymeService {
       );
     }
 
-    // Foydalanuvchini tekshirish
+    
     const user = await this.findUserById(userId, id);
     if (!user) return;
 
-    // Summani tekshirish
+    
     const isValidAmount = this.validateAmount(params.amount, id);
     if (!isValidAmount) return;
 
-    // CheckPerformTransaction ni chaqirish
+    
     const checkResult = await this.checkPerformTransaction(params, id);
     if (checkResult.error) {
       return checkResult;
     }
 
-    // Yangi tranzaksiya yaratish
+    
     const newTransaction = this.transactionRepo.create({
       userId: user.id,
       paymeTransactionId: params.id,

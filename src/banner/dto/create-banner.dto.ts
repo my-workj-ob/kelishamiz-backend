@@ -1,4 +1,4 @@
-// src/banner/dto/create-banner.dto.ts
+    
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsString,
@@ -26,8 +26,8 @@ export class CreateBannerDto {
     type: 'string',
     required: false,
   })
-  // Faylni to'g'ridan-to'g'ri qabul qilmaslik, chunki bu DTO body uchun
-  // @IsNotEmpty() // Agar rasm yuklash alohida bo'lsa, bu kerak emas. Fayl yuklashdan keyin imageUrl ni update qilasiz.
+    
+    
   @IsOptional() // Frontendda fayl yuklash mutationi alohida bo'ladi
   @IsString()
   imageUrl?: string; // Bu yerda fayl emas, balki URL bo'lishi kerak
@@ -38,7 +38,7 @@ export class CreateBannerDto {
   })
   @IsOptional()
   @IsString()
-  // @IsUrl() // Agar doimiy URL bo'lishi shart bo'lsa
+    
   linkUrl?: string;
 
   @ApiProperty({

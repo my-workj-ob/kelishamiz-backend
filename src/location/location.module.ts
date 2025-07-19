@@ -1,4 +1,4 @@
-// location.module.ts
+    
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { District } from './entities/district.entity';

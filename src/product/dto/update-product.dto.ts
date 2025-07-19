@@ -9,7 +9,7 @@ import {
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer'; // <--- Qo'shish kerak
 
-// Yangi DTO-larni import qiling
+    
 import { ProductPropertyUpdateItemDto } from './product-update.dto';
 
 export class UpdateProductDto {
@@ -117,8 +117,8 @@ export class UpdateProductDto {
   @IsOptional()
   topExpiresAt?: Date;
 
-  // <<< ASOSIY O'ZGARISH AYNAN SHU YERDA >>>
-  // ...
+    
+    
   @ApiPropertyOptional({
     example: [
       {

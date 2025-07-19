@@ -1,4 +1,4 @@
-// src/user/user.controller.ts
+    
 import {
   Controller,
   Patch,
@@ -64,7 +64,7 @@ export class UserController {
     @Param('id', ParseIntPipe) userId: number,
     @Body() updateUserRoleDto: UpdateUserRoleDto,
   ) {
-    // SUPER_ADMIN roliga o'zgartirishni cheklashingiz mumkin, agar kerak bo'lsa
+    
     if (!Object.values(UserRole).includes(updateUserRoleDto.role)) {
       throw new BadRequestException('Invalid user role provided.');
     }

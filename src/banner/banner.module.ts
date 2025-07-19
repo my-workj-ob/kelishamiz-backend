@@ -13,8 +13,8 @@ import { FileEntity } from './../file/entities/file.entity';
   ],
   controllers: [BannerController],
   providers: [BannerService, UploadService, FileService],
-  // Agar boshqa modullar BannerService dan foydalanishi kerak bo'lsa,
-  // BannerService ni export qilishni unutmang:
-  // exports: [BannerService],
+    
+    
+    
 })
 export class BannerModule {}

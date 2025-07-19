@@ -1,4 +1,4 @@
-// src/banner/entities/banner.entity.ts
+    
 import {
   Entity,
   PrimaryGeneratedColumn,

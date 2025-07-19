@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unused-vars */
+    
+    
+    
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsNotEmpty,

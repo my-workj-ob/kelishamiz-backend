@@ -3,8 +3,6 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as bodyParser from 'body-parser';
 
-import cors from 'cors';
-
 import 'dotenv/config';
 
 import express from 'express';
@@ -30,7 +28,7 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // app.useGlobalPipes(new ValidationPipe());
+    
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   const config = new DocumentBuilder()
@@ -39,7 +37,7 @@ async function bootstrap() {
     .setVersion('1.0')
     .addBearerAuth()
     .build();
-// ok
+    
   app.use(bodyParser.json({ limit: '50mb' }));
   app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
   const document = SwaggerModule.createDocument(app, config);
@@ -53,5 +51,5 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT || 3333);
 }
-// 
+    
 bootstrap();

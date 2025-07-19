@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+    
+    
+    
+    
 import {
   BadRequestException,
   Body,
@@ -64,14 +64,14 @@ export class AuthController {
           nullable: true,
           example: {
             id: 1,
-            phoneNumber: '+998901234567' /* ... other profile fields */,
+            phoneNumber: '+998901234567'     ,
           },
         },
         id: { type: 'number', example: 1 },
         phone: { type: 'string', example: '+998901234567' },
         username: { type: 'string', example: 'user123' },
         location: { type: 'string', example: 'Toshkent' },
-        // ... other user properties
+    
       },
     },
   })
@@ -306,7 +306,7 @@ export class AuthController {
       throw new NotFoundException('Foydalanuvchi topilmadi.');
     }
 
-    // Login uchun OTP yuboramiz
+    
     const { otp } = await this.authService.sendOtp(body.phone);
     return { success: true, message: 'SMS kod yuborildi.', otp };
   }

@@ -33,7 +33,7 @@ export class PaymeAuthInterceptor implements NestInterceptor {
     console.log('authHeader matches expected?', authHeader === expectedAuth);
     console.log('=============================\n');
 
-    // ❗ Agar noto‘g‘ri bo‘lsa, xatoni JSON-RPC 200 formatida qaytaramiz
+    
     if (!authHeader || authHeader !== expectedAuth) {
       const jsonRpcError = {
         jsonrpc: '2.0',
@@ -48,7 +48,7 @@ export class PaymeAuthInterceptor implements NestInterceptor {
         id: req.body?.id ?? null,
       };
 
-      // ❗ NestJS Response obyektidan foydalanib, 200 statusda jo‘natamiz
+    
       const res = context.switchToHttp().getResponse();
       res.status(200).json(jsonRpcError);
       return throwError(() => null); // ✅ Interceptor ni to‘xtatish

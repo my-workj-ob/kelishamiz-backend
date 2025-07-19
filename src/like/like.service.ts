@@ -19,7 +19,7 @@ export class LikeService {
 
   async toggleLike(commentId: number, userId: number) {
     try {
-      // Kommentni olish
+    
       const comment = await this.commentRepository.findOne({
         where: { id: commentId },
         relations: ['likes', 'likes.user'],
@@ -27,7 +27,7 @@ export class LikeService {
 
       if (!comment) throw new NotFoundException('Comment not found');
 
-      // Like bosilganmi?
+    
       const existingLike = await this.likeRepository.findOne({
         where: {
           comment: { id: commentId },
@@ -38,11 +38,11 @@ export class LikeService {
       let likedByCurrentUser = false;
 
       if (existingLike) {
-        // ❌ Unlike qilish
+    
         await this.likeRepository.remove(existingLike);
         comment.likesCount = Math.max(0, comment.likesCount - 1);
       } else {
-        // ✅ Like qo‘shish
+    
         const newLike = this.likeRepository.create({
           user: { id: userId },
           comment,
@@ -52,7 +52,7 @@ export class LikeService {
         likedByCurrentUser = true; // Foydalanuvchi like bosgan
       }
 
-      // Yangi like sonini yangilash
+    
       await this.commentRepository.update(commentId, {
         likesCount: comment.likesCount,
       });
