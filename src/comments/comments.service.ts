@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+    
+    
 
 import {
   Injectable,
@@ -53,7 +53,7 @@ export class CommentService {
         skip: (page - 1) * limit,
       });
 
-      // Har bir komment va reply-ga `likedByCurrentUser` qo‘shamiz
+    
       const commentsWithLikeStatus = comments.map((comment) => ({
         ...comment,
         likedByCurrentUser: comment.likes.some(
@@ -117,7 +117,7 @@ export class CommentService {
 
       const savedComment = await this.commentRepository.save(comment);
 
-      // 👉 Agar entityType "product" bo'lsa, commentsCount ni oshiramiz
+    
       if (entityType === 'product') {
         await this.productRepository.increment(
           { id: entityId },
@@ -153,7 +153,7 @@ export class CommentService {
 
   async likeComment(commentId: number, userId: number) {
     try {
-      // Kommentni olish
+    
       const comment = await this.commentRepository.findOne({
         where: { id: commentId },
         relations: ['likes', 'likes.user'],
@@ -161,7 +161,7 @@ export class CommentService {
 
       if (!comment) throw new NotFoundException('Comment not found');
 
-      // Like bosilganmi?
+    
       const existingLike = await this.likeRepository.findOne({
         where: {
           comment: { id: commentId },
@@ -172,11 +172,11 @@ export class CommentService {
       let likedByCurrentUser = false;
 
       if (existingLike) {
-        // ❌ Unlike qilish
+    
         await this.likeRepository.remove(existingLike);
         comment.likesCount = Math.max(0, comment.likesCount - 1);
       } else {
-        // ✅ Like qo‘shish
+    
         const newLike = this.likeRepository.create({
           user: { id: userId },
           comment,
@@ -186,7 +186,7 @@ export class CommentService {
         likedByCurrentUser = true; // Foydalanuvchi like bosgan
       }
 
-      // Yangi like sonini yangilash
+    
       await this.commentRepository.update(commentId, {
         likesCount: comment.likesCount,
       });

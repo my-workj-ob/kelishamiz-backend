@@ -1,4 +1,4 @@
-// location.service.ts
+    
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeleteResult, Repository } from 'typeorm';
@@ -42,7 +42,7 @@ export class LocationService {
     if (!id) {
       throw new NotFoundException('ID berilmagan');
     }
-    // Property mavjudligini tekshirish
+    
     const district = await this.districtRepo.findOne({
       where: { id },
     });

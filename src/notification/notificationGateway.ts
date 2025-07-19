@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unused-vars */
+    
+    
+    
+    
+    
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
@@ -85,7 +85,7 @@ export class NotificationGateway
     );
     const count = await this.notificationService.getUnreadCount(userId);
 
-    // Ensure the user is in the socket room before sending a notification
+    
     if (this.userSockets.has(userId)) {
       this.server.to(`user-${userId}`).emit('notification', {
         id: saved.id,

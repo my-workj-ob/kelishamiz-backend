@@ -1,4 +1,4 @@
-// src/user/user.module.ts
+    
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm'; // TypeORM modulini import qilamiz
 import { UserController } from './user.controller';

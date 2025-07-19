@@ -12,7 +12,7 @@ module.exports = {
         PORT: 3030, // kerakli port
         DATABASE_URL:
           'postgres://neondb_owner:npg_cbWOXKt59Gmz@ep-cool-boat-a2p8ewnj-pooler.eu-central-1.aws.neon.tech:5432/neondb?sslmode=require',
-        // boshqa environment variables
+    
       },
     },
   ],

@@ -37,11 +37,11 @@ export class OtpService {
       }),
     );
 
-    // Eskiz token odatda 1 kun (86400 sekund) amal qiladi
+    
     const expiresIn = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
     const expiresAt = Date.now() + expiresIn - 60_000; // 1 minut oldin expire bo‘ladi
 
-    // Token va uning tugash vaqtini konsolga chiqarish
+    
     console.log(
       `Eskiz.uz API tokeni olindi. Token tugash vaqti: ${new Date(expiresAt).toLocaleString()}`,
     );

@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+    
+    
+    
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import * as dotenv from 'dotenv';
@@ -8,7 +8,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 
 dotenv.config();
 
-// JWT payload uchun interfeys
+    
 export interface JwtPayload {
   [x: string]: any;
 

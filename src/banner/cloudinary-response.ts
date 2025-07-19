@@ -1,4 +1,4 @@
-// src/cloudinary/cloudinary-response.ts (Agar kerak bo'lsa)
+    
 export interface CloudinaryResponse {
   asset_id: string;
   public_id: string;
@@ -17,5 +17,5 @@ export interface CloudinaryResponse {
   placeholder: boolean;
   url: string;
   secure_url: string;
-  // ... boshqa maydonlar
+    
 }

@@ -22,7 +22,7 @@ import { Message } from './../../chat/entities/message.entity';
 import { Notification } from './../../notification/entities/notification.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transaction } from './../../payme/transaction/transaction.entity';
-// user.entity.ts
+    
 export enum UserRole {
   USER = 'USER',
   ADMIN = 'ADMIN',
@@ -86,13 +86,13 @@ export class User {
 
   @Column({ nullable: true })
   districtId?: number;
-  // Foydalanuvchi ishtirok etgan chat xonalari
+    
   @ManyToMany(() => ChatRoom, (chatRoom) => chatRoom.participants, {
     onDelete: 'CASCADE',
   })
   @JoinTable()
   chatRooms: ChatRoom[];
-  // Foydalanuvchi yuborgan xabarlar
+    
   @OneToMany(() => Message, (message) => message.sender, {
     onDelete: 'CASCADE',
   })

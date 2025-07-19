@@ -1,4 +1,4 @@
-// src/cloudinary/cloudinary.service.ts
+    
 import { Injectable } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryResponse } from './cloudinary-response';
@@ -40,7 +40,7 @@ export class CloudinaryService {
   }
 
   async deleteFile(imageUrl: string): Promise<any> {
-    // imageUrl dan public_id ni ajratib olish kerak
+    
     const publicId = (imageUrl.split('/').pop() ?? '').split('.')[0]; // Bu oddiy usul, aniqroq parser kerak bo'lishi mumkin
     if (!publicId) return;
 
@@ -50,7 +50,7 @@ export class CloudinaryService {
       );
     } catch (error) {
       console.error('Error deleting image from Cloudinary:', error);
-      // Xatolikni qayta tashlash yoki shunchaki log qilish
+    
     }
   }
 }

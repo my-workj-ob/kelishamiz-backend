@@ -1,4 +1,4 @@
-// src/entities/chat-room.entity.ts
+    
 import { User } from './../../auth/entities/user.entity';
 import { Product } from './../../product/entities/product.entity';
 import {
@@ -28,12 +28,12 @@ export class ChatRoom {
   })
   product: Product;
 
-  // Bu chat xonasida qatnashuvchi foydalanuvchilar (ko'pincha 2ta bo'ladi: mahsulot egasi va sotib oluvchi)
+    
   @ManyToMany(() => User, (user) => user.chatRooms, { cascade: true }) // cascade: true foydalanuvchilar yaratilganda ularni bog'lashga yordam beradi
   @JoinTable() // Bu jadval ManyToMany munosabati uchun qo'shimcha jadval yaratadi
   participants: User[];
 
-  // Ushbu chat xonasidagi barcha xabarlar
+    
   @OneToMany(() => Message, (message) => message.chatRoom)
   messages: Message[];
 

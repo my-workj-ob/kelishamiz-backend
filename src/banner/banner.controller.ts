@@ -1,4 +1,4 @@
-// src/banner/banner.controller.ts
+    
 import {
   Controller,
   Get,
@@ -137,7 +137,7 @@ export class BannerController {
     return this.bannerService.remove(id);
   }
 
-  // Jamoat uchun bannerlarni olish (autentifikatsiya shart emas)
+    
   @Get('public/active')
   @ApiOperation({
     summary: 'Faol bannerlarni joylashuv bo`yicha olish (hamma uchun)',

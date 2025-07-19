@@ -24,22 +24,22 @@ export class BaseFilterService<T extends ObjectLiteral> {
 
     const qb = this.repository.createQueryBuilder('entity');
 
-    // Dynamic JOIN
+    
     for (const relation of relations) {
       qb.leftJoinAndSelect(`entity.${relation}`, relation);
     }
 
-    // Dynamic WHERE
+    
     if (whereCallback) {
       whereCallback(qb, filters);
     }
 
-    // Dynamic ORDER BY
+    
     if (sortBy) {
       qb.orderBy(`entity.${sortBy}`, sortOrder);
     }
 
-    // Pagination
+    
     qb.skip(Math.max(skip, 0)).take(Math.max(take, 1));
 
     return qb.getMany();

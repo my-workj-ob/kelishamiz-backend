@@ -1,4 +1,4 @@
-// src/chat/chat.module.ts
+    
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm'; // TypeORM modulini import qiling
 import { ChatController } from './chat.controller';
@@ -12,7 +12,7 @@ import { ProfileService } from './../profile/profile.service';
 import { Profile } from './../profile/enities/profile.entity';
 import { Like } from './../like/entities/like.entity';
 import { UserSearch } from './../search-filter/entities/user-search.entity';
-// Entity-laringizni import qiling
+    
 
 @Module({
   imports: [

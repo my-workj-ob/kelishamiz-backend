@@ -23,7 +23,7 @@ export class NotificationService {
     private readonly notificationRepo: Repository<Notification>,
     private readonly configService: ConfigService,
   ) {
-    // OneSignal Client’ni sozlash
+    
     this.oneSignalClient = new OneSignal.Client(
       this.configService.get<string>('ONESIGNAL_APP_ID')!,
       this.configService.get<string>('ONESIGNAL_REST_API_KEY')!,
@@ -49,7 +49,7 @@ export class NotificationService {
       });
       const savedNotification = await this.notificationRepo.save(notification);
 
-      // OneSignal orqali push notification yuborish
+    
       if (externalId) {
         await this.sendPushNotification(userId, type, message, externalId);
       }

@@ -1,4 +1,4 @@
-// src/products/entities/product.entity.ts
+    
 import { ApiProperty } from '@nestjs/swagger';
 import {
   Column,
@@ -32,8 +32,8 @@ export class Product {
   @Column()
   title: string;
 
-  // Comment entity-sida `product`ga qayta ishora bo'lsa, u yerda @Exclude() ishlatish kerak.
-  // Bu yerda Product entity-si ichida Comment massivi bo'lishi normal.
+    
+    
   @OneToMany(() => Comment, (comment) => comment.profile, { cascade: true })
   comments?: Comment[];
 
@@ -62,7 +62,7 @@ export class Product {
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   maxPrice: number;
 
-  // Profil entity-sida `products` ga qayta ishora bo'lsa, u yerda @Exclude() ishlatish kerak.
+    
   @ManyToOne(() => Profile, (profile) => profile.products, {
     onDelete: 'CASCADE',
   })
@@ -72,7 +72,7 @@ export class Product {
   @Column({ nullable: true })
   profileId: number;
 
-  // ProductImage entity-sida `product`ga qayta ishora bo'lsa, u yerda @Exclude() ishlatish kerak.
+    
   @OneToMany(() => ProductImage, (image) => image.product, {
     eager: true,
     cascade: true,
@@ -83,7 +83,7 @@ export class Product {
     type: () => Category,
     description: "Mahsulot tegishli bo'lgan kategoriya",
   })
-  // Category entity-sida `products` ga qayta ishora bo'lsa, u yerda @Exclude() ishlatish kerak.
+    
   @ManyToOne(() => Category, (category) => category.products, {
     onDelete: 'CASCADE',
   })
@@ -100,7 +100,7 @@ export class Product {
   @Column({ nullable: true })
   viewCount: number;
 
-  // ProductProperty entity-sida `product`ga qayta ishora bo'lsa, u yerda @Exclude() ishlatish kerak.
+    
   @OneToMany(
     () => ProductProperty,
     (productProperty) => productProperty.product,
@@ -129,11 +129,11 @@ export class Product {
   @Column({ default: 0 })
   commentsCount: number;
 
-  // User entity-sida `likes` ga qayta ishora bo'lsa, u yerda @Exclude() ishlatish kerak.
+    
   @ManyToMany(() => User, (user) => user.likes, { onDelete: 'CASCADE' })
   likes: User[];
 
-  // Region entity-sida `products` ga qayta ishora bo'lsa, u yerda @Exclude() ishlatish kerak.
+    
   @ManyToOne(() => Region, (region) => region.products, { eager: true })
   @JoinColumn({ name: 'regionId' })
   region: Region;
@@ -141,7 +141,7 @@ export class Product {
   @Column({ nullable: true })
   regionId: number;
 
-  // District entity-sida `products` ga qayta ishora bo'lsa, u yerda @Exclude() ishlatish kerak.
+    
   @ManyToOne(() => District, (district) => district.products, { eager: true })
   @JoinColumn({ name: 'districtId' })
   district: District;
@@ -155,7 +155,7 @@ export class Product {
   @Column({ type: 'int', default: 0, nullable: true })
   imageIndex: number;
 
-  // ChatRoom entity-sida `product`ga qayta ishora bo'lsa, u yerda @Exclude() ishlatish kerak.
+    
   @OneToMany(() => ChatRoom, (chatRoom) => chatRoom.product)
   chatRooms: ChatRoom[];
 
@@ -181,4 +181,5 @@ export class Product {
   })
   @CreateDateColumn()
   createdAt: Date;
+  product: { id: any; };
 }

@@ -1,4 +1,4 @@
-// src/products/dto/product.dto.ts
+    
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -13,8 +13,8 @@ import {
 } from 'class-validator';
 import { Column } from 'typeorm';
 
-// DTO da:
-// ProductPropertyValueDto ni birinchi o'rinda e'lon qilish
+    
+    
 export class ProductPropertyValueDto {
   @ApiProperty({ example: 'Eshiklar soni', description: 'Xususiyat nomi' })
   @IsString()
@@ -25,7 +25,7 @@ export class ProductPropertyValueDto {
   value: string;
 }
 
-// Keyin ProductPropertyDto ni e'lon qilish
+    
 export class ProductPropertyDto {
   @ApiProperty({ example: 1, description: 'Xususiyat IDsi' })
   @IsNotEmpty()

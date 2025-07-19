@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
+    
 import { Injectable, NotFoundException, Search } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -84,7 +84,7 @@ export class ProfileService {
     return updatedProfile;
   }
 
-  // user.service.ts
+    
   async removeUser(userId: number): Promise<void> {
     console.log(userId, 'User ID to remove');
 
@@ -107,7 +107,7 @@ export class ProfileService {
       throw new NotFoundException('User not found');
     }
 
-    // 1. Delete likes from join table
+    
     await this.dataSource
       .createQueryBuilder()
       .delete()
@@ -115,7 +115,7 @@ export class ProfileService {
       .where('userId = :userId', { userId })
       .execute();
 
-    // 2. Delete user-viewed-products, if you have such table
+    
     await this.dataSource
       .createQueryBuilder()
       .delete()
@@ -123,11 +123,11 @@ export class ProfileService {
       .where('userId = :userId', { userId })
       .execute();
 
-    // 3. Delete user searches
+    
     await this.searchRepository.delete({ user: { id: userId } });
 
     await this.userRepository.delete(userId);
-    // 4. Delete profile comments and likes
+    
     if (user.profile?.comments?.length) {
       await this.commentRepository.delete(
         user.profile.comments.map((c) => c.id),
@@ -138,14 +138,14 @@ export class ProfileService {
       await this.likeRepository.delete(user.profile.likes.map((l) => l.id));
     }
 
-    // 5. Delete profile products
+    
     if (user.profile?.products?.length) {
       await this.productRepository.delete(
         user.profile.products.map((p) => p.id),
       );
     }
 
-    // 6. Delete profile itself
+    
     if (user.profile?.id) {
       await this.profileRepository.delete(user.profile.id);
     }
@@ -154,7 +154,7 @@ export class ProfileService {
       `DELETE FROM chat_room_participants_user WHERE "userId" = $1`,
       [userId],
     );
-    // 7. Delete user itself
+    
     await this.userRepository.delete(userId);
   }
 

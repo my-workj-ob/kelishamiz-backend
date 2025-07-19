@@ -27,13 +27,13 @@ export class CreateLocationDto {
   description?: string;
 }
 
-// create-region.dto.ts
+    
 
 export class CreateRegionDto {
   @ApiProperty({ example: 'Toshkent', description: 'Viloyat nomi' })
   name: string;
 }
-// create-district.dto.ts
+    
 
 export class CreateDistrictDto {
   @ApiProperty({ example: 'Chilonzor', description: 'Tuman nomi' })
