@@ -110,11 +110,15 @@ export class ChatService {
     productId: number,
     participantIds: number[],
   ): Promise<ChatRoom> {
+
+    
     if (participantIds?.length !== 2) {
       throw new BadRequestException(
         'Chat xonasi uchun aniq 2 ta ishtirokchi kerak.',
       );
     }
+
+    
 
     if (!participantIds.every((id) => Number.isInteger(id))) {
       throw new BadRequestException(
