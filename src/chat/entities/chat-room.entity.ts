@@ -27,7 +27,7 @@ export class ChatRoom {
 
   @ManyToMany(() => User, (user) => user.chatRooms, { cascade: true })
   @JoinTable({
-    name: 'chat_room_participants_user', // aniq jadval nomi
+    name: 'chat_room_participants_user', 
     joinColumn: {
       name: 'chatRoomId',
       referencedColumnName: 'id',
