@@ -77,7 +77,7 @@ export class ChatService {
    * Foydalanuvchi chatni ochganda chaqiriladi.
    */
   async getChatRoomMessages(
-    chatRoomId: string,
+    chatRoomId: number,
     page: number = 1,
     limit: number = 50,
   ) {
@@ -118,7 +118,7 @@ export class ChatService {
     const participants = await this.userRepository.findBy({
       id: In(participantIds),
     });
-    
+
     if (participants.length !== 2) {
       throw new NotFoundException(
         'Ishtirokchilardan biri yoki ikkalasi ham topilmadi.',
@@ -131,9 +131,6 @@ export class ChatService {
       throw new NotFoundException('Mahsulot topilmadi.');
     }
 
-    // Chat xonasini topishga urinish:
-    // 1. Shu mahsulotga tegishli bo'lishi kerak.
-    // 2. Ikkala ishtirokchi ham shu chat xonasida bo'lishi kerak.
     const existingChatRoom = await this.chatRoomRepository
       .createQueryBuilder('chatRoom')
       .innerJoin('chatRoom.participants', 'participant1')
@@ -144,13 +141,12 @@ export class ChatService {
       .getOne();
 
     if (existingChatRoom) {
-      return existingChatRoom; // Mavjud chat xonasini qaytaramiz
+      return existingChatRoom;
     }
 
-    // Agar topilmasa, yangi chat xonasi yaratamiz
     const newChatRoom = this.chatRoomRepository.create({
-      product: product, // Product obyektini to'g'ridan-to'g'ri bog'laymiz
-      participants: participants, // Participants massivini to'g'ridan-to'g'ri bog'laymiz
+      product: product,
+      participants: participants,
     });
 
     return this.chatRoomRepository.save(newChatRoom);
@@ -160,7 +156,7 @@ export class ChatService {
    * Xabarni saqlash. Bu funksiyani ChatGateway ham ishlatadi.
    */
   async saveMessage(
-    chatRoomId: string,
+    chatRoomId: number,
     senderId: number,
     messageContent: string,
   ): Promise<Message> {
