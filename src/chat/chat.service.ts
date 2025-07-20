@@ -108,7 +108,7 @@ export class ChatService {
    */
   async findOrCreateChatRoom(
     productId: number,
-    participantIds: string[],
+    participantIds: number[],
   ): Promise<ChatRoom> {
     if (participantIds?.length !== 2) {
       throw new BadRequestException(
