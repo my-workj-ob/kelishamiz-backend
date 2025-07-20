@@ -1,4 +1,3 @@
-    
 import {
   WebSocketGateway,
   SubscribeMessage,
@@ -29,7 +28,6 @@ export class ChatGateway {
 
   async handleConnection(@ConnectedSocket() client: Socket, ...args: any[]) {
     console.log(`Client connected: ${client.id}`);
- 
   }
 
   handleDisconnect(@ConnectedSocket() client: Socket) {
@@ -44,11 +42,10 @@ export class ChatGateway {
     }
   }
 
-  
   @SubscribeMessage('sendMessage')
   async handleSendMessage(
     @MessageBody()
-    data: { chatRoomId: string; senderId: number; message: string },
+    data: { chatRoomId: number; senderId: number; message: string },
     @ConnectedSocket() client: Socket,
   ): Promise<void> {
     console.log('Received message:', data);
@@ -59,12 +56,12 @@ export class ChatGateway {
         data.senderId,
         data.message,
       );
-
-      this.server.to(data.chatRoomId).emit('newMessage', {
+// 
+      this.server.to(data.chatRoomId.toString()).emit('newMessage', {
         id: savedMessage.id,
         chatRoomId: savedMessage.chatRoomId,
         senderId: savedMessage.senderId,
-        senderUsername: savedMessage.sender.username, 
+        senderUsername: savedMessage.sender.username,
         content: savedMessage.content,
         createdAt: savedMessage.createdAt.toISOString(),
       });
@@ -119,7 +116,7 @@ export class ChatGateway {
     console.log(
       `User ${userId} manually set online status. Socket: ${client.id}`,
     );
-    this.server.emit('userStatusChange', { userId: userId, isOnline: true }); 
+    this.server.emit('userStatusChange', { userId: userId, isOnline: true });
   }
 
   @SubscribeMessage('getOnlineUsers')

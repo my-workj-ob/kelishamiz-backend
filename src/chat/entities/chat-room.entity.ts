@@ -16,11 +16,11 @@ import { Message } from './message.entity';
 
 @Entity()
 export class ChatRoom {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column()
-  productId: string;
+  productId: number;
 
   @ManyToOne(() => Product, (product) => product.chatRooms, {
     onDelete: 'CASCADE',
