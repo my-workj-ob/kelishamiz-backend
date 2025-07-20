@@ -30,7 +30,6 @@ export class Profile {
   @Column({ nullable: true })
   phoneNumber?: string;
 
-    
   @ManyToOne(() => Region, (region) => region.profiles, { nullable: true })
   @JoinColumn({ name: 'regionId' })
   region?: Region;
@@ -38,7 +37,6 @@ export class Profile {
   @Column({ nullable: true })
   regionId?: number;
 
-    
   @ManyToOne(() => District, (district) => district.profiles, {
     nullable: true,
   })
@@ -51,24 +49,19 @@ export class Profile {
   @Column({ nullable: true })
   address?: string;
 
-    
   @OneToOne(() => User, (user) => user.profile, { onDelete: 'CASCADE' })
   @JoinColumn()
   user?: User;
 
-    
   @OneToMany(() => Product, (product) => product.profile)
   products?: Product[];
 
-    
   @OneToMany(() => Comment, (comment) => comment.profile, { cascade: true })
   comments?: Comment[];
 
-    
   @ManyToMany(() => Product, (product) => product.likes)
   likedProducts?: Product[];
 
-    
   @OneToMany(() => Like, (like) => like.user, { cascade: true })
   likes?: Like[];
   @OneToMany(() => Notification, (notification) => notification.profile)
