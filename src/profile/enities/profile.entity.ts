@@ -22,13 +22,13 @@ export class Profile {
   id?: number;
 
   @Column({ nullable: true })
-  fullName?: string;
+  fullName: string;
 
   @Column({ nullable: true })
-  email?: string;
+  email: string;
 
   @Column({ nullable: true })
-  phoneNumber?: string;
+  phoneNumber: string;
 
   @ManyToOne(() => Region, (region) => region.profiles, { nullable: true })
   @JoinColumn({ name: 'regionId' })
