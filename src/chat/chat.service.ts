@@ -8,8 +8,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { ChatRoom } from './entities/chat-room.entity';
 import { Message } from './entities/message.entity';
-import { User } from './../auth/entities/user.entity';
-import { Product } from './../product/entities/product.entity';
+import { User } from 'src/auth/entities/user.entity';
+import { Product } from 'src/product/entities/product.entity';
 
 @Injectable()
 export class ChatService {
@@ -31,30 +31,28 @@ export class ChatService {
   async getUserChatRooms(userId: number) {
     const chatRooms = await this.chatRoomRepository
       .createQueryBuilder('chatRoom')
-      .leftJoinAndSelect('chatRoom.product', 'product')
-      .leftJoinAndSelect('chatRoom.participants', 'participant')
-      .leftJoinAndSelect('chatRoom.messages', 'message')
-      // Jadval va ustun nomlari to'g'rilandi
-      .where(
-        'chatRoom.id IN (SELECT "chatRoomId" FROM chat_room_participants_user WHERE "userId" = :userId)',
-        { userId },
-      )
-      .orderBy('chatRoom.updatedAt', 'DESC')
+      .leftJoinAndSelect('chatRoom.product', 'product') // Mahsulot ma'lumotlarini olish
+      .leftJoinAndSelect('chatRoom.participants', 'participant') // Ishtirokchilarni olish
+      .leftJoinAndSelect('chatRoom.messages', 'message') // Xabarlarni olish
+      .where('participant.id = :userId', { userId }) // Foydalanuvchi ishtirok etgan chatlarni topish
+      .orderBy('chatRoom.updatedAt', 'DESC') // Eng so'nggi xabar yuborilgan chatlar birinchi keladi
       .getMany();
 
+    // Har bir chat xonasi uchun faqat oxirgi xabarni yuklash
     const chatRoomsWithLastMessage = await Promise.all(
       chatRooms.map(async (room) => {
         const lastMessage = await this.messageRepository.findOne({
           where: { chatRoom: { id: room.id } },
           order: { createdAt: 'DESC' },
-          relations: ['sender'],
+          relations: ['sender'], // Xabar yuboruvchisini ham olamiz
         });
 
+        // Foydalanuvchining chatdagi boshqa ishtirokchisini topish
         const otherParticipant = room.participants.find((p) => p.id !== userId);
 
         return {
           id: room.id,
-          productName: room.product?.title || 'Mahsulot topilmadi',
+          productName: room.product?.title || 'Mahsulot topilmadi', // Mahsulot nomi
           otherParticipant: otherParticipant
             ? { id: otherParticipant.id, username: otherParticipant.username }
             : null,
@@ -79,7 +77,7 @@ export class ChatService {
    * Foydalanuvchi chatni ochganda chaqiriladi.
    */
   async getChatRoomMessages(
-    chatRoomId: number,
+    chatRoomId: string,
     page: number = 1,
     limit: number = 50,
   ) {
@@ -108,29 +106,33 @@ export class ChatService {
    */
   async findOrCreateChatRoom(
     productId: number,
-    participantIds: number[],
+    participantIds: string[],
   ): Promise<ChatRoom> {
-    if (participantIds?.length !== 2) {
+    if (participantIds.length !== 2) {
       throw new BadRequestException(
         'Chat xonasi uchun aniq 2 ta ishtirokchi kerak.',
       );
     }
 
+    // Foydalanuvchilarning mavjudligini tekshirish
     const participants = await this.userRepository.findBy({
       id: In(participantIds),
     });
-
-    if (participants?.length !== 2) {
+    if (participants.length !== 2) {
       throw new NotFoundException(
         'Ishtirokchilardan biri yoki ikkalasi ham topilmadi.',
       );
     }
 
+    // Mahsulotni topamiz
     const product = await this.productRepository.findOneBy({ id: productId });
     if (!product) {
       throw new NotFoundException('Mahsulot topilmadi.');
     }
 
+    // Chat xonasini topishga urinish:
+    // 1. Shu mahsulotga tegishli bo'lishi kerak.
+    // 2. Ikkala ishtirokchi ham shu chat xonasida bo'lishi kerak.
     const existingChatRoom = await this.chatRoomRepository
       .createQueryBuilder('chatRoom')
       .innerJoin('chatRoom.participants', 'participant1')
@@ -141,27 +143,23 @@ export class ChatService {
       .getOne();
 
     if (existingChatRoom) {
-      return existingChatRoom;
+      return existingChatRoom; // Mavjud chat xonasini qaytaramiz
     }
 
-    // Yangi chat xonasini yaratamiz, lekin avval participantsiz saqlaymiz
+    // Agar topilmasa, yangi chat xonasi yaratamiz
     const newChatRoom = this.chatRoomRepository.create({
-      product: product,
-      // participants: participants, // BU QISMNI VAQTINCHA OLIB TASHLAYMIZ
+      product: product, // Product obyektini to'g'ridan-to'g'ri bog'laymiz
+      participants: participants, // Participants massivini to'g'ridan-to'g'ri bog'laymiz
     });
 
-    const savedChatRoom = await this.chatRoomRepository.save(newChatRoom); // Avval chat xonasini saqlaymiz
-
-    // Endi saqlangan chat xonasiga participants ni bog'laymiz
-    savedChatRoom.participants = participants;
-    return this.chatRoomRepository.save(savedChatRoom); // O'zgarishlarni qayta saqlaymiz
+    return this.chatRoomRepository.save(newChatRoom);
   }
 
   /**
    * Xabarni saqlash. Bu funksiyani ChatGateway ham ishlatadi.
    */
   async saveMessage(
-    chatRoomId: number,
+    chatRoomId: string,
     senderId: number,
     messageContent: string,
   ): Promise<Message> {
