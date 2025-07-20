@@ -116,7 +116,12 @@ export class ChatService {
       );
     }
 
-    // Foydalanuvchilarning mavjudligini tekshirish
+    if (!participantIds.every((id) => Number.isInteger(id))) {
+      throw new BadRequestException(
+        "participantIds faqat butun sonlardan iborat bo'lishi kerak.",
+      );
+    }
+
     const participants = await this.userRepository.findBy({
       id: In(participantIds),
     });
@@ -127,34 +132,34 @@ export class ChatService {
       );
     }
 
-    // Mahsulotni topamiz
     const product = await this.productRepository.findOneBy({ id: productId });
     if (!product) {
       throw new NotFoundException('Mahsulot topilmadi.');
     }
 
-    // Chat xonasini topishga urinish:
-    // 1. Shu mahsulotga tegishli bo'lishi kerak.
-    // 2. Ikkala ishtirokchi ham shu chat xonasida bo'lishi kerak.
     const existingChatRoom = await this.chatRoomRepository
       .createQueryBuilder('chatRoom')
-      .innerJoin('chatRoom.participants', 'participant1')
-      .innerJoin('chatRoom.participants', 'participant2')
+      .innerJoin('chatRoom.participants', 'participant')
       .where('chatRoom.productId = :productId', { productId })
-      .andWhere('participant1.id = :id1', { id1: participantIds[0] })
-      .andWhere('participant2.id = :id2', { id2: participantIds[1] })
+      .andWhere('participant.id IN (:...participantIds)', { participantIds })
+      .groupBy('chatRoom.id')
+      .having('COUNT(DISTINCT participant.id) = :count', {
+        count: participantIds.length,
+      })
       .getOne();
 
     if (existingChatRoom) {
-      return existingChatRoom; // Mavjud chat xonasini qaytaramiz
+      return existingChatRoom;
     }
 
-    // Agar topilmasa, yangi chat xonasi yaratamiz
     const newChatRoom = this.chatRoomRepository.create({
-      product: product, // Product obyektini to'g'ridan-to'g'ri bog'laymiz
-      participants: participants, // Participants massivini to'g'ridan-to'g'ri bog'laymiz
+      product,
+      participants,
     });
 
+    console.log('participantIds:', participantIds);
+    console.log('productId:', productId);
+    console.log('participants:', participants);
     return this.chatRoomRepository.save(newChatRoom);
   }
 
