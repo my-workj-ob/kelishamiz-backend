@@ -87,10 +87,7 @@ export class User {
   @Column({ nullable: true })
   districtId?: number;
 
-  @ManyToMany(() => ChatRoom, (chatRoom) => chatRoom.participants, {
-    onDelete: 'CASCADE',
-  })
-  @JoinTable()
+  @ManyToMany(() => ChatRoom, (chatRoom) => chatRoom.participants)
   chatRooms: ChatRoom[];
 
   @OneToMany(() => Message, (message) => message.sender, {
