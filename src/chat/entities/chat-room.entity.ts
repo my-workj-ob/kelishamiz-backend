@@ -1,4 +1,3 @@
-    
 import { User } from './../../auth/entities/user.entity';
 import { Product } from './../../product/entities/product.entity';
 import {
@@ -28,12 +27,14 @@ export class ChatRoom {
   })
   product: Product;
 
-    
-  @ManyToMany(() => User, (user) => user.chatRooms, { cascade: true }) // cascade: true foydalanuvchilar yaratilganda ularni bog'lashga yordam beradi
-  @JoinTable() // Bu jadval ManyToMany munosabati uchun qo'shimcha jadval yaratadi
+  @ManyToMany(() => User, (user) => user.chatRooms, { cascade: true })
+  @JoinTable({
+    name: 'user_chat_rooms_chat_room',
+    joinColumn: { name: 'chatRoomId', referencedColumnName: 'id' }, // uuid
+    inverseJoinColumn: { name: 'userId', referencedColumnName: 'id' }, // integer
+  })
   participants: User[];
 
-    
   @OneToMany(() => Message, (message) => message.chatRoom)
   messages: Message[];
 
