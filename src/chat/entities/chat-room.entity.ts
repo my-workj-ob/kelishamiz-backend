@@ -20,7 +20,7 @@ export class ChatRoom {
   id: number;
 
   @Column({ name: 'productid' })
-  productId: number;
+  productid: number;
 
   @ManyToOne(() => Product, (product) => product.chatRooms)
   product: Product;
