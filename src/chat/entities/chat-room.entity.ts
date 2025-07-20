@@ -25,9 +25,18 @@ export class ChatRoom {
   @ManyToOne(() => Product, (product) => product.chatRooms)
   product: Product;
 
-  // Bu chat xonasida qatnashuvchi foydalanuvchilar (ko'pincha 2ta bo'ladi: mahsulot egasi va sotib oluvchi)
-  @ManyToMany(() => User, (user) => user.chatRooms, { cascade: true }) // cascade: true foydalanuvchilar yaratilganda ularni bog'lashga yordam beradi
-  @JoinTable() // Bu jadval ManyToMany munosabati uchun qo'shimcha jadval yaratadi
+  @ManyToMany(() => User, (user) => user.chatRooms, { cascade: true })
+  @JoinTable({
+    name: 'chat_room_participants_user', // aniq jadval nomi
+    joinColumn: {
+      name: 'chatRoomId',
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      name: 'userId',
+      referencedColumnName: 'id',
+    },
+  })
   participants: User[];
 
   // Ushbu chat xonasidagi barcha xabarlar
