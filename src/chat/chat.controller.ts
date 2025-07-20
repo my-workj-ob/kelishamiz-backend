@@ -67,6 +67,7 @@ export class ChatController {
     @Body('participantIds') participantIds: number[],
     @Req() req: any, // User ID ni olish uchun
   ) {
+    
     const authenticatedUserId = req.user.userId;
 
     // ⚠️ Agar participantIds bo‘sh bo‘lsa yoki undefined bo‘lsa, uni array qilib olamiz

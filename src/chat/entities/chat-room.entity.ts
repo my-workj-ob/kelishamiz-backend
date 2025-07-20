@@ -29,8 +29,8 @@ export class ChatRoom {
   @ManyToMany(() => User, (user) => user.chatRooms, { cascade: true })
   @JoinTable({
     name: 'user_chat_rooms_chat_room',
-    joinColumn: { name: 'userId', referencedColumnName: 'id' }, // Bu ChatRoom egasi (sizda ChatRoom), lekin hozir userId deb qo'yilgan, lekin aslida bu ChatRoomId bo'lishi kerak
-    inverseJoinColumn: { name: 'chatRoomId', referencedColumnName: 'id' },
+    joinColumn: { name: 'chatRoomId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'userId', referencedColumnName: 'id' },
   })
   participants: User[];
 
