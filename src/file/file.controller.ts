@@ -29,10 +29,8 @@ export class FileController {
     }
 
     try {
-    
       const vercelFileUrl = await this.uploadService.uploadFile(file);
 
-    
       await this.fileService.saveFile(vercelFileUrl);
 
       return { url: vercelFileUrl };

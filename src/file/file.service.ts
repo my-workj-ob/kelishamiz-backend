@@ -25,16 +25,12 @@ export class FileService {
 
   async deleteFileByUrl(fileUrl: string): Promise<void> {
     try {
-    
-    
       const filePath = this.getFilePathFromUrl(fileUrl);
 
-    
       if (fs.existsSync(filePath)) {
         await fs.promises.unlink(filePath);
       }
 
-    
       await this.fileRepository.delete({ url: fileUrl });
     } catch (error) {
       throw new InternalServerErrorException(
@@ -44,8 +40,6 @@ export class FileService {
   }
 
   private getFilePathFromUrl(fileUrl: string): string {
-    
-    
     const basePath = path.resolve(__dirname, '../../public'); // public papka yo'li
     const urlPath = new URL(fileUrl).pathname; // /uploads/file.jpg
 
