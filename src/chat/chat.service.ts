@@ -79,7 +79,7 @@ export class ChatService {
    * Foydalanuvchi chatni ochganda chaqiriladi.
    */
   async getChatRoomMessages(
-    chatRoomId: string,
+    chatRoomId: number,
     page: number = 1,
     limit: number = 50,
   ) {
@@ -110,15 +110,11 @@ export class ChatService {
     productId: number,
     participantIds: number[],
   ): Promise<ChatRoom> {
-
-    
     if (participantIds?.length !== 2) {
       throw new BadRequestException(
         'Chat xonasi uchun aniq 2 ta ishtirokchi kerak.',
       );
     }
-
-    
 
     if (!participantIds.every((id) => Number.isInteger(id))) {
       throw new BadRequestException(
@@ -171,7 +167,7 @@ export class ChatService {
    * Xabarni saqlash. Bu funksiyani ChatGateway ham ishlatadi.
    */
   async saveMessage(
-    chatRoomId: string,
+    chatRoomId: number,
     senderId: number,
     messageContent: string,
   ): Promise<Message> {
