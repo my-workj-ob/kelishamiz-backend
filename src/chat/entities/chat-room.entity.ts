@@ -19,8 +19,8 @@ export class ChatRoom {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  productId: string;
+  @Column({ name: 'productid' })
+  productId: number;
 
   @ManyToOne(() => Product, (product) => product.chatRooms)
   product: Product;
@@ -34,9 +34,9 @@ export class ChatRoom {
   @OneToMany(() => Message, (message) => message.chatRoom)
   messages: Message[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'createdat' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updatedat' })
   updatedAt: Date;
 }
