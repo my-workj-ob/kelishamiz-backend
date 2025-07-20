@@ -44,7 +44,7 @@ export class ChatController {
    */
   @Get(':chatRoomId/messages')
   async getChatRoomMessages(
-    @Param('chatRoomId') chatRoomId: number,
+    @Param('chatRoomId') chatRoomId: string,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '50',
   ) {
@@ -64,33 +64,14 @@ export class ChatController {
   @Post('create-or-get')
   async createOrGetChatRoom(
     @Body('productId') productId: number,
-    @Body('participantIds') participantIds: number[],
-    @Req() req: any, // User ID ni olish uchun
+    @Body('participantIds') participantIds: string[],
+    @Req() req: any, // Hozirgi user ID sini olish uchun
   ) {
-    const authenticatedUserId = req.user.userId;
-
-    // ⚠️ Agar participantIds bo‘sh bo‘lsa yoki undefined bo‘lsa, uni array qilib olamiz
-    const participants = participantIds ?? [];
-
-    console.log('participants: ', participants);
-
-    // Autentifikatsiyalangan foydalanuvchi ro‘yxatda yo‘q bo‘lsa, qo‘shamiz
-    if (!participants.includes(authenticatedUserId)) {
-      participants.push(authenticatedUserId);
+    // Autentifikatsiya qilingan user ID sini participantIds ga qo'shamiz
+    const authenticatedUserId = req.user.userId; // Haqiqiy autentifikatsiya qilingan user ID
+    if (!participantIds.includes(authenticatedUserId)) {
+      participantIds.push(authenticatedUserId);
     }
-    //
-
-    // Agar faqat bitta ishtirokchi bo‘lsa va u authenticated user bo‘lmasa, uni ham qo‘shamiz
-    if (participants.length === 1 && participants[0] !== authenticatedUserId) {
-      participants.push(authenticatedUserId);
-    }
-
-    console.log('Creating or finding chat room with:', {
-      productId,
-      participants,
-      authenticatedUserId,
-    });
-
-    return this.chatService.findOrCreateChatRoom(productId, participants);
+    return this.chatService.findOrCreateChatRoom(productId, participantIds);
   }
 }
