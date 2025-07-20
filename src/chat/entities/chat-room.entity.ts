@@ -26,6 +26,7 @@ export class ChatRoom {
     onDelete: 'CASCADE',
   })
   product: Product;
+
   @ManyToMany(() => User, (user) => user.chatRooms, { cascade: true })
   @JoinTable({
     name: 'user_chat_rooms_chat_room',
