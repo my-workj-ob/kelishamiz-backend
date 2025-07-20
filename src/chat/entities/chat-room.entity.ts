@@ -19,8 +19,8 @@ export class ChatRoom {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'productid' })
-  productid: number;
+  @Column({ name: 'productId' })
+  productId: number;
 
   @ManyToOne(() => Product, (product) => product.chatRooms)
   product: Product;
