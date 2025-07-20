@@ -54,7 +54,7 @@ import { PaymeModule } from './payme/payme.module';
       type: 'postgres',
       host: '45.92.173.136',
       port: 5432,
-      username: 'mydb',
+      username: 'postgres',
       password: '0GzjPHd6pBn1jH83',
       database: 'postgres',
       synchronize: true,
