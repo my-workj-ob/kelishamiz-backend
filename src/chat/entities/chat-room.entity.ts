@@ -16,8 +16,8 @@ import { Message } from './message.entity';
 
 @Entity()
 export class ChatRoom {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
   productId: string;

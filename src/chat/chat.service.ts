@@ -79,7 +79,7 @@ export class ChatService {
    * Foydalanuvchi chatni ochganda chaqiriladi.
    */
   async getChatRoomMessages(
-    chatRoomId: number,
+    chatRoomId: string,
     page: number = 1,
     limit: number = 50,
   ) {
@@ -167,7 +167,7 @@ export class ChatService {
    * Xabarni saqlash. Bu funksiyani ChatGateway ham ishlatadi.
    */
   async saveMessage(
-    chatRoomId: number,
+    chatRoomId: string,
     senderId: number,
     messageContent: string,
   ): Promise<Message> {
