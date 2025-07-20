@@ -118,6 +118,7 @@ export class ChatService {
     const participants = await this.userRepository.findBy({
       id: In(participantIds),
     });
+    
     if (participants.length !== 2) {
       throw new NotFoundException(
         'Ishtirokchilardan biri yoki ikkalasi ham topilmadi.',
