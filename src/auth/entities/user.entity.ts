@@ -36,10 +36,10 @@ export class User {
   phone: string;
 
   @Column({ unique: false, nullable: false })
-  username?: string;
+  username: string;
 
   @Column({ nullable: true })
-  password?: string;
+  password: string;
 
   @OneToOne(() => Profile, (profile) => profile.user, { onDelete: 'CASCADE' })
   profile: Profile;
