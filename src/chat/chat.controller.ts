@@ -64,7 +64,7 @@ export class ChatController {
   @Post('create-or-get')
   async createOrGetChatRoom(
     @Body('productId') productId: number,
-    @Body('participantIds') participantIds: string[],
+    @Body('participantIds') participantIds: number[],
     @Req() req: any, // User ID ni olish uchun
   ) {
     const authenticatedUserId = req.user.userId;
@@ -78,13 +78,12 @@ export class ChatController {
     if (!participants.includes(authenticatedUserId)) {
       participants.push(authenticatedUserId);
     }
-    // 
+    //
 
     // Agar faqat bitta ishtirokchi bo‘lsa va u authenticated user bo‘lmasa, uni ham qo‘shamiz
     if (participants.length === 1 && participants[0] !== authenticatedUserId) {
       participants.push(authenticatedUserId);
     }
-    
 
     console.log('Creating or finding chat room with:', {
       productId,
