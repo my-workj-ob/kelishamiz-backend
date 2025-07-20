@@ -44,7 +44,7 @@ export class ChatController {
    */
   @Get(':chatRoomId/messages')
   async getChatRoomMessages(
-    @Param('chatRoomId') chatRoomId: number,
+    @Param('chatRoomId') chatRoomId: string,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '50',
   ) {
@@ -67,7 +67,6 @@ export class ChatController {
     @Body('participantIds') participantIds: number[],
     @Req() req: any, // User ID ni olish uchun
   ) {
-    
     const authenticatedUserId = req.user.userId;
 
     // ⚠️ Agar participantIds bo‘sh bo‘lsa yoki undefined bo‘lsa, uni array qilib olamiz
