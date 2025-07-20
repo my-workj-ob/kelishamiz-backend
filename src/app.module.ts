@@ -57,7 +57,7 @@ import { PaymeModule } from './payme/payme.module';
       username: 'postgres',
       password: '0GzjPHd6pBn1jH83',
       database: 'postgres',
-      synchronize: true,
+      synchronize: false,
       autoLoadEntities: true,
     }),
 
