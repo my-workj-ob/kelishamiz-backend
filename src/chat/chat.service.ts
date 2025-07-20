@@ -116,12 +116,6 @@ export class ChatService {
       );
     }
 
-    if (!participantIds.every((id) => Number.isInteger(id))) {
-      throw new BadRequestException(
-        "participantIds faqat butun sonlardan iborat bo'lishi kerak.",
-      );
-    }
-
     const participants = await this.userRepository.findBy({
       id: In(participantIds),
     });
@@ -139,28 +133,28 @@ export class ChatService {
 
     const existingChatRoom = await this.chatRoomRepository
       .createQueryBuilder('chatRoom')
-      .innerJoin('chatRoom.participants', 'participant')
+      .innerJoin('chatRoom.participants', 'participant1')
+      .innerJoin('chatRoom.participants', 'participant2')
       .where('chatRoom.productId = :productId', { productId })
-      .andWhere('participant.id IN (:...participantIds)', { participantIds })
-      .groupBy('chatRoom.id')
-      .having('COUNT(DISTINCT participant.id) = :count', {
-        count: participantIds.length,
-      })
+      .andWhere('participant1.id = :id1', { id1: participantIds[0] })
+      .andWhere('participant2.id = :id2', { id2: participantIds[1] })
       .getOne();
 
     if (existingChatRoom) {
       return existingChatRoom;
     }
 
+    // Yangi chat xonasini yaratamiz, lekin avval participantsiz saqlaymiz
     const newChatRoom = this.chatRoomRepository.create({
-      product,
-      participants,
+      product: product,
+      // participants: participants, // BU QISMNI VAQTINCHA OLIB TASHLAYMIZ
     });
 
-    console.log('participantIds:', participantIds);
-    console.log('productId:', productId);
-    console.log('participants:', participants);
-    return this.chatRoomRepository.save(newChatRoom);
+    const savedChatRoom = await this.chatRoomRepository.save(newChatRoom); // Avval chat xonasini saqlaymiz
+
+    // Endi saqlangan chat xonasiga participants ni bog'laymiz
+    savedChatRoom.participants = participants;
+    return this.chatRoomRepository.save(savedChatRoom); // O'zgarishlarni qayta saqlaymiz
   }
 
   /**
