@@ -44,7 +44,7 @@ export class ChatController {
    */
   @Get(':chatRoomId/messages')
   async getChatRoomMessages(
-    @Param('chatRoomId') chatRoomId: string,
+    @Param('chatRoomId') chatRoomId: number,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '50',
   ) {
