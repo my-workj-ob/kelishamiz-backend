@@ -26,12 +26,11 @@ export class ChatRoom {
     onDelete: 'CASCADE',
   })
   product: Product;
-
   @ManyToMany(() => User, (user) => user.chatRooms, { cascade: true })
   @JoinTable({
     name: 'user_chat_rooms_chat_room',
-    joinColumn: { name: 'chatRoomId', referencedColumnName: 'id' }, // uuid
-    inverseJoinColumn: { name: 'userId', referencedColumnName: 'id' }, // integer
+    joinColumn: { name: 'userId', referencedColumnName: 'id' }, // Bu ChatRoom egasi (sizda ChatRoom), lekin hozir userId deb qo'yilgan, lekin aslida bu ChatRoomId bo'lishi kerak
+    inverseJoinColumn: { name: 'chatRoomId', referencedColumnName: 'id' },
   })
   participants: User[];
 
