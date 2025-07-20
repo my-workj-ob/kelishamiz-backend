@@ -45,7 +45,7 @@ export class ChatGateway {
   @SubscribeMessage('sendMessage')
   async handleSendMessage(
     @MessageBody()
-    data: { chatRoomId: number; senderId: number; message: string },
+    data: { chatRoomId: string; senderId: number; message: string },
     @ConnectedSocket() client: Socket,
   ): Promise<void> {
     console.log('Received message:', data);
