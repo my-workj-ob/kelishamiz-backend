@@ -59,7 +59,6 @@ import { PaymeModule } from './payme/payme.module';
       database: 'postgres',
       synchronize: true,
       autoLoadEntities: true,
-      dropSchema: true,
     }),
 
     CacheModule.registerAsync({
