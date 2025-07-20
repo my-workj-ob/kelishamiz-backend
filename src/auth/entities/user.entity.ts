@@ -32,10 +32,10 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true, nullable: true })
+  @Column({ unique: true, nullable: false })
   phone: string;
 
-  @Column({ unique: false })
+  @Column({ unique: false, nullable: false })
   username?: string;
 
   @Column({ nullable: true })
