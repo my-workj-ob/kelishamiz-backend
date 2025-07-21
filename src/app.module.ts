@@ -49,6 +49,17 @@ import { PaymeModule } from './payme/payme.module';
         limit: 100,
       },
     ]),
+    //
+    // TypeOrmModule.forRoot({
+    //   type: 'postgres',
+    //   host: 'localhost', // yoki 127.0.0.1
+    //   port: 5432,
+    //   username: 'postgres', // bu sizning lokal PostgreSQL foydalanuvchingiz
+    //   password: '0000', // bu yerga sizning lokal postgres parolingiz
+    //   database: 'kelishamiz', // bu yerga lokal bazangiz nomini yozing
+    //   synchronize: true, // true faqat dev uchun, prod-da false bo'lishi kerak
+    //   autoLoadEntities: true,
+    // }),
 
     TypeOrmModule.forRoot({
       type: 'postgres',
@@ -59,8 +70,8 @@ import { PaymeModule } from './payme/payme.module';
       database: 'postgres',
       synchronize: false,
       autoLoadEntities: true,
-    }), 
-// 
+    }),
+
     CacheModule.registerAsync({
       isGlobal: true,
       useFactory: async () => ({
