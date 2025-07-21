@@ -1,8 +1,3 @@
-    
-    
-    
-    
-    
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
@@ -15,7 +10,11 @@ import { NotificationService } from './notification.service';
 
 @WebSocketGateway({
   cors: {
-    origin: ['http://localhost:8888', 'https://tester-ajuz.onrender.com'],
+    origin: [
+      'https://api.kelishamiz.uz',
+      'https://kelishamiz.uz',
+      'http://localhost:8888',
+    ],
     credentials: true,
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -85,7 +84,6 @@ export class NotificationGateway
     );
     const count = await this.notificationService.getUnreadCount(userId);
 
-    
     if (this.userSockets.has(userId)) {
       this.server.to(`user-${userId}`).emit('notification', {
         id: saved.id,
