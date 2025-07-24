@@ -17,7 +17,7 @@ import { ProductModule } from './product/product.module';
 import { ProfileModule } from './profile/profile.module';
 import { PropertyController } from './property/property.controller';
 import { PropertyModule } from './property/property.module';
-import { UserSearch } from './search-filter/entities/user-search.entity';
+// import { UserSearch } from './search-filter/entities/user-search.entity';
 import { SearchFilterController } from './search-filter/search-filter.controller';
 import { SearchModule } from './search-filter/search-filter.module';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -59,7 +59,6 @@ import { PaymeModule } from './payme/payme.module';
     //   database: 'kelishamiz', // bu yerga lokal bazangiz nomini yozing
     //   synchronize: true, // true faqat dev uchun, prod-da false bo'lishi kerak
     //   autoLoadEntities: true,
-    // }),
 
     TypeOrmModule.forRoot({
       type: 'postgres',
@@ -70,7 +69,7 @@ import { PaymeModule } from './payme/payme.module';
       database: 'postgres',
       synchronize: false,
       autoLoadEntities: true,
-    }),
+    }), // }),
 
     CacheModule.registerAsync({
       isGlobal: true,
@@ -91,7 +90,6 @@ import { PaymeModule } from './payme/payme.module';
     SearchModule,
     ChatModule,
     NotificationModule,
-
     UserModule,
     BannerModule,
     PaymeModule,

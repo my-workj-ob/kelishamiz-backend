@@ -64,18 +64,37 @@ export class ProductService {
     private dataSource: DataSource,
   ) {}
 
+  /**
+   * Barcha mahsulotlarni pagination, like holati, admin huquqlari
+   * hamda region va tumanlar bo'yicha filtrlash bilan topadi.
+   *
+   * @param userId Mahsulotlarni like qilgan foydalanuvchi IDsi. Agar null bo'lsa, autentifikatsiya qilinmagan foydalanuvchi.
+   * @param page Sahifa raqami.
+   * @param pageSize Sahifadagi elementlar soni.
+   * @param likedIds Autentifikatsiya qilinmagan foydalanuvchilar uchun "like" qilingan mahsulot ID'lari.
+   * @param isAdmin Foydalanuvchi admin ekanligini bildiradi.
+   * @param regionId Opsional region IDsi bo'yicha filtrlash.
+   * @param districtIds Opsional tuman ID'lari massivi bo'yicha filtrlash (maksimal 3 ta).
+   * @returns Paginated mahsulotlar ro'yxati va umumiy soni.
+   */
   async findAllPaginated(
     userId: number | null,
     page = 1,
     pageSize = 10,
     likedIds: number[] = [],
     isAdmin: boolean = false,
+    regionId?: number, // Yangi: regionId raqam bo'lishi kerak
+    districtIds: number[] = [], // Yangi: districtIds raqamlar massivi bo'lishi kerak
   ): Promise<{
     data: (Product & { isLike: boolean })[];
     total: number;
     page: number;
     pageSize: number;
   }> {
+    this.logger.log(
+      `Fetching paginated products: page=${page}, pageSize=${pageSize}, userId=${userId}, isAdmin=${isAdmin}, likedIds=${likedIds.join(',')}, regionId=${regionId}, districtIds=${districtIds.join(',')}`,
+    );
+
     const skip = (page - 1) * pageSize;
 
     const queryBuilder = this.productRepository
@@ -88,27 +107,70 @@ export class ProductService {
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.likes', 'likes')
       .orderBy('product.isTop', 'DESC')
-      .addOrderBy('images.order', 'ASC'); // rasm orderi bo‘yicha oxirida tartiblash
+      .addOrderBy('product.createdAt', 'DESC') // Yangi mahsulotlar yuqorida
+      .addOrderBy('images.order', 'ASC');
 
-    // Faqat publish qilingan mahsulotlar (admin bo'lmasa)
+    // Asosiy WHERE shartlari (barcha filtrlar uchun)
+    const whereConditions: string[] = [];
+    const parameters: { [key: string]: any } = {};
+
+    // 1. Faqat publish qilingan mahsulotlar (admin bo'lmasa)
     if (!isAdmin) {
-      queryBuilder.where('product.isPublish = :isPublish', {
-        isPublish: true,
-      });
+      whereConditions.push('product.isPublish = :isPublish');
+      parameters.isPublish = true;
+      this.logger.debug('Filtering for published products (non-admin user).');
+    }
+
+    // 2. Region bo'yicha filtrlash
+    if (regionId) {
+      whereConditions.push('product.region.id = :regionId');
+      parameters.regionId = regionId;
+      this.logger.debug(`Filtering by regionId: ${regionId}`);
+    }
+
+    // 3. Tumanlar bo'yicha filtrlash (maksimal 3 ta tuman)
+    const effectiveDistrictIds = districtIds.slice(0, 3); // Eng ko'pi bilan 3 ta tuman
+
+    if (effectiveDistrictIds.length > 0) {
+      // Agar tumanlar tanlangan bo'lsa, ularni queryga qo'shamiz
+      whereConditions.push('product.district.id IN (:...effectiveDistrictIds)'); // `IN` operatori TypeORM uchun
+      parameters.effectiveDistrictIds = effectiveDistrictIds;
+      this.logger.debug(
+        `Filtering by effectiveDistrictIds: ${effectiveDistrictIds.join(', ')}`,
+      );
+    } else if (regionId && effectiveDistrictIds.length === 0) {
+      // Agar tumanlar tanlanmagan bo'lsa va faqat regionId berilgan bo'lsa,
+      // bu o'sha regiondagi barcha mahsulotlarni qidirishni anglatadi.
+      // Bu holatda districtIdga qo'shimcha shart qo'yilmaydi.
+      this.logger.debug('No districts selected, searching by region only.');
+    } else {
+      // Agar na regionId na districtId berilmagan bo'lsa,
+      // bu yerda qanday xatti-harakat qilishni belgilashingiz kerak.
+      // Hozirda bu holatda boshqa filtrlarga bog'liq bo'lmagan
+      // barcha (yoki publish qilingan) mahsulotlar qaytariladi.
+    }
+
+    // Barcha WHERE shartlarini qo'shish
+    if (whereConditions.length > 0) {
+      queryBuilder.where(whereConditions.join(' AND '), parameters);
     }
 
     // Total count
     const total = await queryBuilder.getCount();
+    this.logger.debug(`Total products found (before pagination): ${total}`);
 
     // Pagination
     const products = await queryBuilder.skip(skip).take(pageSize).getMany();
+    this.logger.debug(`Found ${products.length} products after pagination.`);
 
     // isLike flag
     const result = products.map((product) => {
-      const isLike = userId
-        ? product.likes?.some((user) => user.id === userId)
-        : likedIds.includes(product.id);
-
+      let isLike: boolean = false;
+      if (userId) {
+        isLike = product.likes?.some((user) => user.id === userId) || false;
+      } else {
+        isLike = likedIds.includes(product.id);
+      }
       return {
         ...product,
         isLike,
