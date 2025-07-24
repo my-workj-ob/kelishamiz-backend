@@ -11,7 +11,7 @@ import { ProfileService } from './../profile/profile.service';
 
 @WebSocketGateway({
   cors: {
-    origin: ['https://kelishamiz.uz', 'http://localhost:5173'], // Ishlab chiqarish va rivojlanish uchun URL manzillari
+    origin: ['https://kelishamiz.uz', 'https://api.kelishamiz.uz', 'http://localhost:5173'], // Ishlab chiqarish va rivojlanish uchun URL manzillari
     credentials: true,
     transports: ['websocket', 'polling'],
   },

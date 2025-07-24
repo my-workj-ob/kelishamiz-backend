@@ -82,7 +82,7 @@ export class ProductController {
   // 🔹 GET: All products
   @Get()
   @ApiOkResponse({
-    description: "Barcha mahsulotlar ro'yxati",
+    description: "Barcha mahsulotlar ro'yxati (pagination, filtrlar bilan)",
     schema: {
       example: {
         data: [
@@ -95,45 +95,83 @@ export class ProductController {
     },
   })
   @ApiOperation({
-    summary: 'barcha productlarni get qilish (pagination bilan)',
+    summary: 'Barcha mahsulotlarni pagination, filtrlar bilan olish',
+    description:
+      'Barcha mahsulotlarni sahifalangan ro\'yxatini qaytaradi. Filtering regionId, districtIds bo\'yicha amalga oshiriladi. Autentifikatsiya qilingan foydalanuvchilar uchun "isLike" holati haqiqiy userId asosida, autentifikatsiya qilinmagan foydalanuvchilar uchun esa "likedIds" query parametri asosida aniqlanadi. Adminlar barcha mahsulotlarni (published/unpublished) ko\'rishi mumkin.',
   })
   @ApiQuery({
     name: 'page',
     required: false,
     type: Number,
     description: 'Sahifa raqami (standart: 1)',
+    example: 1,
   })
   @ApiQuery({
     name: 'pageSize',
     required: false,
     type: Number,
     description: 'Sahifadagi elementlar soni (standart: 10)',
+    example: 10,
   })
   @ApiQuery({
     name: 'likedIds',
     required: false,
     type: String,
-    description: 'Mahsulot IDlari (vergul bilan ajratilgan)',
+    description:
+      'Autentifikatsiya qilinmagan foydalanuvchilar uchun "like" qilingan mahsulot IDlari. Vergul bilan ajratilgan string bo\'lishi kerak (masalan: "1,2,3").',
+    example: '1,5,10',
   })
-  @UseGuards(JwtOptionalAuthGuard) // Ixtiyoriy autentifikatsiya, chunki ba'zida user bo'lmasligi mumkin
+  @ApiQuery({
+    // Yangi: regionId uchun Swagger hujjati
+    name: 'regionId',
+    required: false,
+    type: Number,
+    description: "Mahsulotlarni ma'lum bir region IDsi bo'yicha filtrlash.",
+    example: 1,
+  })
+  @ApiQuery({
+    // Yangi: districtIds uchun Swagger hujjati
+    name: 'districtIds',
+    required: false,
+    type: String, // String sifatida qabul qilinadi va keyin massivga parse qilinadi
+    description:
+      "Mahsulotlarni ma'lum tuman IDlari bo'yicha filtrlash. Vergul bilan ajratilgan string bo'lishi kerak (maksimal 3 ta, masalan: \"101,102,103\").",
+    example: '101,102',
+  })
+  @UseGuards(JwtOptionalAuthGuard)
   async findAll(
-    @Req() req: AuthenticatedRequest, // Tipto'g'ri request
-    @Query('page', new ParseIntPipe({ optional: true })) page = 1, // optional true qilib qo'shish
-    @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize = 10, // optional true qilib qo'shish
-    @Query('likedIds') likedIdsStr?: string | null,
+    @Req() req: AuthenticatedRequest,
+    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
+    @Query('pageSize', new ParseIntPipe({ optional: true }))
+    pageSize: number = 10,
+    @Query('likedIds') likedIdsStr?: string,
+    @Query('regionId', new ParseIntPipe({ optional: true })) regionId?: number, // Yangi: regionId ni number qilib parse qilish
+    @Query('districtIds') districtIdsStr?: string, // Yangi: districtIds ni string sifatida qabul qilish
   ): Promise<{
     data: (Product & { isLike: boolean })[];
     total: number;
     page: number;
     pageSize: number;
   }> {
+    console.log(
+      `Received GET /products request. User: ${req.user?.userId}, likedIdsStr: ${likedIdsStr}, regionId: ${regionId}, districtIdsStr: ${districtIdsStr}`,
+    );
+
     const userId = req.user?.userId ?? null;
-    const isAdmin = req.user?.role === UserRole.ADMIN; // ADMIN rolini tekshirish
+    const isAdmin = req.user?.role === UserRole.ADMIN;
 
     const likedIds = likedIdsStr
       ? likedIdsStr
           .split(',')
-          .map((id) => Number(id))
+          .map((id) => Number(id.trim()))
+          .filter((id) => !isNaN(id))
+      : [];
+
+    // Yangi: districtIds stringini raqamlar massiviga aylantirish
+    const districtIds = districtIdsStr
+      ? districtIdsStr
+          .split(',')
+          .map((id) => Number(id.trim()))
           .filter((id) => !isNaN(id))
       : [];
 
@@ -142,10 +180,11 @@ export class ProductController {
       page,
       pageSize,
       likedIds,
-      isAdmin, // isAdmin parametrini uzatish
+      isAdmin,
+      regionId, // Yangi parametr
+      districtIds, // Yangi parametr
     );
   }
-
   @Get('top')
   @ApiOperation({
     summary:
