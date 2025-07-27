@@ -1043,9 +1043,7 @@ export class ProductService {
         throw new BadRequestException('Rasmlar soni 10 tadan oshmasligi kerak');
       }
 
-      imagesToSave.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      imagesToSave.forEach((img, index) => (img.order = index));
-
+    
       await queryRunner.manager.save(imagesToSave);
       product.images = imagesToSave;
 
