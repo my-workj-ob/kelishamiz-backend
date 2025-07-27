@@ -108,7 +108,7 @@ export class ProductService {
       .leftJoinAndSelect('product.likes', 'likes')
       .orderBy('product.isTop', 'DESC')
       .addOrderBy('product.createdAt', 'DESC') // Yangi mahsulotlar yuqorida
-      .addOrderBy('images.order', 'ASC');
+      .addOrderBy('images.order', 'DESC');
 
     // Asosiy WHERE shartlari (barcha filtrlar uchun)
     const whereConditions: string[] = [];
