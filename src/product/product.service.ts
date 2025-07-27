@@ -579,7 +579,7 @@ export class ProductService {
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.likes', 'likes')
       .addOrderBy('images.order', 'ASC')
-      .addOrderBy('images.id', 'DESC');
+      .addOrderBy('images.images.id', 'DESC');
 
     if (categoryId) {
       queryBuilder.andWhere('product.categoryId = :categoryId', { categoryId });
@@ -851,7 +851,6 @@ export class ProductService {
     await queryRunner.startTransaction();
 
     try {
-      // 1. Mahsulotni o‘qish (relations bilan)
       const product = await queryRunner.manager.findOne(Product, {
         where: { id },
         relations: [
@@ -868,7 +867,6 @@ export class ProductService {
         throw new NotFoundException('Product not found');
       }
 
-      // 2. Asosiy maydonlarni yangilash
       const updatableFields = [
         'title',
         'description',
@@ -897,7 +895,7 @@ export class ProductService {
         }
       }
 
-      // 3. Region yangilash
+      // Region
       if (body.regionId !== undefined) {
         const regionId = toNumber(body.regionId);
         const region = await queryRunner.manager.findOne(Region, {
@@ -908,7 +906,7 @@ export class ProductService {
         product.regionId = region.id;
       }
 
-      // 4. District yangilash
+      // District
       if (body.districtId !== undefined) {
         const districtId = toNumber(body.districtId);
         const district = await queryRunner.manager.findOne(District, {
@@ -919,8 +917,7 @@ export class ProductService {
         product.districtId = district.id;
       }
 
-      // 5. Product propertiesni tozalash (avvalgi ma'lumotlar o'chiriladi)
-      this.logger.debug(`[updateProduct] Deleting old product properties...`);
+      // Product properties tozalash (clear product properties)
       await queryRunner.manager.delete(ProductProperty, {
         product: { id: product.id },
       });
@@ -928,9 +925,10 @@ export class ProductService {
       let productProperties: ProductProperty[] = [];
       let propertyValues: Array<{
         type: string;
-        value: { key: string; value: string };
+        value: { key: string; value: string } | any;
         propertyId: string;
       }> = [];
+
       if (body.properties) {
         if (typeof body.properties === 'string') {
           try {
@@ -945,24 +943,11 @@ export class ProductService {
             const key = prop.value?.key;
             const value = prop.value?.value;
 
-            // Faqat 'key' mavjud bo'lsa, propertyValues ga qo'shamiz
-            if (key && value !== undefined) {
-              propertyValues.push({
-                type: prop.type,
-                value: {
-                  key: key,
-                  value: value,
-                },
-                propertyId: prop.propertyId,
-              });
-            } else {
-              // Agar 'key' bo'lmasa, o'zgaruvchini saqlaymiz
-              propertyValues.push({
-                type: prop.type,
-                value: prop.value,
-                propertyId: prop.propertyId,
-              });
-            }
+            propertyValues.push({
+              type: prop.type,
+              value: key && value !== undefined ? { key, value } : prop.value,
+              propertyId: prop.propertyId,
+            });
 
             const pp = new ProductProperty();
             pp.propertyId = Number(prop.propertyId);
@@ -978,23 +963,27 @@ export class ProductService {
       product.propertyValues = propertyValues;
       product.productProperties = productProperties;
 
-      console.debug('productProperties: ', productProperties);
-      console.debug('propertyValues: ', propertyValues);
-
-      console.debug('productProperties: ', productProperties);
-      console.debug('propertyValues: ', propertyValues);
-
-      // 7. Rasmlarni qayta ishlash
+      // Rasmlarni qayta ishlash (process images)
       this.logger.debug(`[updateProduct] Processing images...`);
+
       const existingImages = await queryRunner.manager.find(ProductImage, {
         where: { product: { id: product.id } },
         order: { order: 'ASC', id: 'DESC' },
       });
 
       const bodyImages = Array.isArray(body.images) ? body.images : [];
-      const imageIds = new Set(bodyImages.map((img: any) => img.id));
 
-      // Keraksiz rasmlarni o'chirish
+      // Tartiblash uchun order tayyorlash (prepare order for sorting)
+      const sortedBodyImages = bodyImages
+        .map((img: any, index: number) => ({
+          ...img,
+          order: isNaN(toNumber(img.order)) ? index : toNumber(img.order),
+        }))
+        .sort((a, b) => a.order - b.order);
+
+      const imageIds = new Set(sortedBodyImages.map((img: any) => img.id));
+
+      // Keraksiz rasmlarni o‘chirish (delete unnecessary images)
       const imagesToDelete = existingImages.filter(
         (img) => !imageIds.has(img.id),
       );
@@ -1010,44 +999,42 @@ export class ProductService {
       }
       await queryRunner.manager.remove(imagesToDelete);
 
-      // Rasm saqlash uchun massiv
+      // Rasm saqlash uchun massiv (array for saving images)
       const imagesToSave: ProductImage[] = [];
 
-      // Mavjud rasmlarni yangilash yoki saqlash
-      for (const img of bodyImages) {
+      for (const img of sortedBodyImages) {
         const existing = existingImages.find((e) => e.id === img.id);
         const newImg = existing ? existing : new ProductImage();
         newImg.url = img.url;
-        newImg.order = isNaN(toNumber(img.order)) ? 0 : toNumber(img.order);
+        newImg.order = img.order;
         newImg.product = product;
         imagesToSave.push(newImg);
-        this.logger.debug(
-          `[updateProduct] Prepared existing image: ${newImg.url}`,
-        );
+        this.logger.debug(`[updateProduct] Prepared image: ${newImg.url}`);
       }
 
-      // Yangi fayllarni yuklash
+      // Yangi fayllar qo‘shish (oxiriga tartib bilan) (add new files with order at the end)
+      let maxOrder = imagesToSave.length;
       if (files?.length) {
         for (const file of files) {
           const url = await this.uploadService.uploadFile(file);
-          await this.fileService.saveFile(url);
+          await this.fileService.saveFile(url); // This line might be redundant if uploadFile already saves, or it could be for internal tracking. Adjust as per your FileService implementation.
           const newImg = new ProductImage();
           newImg.url = url;
           newImg.product = product;
-          newImg.order = 0;
+          newImg.order = maxOrder++; // navbatdagi tartib (next order)
           imagesToSave.push(newImg);
           this.logger.debug(`[updateProduct] Uploaded new image: ${url}`);
         }
       }
 
       if (imagesToSave.length > 10) {
-        throw new BadRequestException('Rasmlar soni 10 tadan oshmasligi kerak');
+        throw new BadRequestException('Rasmlar soni 10 tadan oshmasligi kerak'); // Number of images should not exceed 10
       }
 
       await queryRunner.manager.save(imagesToSave);
       product.images = imagesToSave;
 
-      // 8. Asosiy rasm indexini yangilash
+      // Asosiy rasm imageIndex dan aniqlanadi (main image is determined by imageIndex)
       const imgIndex = toNumber(body.imageIndex);
       product.imageIndex =
         !isNaN(imgIndex) && imgIndex >= 0 && imgIndex < product.images.length
@@ -1056,22 +1043,18 @@ export class ProductService {
             ? 0
             : -1;
 
-      // 9. Oxirgi saqlash va commit
-      console.debug('productProperties: ', product.productProperties);
-      console.debug('propertyValues: ', propertyValues);
-      // product.propertyValues = []; // Bazaga saqlanmaydi
+      // Mahsulotni saqlash (save product)
       const savedProduct = await queryRunner.manager.save(product);
       await queryRunner.commitTransaction();
 
       this.logger.debug(`[updateProduct] Product update committed. ID: ${id}`);
 
-      // 10. Natijani tozalangan ko‘rinishda qaytarish
       return instanceToPlain(savedProduct, {
         excludeExtraneousValues: true,
       });
     } catch (err) {
       await queryRunner.rollbackTransaction();
-      this.logger.error(`[updateProduct] Error: ${err.message}`, err.stack);
+      this.logger.error(`[updateProduct] Error: ${err.message}, ${err.stack}`);
       throw err instanceof HttpException
         ? err
         : new InternalServerErrorException('Unexpected error occurred.');
