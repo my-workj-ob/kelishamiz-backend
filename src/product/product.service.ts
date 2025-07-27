@@ -107,8 +107,7 @@ export class ProductService {
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.likes', 'likes')
       .orderBy('product.isTop', 'DESC')
-      .addOrderBy('product.createdAt', 'DESC') // Yangi mahsulotlar yuqorida
-      .addOrderBy('images.order', 'DESC');
+      .addOrderBy('product.createdAt', 'DESC'); // Yangi mahsulotlar yuqorida
 
     // Asosiy WHERE shartlari (barcha filtrlar uchun)
     const whereConditions: string[] = [];
@@ -578,7 +577,9 @@ export class ProductService {
       .leftJoin('district.region', 'districtRegion')
       .leftJoinAndSelect('product.region', 'productRegion')
       .leftJoinAndSelect('product.images', 'images')
-      .leftJoinAndSelect('product.likes', 'likes');
+      .leftJoinAndSelect('product.likes', 'likes')
+      .addOrderBy('images.order', 'ASC')
+      .addOrderBy('images.id', 'DESC');
 
     if (categoryId) {
       queryBuilder.andWhere('product.categoryId = :categoryId', { categoryId });
@@ -1043,7 +1044,6 @@ export class ProductService {
         throw new BadRequestException('Rasmlar soni 10 tadan oshmasligi kerak');
       }
 
-    
       await queryRunner.manager.save(imagesToSave);
       product.images = imagesToSave;
 
