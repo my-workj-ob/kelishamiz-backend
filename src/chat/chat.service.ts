@@ -164,29 +164,35 @@ export class ChatService {
     senderId: number,
     messageContent: string,
   ): Promise<Message> {
-    const chatRoom = await this.chatRoomRepository.findOneBy({
-      id: chatRoomId,
-    });
+    console.log('Incoming message:', messageContent);
+  
+    // Validatsiya
+    if (typeof messageContent !== 'string' || messageContent.length > 10000) {
+      throw new BadRequestException('Xabar formati noto‘g‘ri yoki juda uzun.');
+    }
+  
+    const chatRoom = await this.chatRoomRepository.findOneBy({ id: chatRoomId });
     if (!chatRoom) {
       throw new NotFoundException('Chat xonasi topilmadi.');
     }
-
+  
     const sender = await this.userRepository.findOneBy({ id: senderId });
     if (!sender) {
       throw new NotFoundException('Yuboruvchi foydalanuvchi topilmadi.');
     }
-
+  
     const newMessage = this.messageRepository.create({
       chatRoom: chatRoom,
       sender: sender,
       content: messageContent,
     });
-
+  
     const savedMessage = await this.messageRepository.save(newMessage);
-
+  
     chatRoom.updatedAt = new Date();
     await this.chatRoomRepository.save(chatRoom);
-
+  
     return savedMessage;
   }
+  
 }
