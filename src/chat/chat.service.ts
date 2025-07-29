@@ -31,28 +31,32 @@ export class ChatService {
   async getUserChatRooms(userId: number) {
     const chatRooms = await this.chatRoomRepository
       .createQueryBuilder('chatRoom')
-      .leftJoinAndSelect('chatRoom.product', 'product') // Mahsulot ma'lumotlarini olish
-      .leftJoinAndSelect('chatRoom.participants', 'participant') // Ishtirokchilarni olish
-      .leftJoinAndSelect('chatRoom.messages', 'message') // Xabarlarni olish
-      .where('participant.id = :userId', { userId }) // Foydalanuvchi ishtirok etgan chatlarni topish
-      .orderBy('chatRoom.updatedAt', 'DESC') // Eng so'nggi xabar yuborilgan chatlar birinchi keladi
+      .innerJoin(
+        'chatRoom.participants',
+        'userParticipant',
+        'userParticipant.id = :userId',
+        { userId },
+      ) // Faqat user qatnashgan chatlar
+      .leftJoinAndSelect('chatRoom.product', 'product') // Mahsulot ma'lumotlari
+      .leftJoinAndSelect('chatRoom.participants', 'participant') // Barcha ishtirokchilar (filterlanmagan)
+      .leftJoinAndSelect('chatRoom.messages', 'message') // Xabarlar
+      .orderBy('chatRoom.updatedAt', 'DESC')
       .getMany();
 
-    // Har bir chat xonasi uchun faqat oxirgi xabarni yuklash
     const chatRoomsWithLastMessage = await Promise.all(
       chatRooms.map(async (room) => {
         const lastMessage = await this.messageRepository.findOne({
           where: { chatRoom: { id: room.id } },
           order: { createdAt: 'DESC' },
-          relations: ['sender'], // Xabar yuboruvchisini ham olamiz
+          relations: ['sender'],
         });
 
-        // Foydalanuvchining chatdagi boshqa ishtirokchisini topish
+        // Endi bu yerda barcha ishtirokchilar bor bo'ladi
         const otherParticipant = room.participants.find((p) => p.id !== userId);
 
         return {
           id: room.id,
-          productName: room.product?.title || 'Mahsulot topilmadi', // Mahsulot nomi
+          productName: room.product?.title || 'Mahsulot topilmadi',
           otherParticipant: otherParticipant
             ? { id: otherParticipant.id, username: otherParticipant.username }
             : null,
