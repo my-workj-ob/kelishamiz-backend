@@ -10,17 +10,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  DataSource,
-  DeleteResult,
-  EntityNotFoundError,
-  Equal,
-  ILike,
-  In,
-  MoreThan,
-  QueryFailedError,
-  Repository,
-} from 'typeorm';
+import { DataSource, DeleteResult, In, MoreThan, Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
 import { Category } from '../category/entities/category.entity';
 import { Property } from './../category/entities/property.entity';
@@ -537,7 +527,7 @@ export class ProductService {
     portfolio.commentsCount += 1;
     return this.productRepository.save(portfolio);
   }
-
+  
   async filter(
     filters: GetProductsDto,
     userId?: number,
@@ -562,7 +552,8 @@ export class ProductService {
       currencyType,
       // negotiable,
       regionId,
-      districtId,
+      // Change districtId to potentially be an array of numbers
+      districtId, // This can now be a number or an array of numbers
       page = 1,
       pageSize = 10,
       ...otherFilters
@@ -615,11 +606,25 @@ export class ProductService {
     //   queryBuilder.andWhere('product.negotiable = :negotiable', { negotiable });
     // }
 
+    // --- MODIFICATION START ---
     if (districtId) {
-      queryBuilder.andWhere('product.districtId = :districtId', { districtId });
+      if (
+        Array.isArray(districtId) &&
+        districtId.length > 0 &&
+        districtId.length <= 3
+      ) {
+        queryBuilder.andWhere('product.districtId IN (:...districtIds)', {
+          districtIds: districtId,
+        });
+      } else if (typeof districtId === 'number') {
+        queryBuilder.andWhere('product.districtId = :districtId', {
+          districtId,
+        });
+      }
     } else if (regionId) {
       queryBuilder.andWhere('districtRegion.id = :regionId', { regionId });
     }
+    // --- MODIFICATION END ---
 
     // ADMIN bo'lmasa, faqat o'z mahsulotlarini ko'rsatish shartini qo'shamiz
     if (ownProduct && userId) {
