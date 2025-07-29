@@ -30,22 +30,26 @@ export class ChatGateway {
     private readonly userService: ProfileService, // UserService ni injektatsiya qilish
   ) {}
 
-  async handleConnection(@ConnectedSocket() client: Socket, ...args: any[]) {
-    console.log(`Client connected: ${client.id}`);
+  async handleConnection(@ConnectedSocket() client: Socket) {
+    const userId = Number(client.handshake.query.userId);
+    if (!userId) {
+      client.disconnect();
+      return;
+    }
+  
+    client.data.userId = userId;
+    this.onlineUsers.set(userId, client.id);
+    console.log(`User ${userId} connected: ${client.id}`);
+  
+    this.server.emit('userStatusChange', { userId, isOnline: true });
   }
-
   handleDisconnect(@ConnectedSocket() client: Socket) {
-    console.log(`Client disconnected: ${client.id}`);
     const userId = client.data.userId;
     if (userId && this.onlineUsers.get(userId) === client.id) {
       this.onlineUsers.delete(userId);
-      console.log(
-        `User ${userId} disconnected. Online users count: ${this.onlineUsers.size}`,
-      );
-      this.server.emit('userStatusChange', { userId: userId, isOnline: false }); // Boshqalarga xabar berish
+      this.server.emit('userStatusChange', { userId, isOnline: false });
     }
   }
-
   @SubscribeMessage('sendMessage')
   async handleSendMessage(
     @MessageBody()
@@ -135,9 +139,6 @@ export class ChatGateway {
     data: { chatRoomId: string; userId: number; username: string },
     @ConnectedSocket() client: Socket,
   ): void {
-    console.log(
-      `User ${data.userId} started typing in room ${data.chatRoomId}`,
-    );
     client.to(data.chatRoomId).emit('typingIndicator', {
       chatRoomId: data.chatRoomId,
       userId: data.userId,
@@ -145,6 +146,7 @@ export class ChatGateway {
       isTyping: true,
     });
   }
+  
   @SubscribeMessage('typingStopped')
   handleTypingStopped(
     @MessageBody() data: { chatRoomId: string; userId: number },
