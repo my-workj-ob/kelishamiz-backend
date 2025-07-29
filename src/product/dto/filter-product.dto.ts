@@ -1,12 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
   IsBoolean,
   IsNumber,
   IsObject,
   IsOptional,
   IsString,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -119,12 +123,18 @@ export class GetProductsDto {
   @Type(() => Number)
   regionId?: number;
 
-  @ApiPropertyOptional({ example: 27, description: 'Tuman IDsi' })
+  //districtId uchun o'zgarishlar:
+  @ValidateIf((o) => o.districtId !== undefined) // Agar mavjud bo'lsa tekshir
   @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  districtId?: number;
-
+  @IsArray() // Massiv bo'lishi mumkin
+  @IsNumber({}, { each: true }) // Har bir element raqam bo'lishi kerak
+  @ArrayMaxSize(3) // Maksimal 3 ta element bo'lishi kerak
+  @ArrayMinSize(1) // Kamida 1 ta element bo'lishi kerak (agar massiv bo'lsa)
+  @Type(() => Number) // Massiv ichidagi har bir elementni raqamga o'tkazishga yordam beradi
+  districtId?: number | number[]; // <<<<< ASOSIY O'ZGARISH BU YERDA
+  // Biror raqam yoki raqamlar massivi bo'lishi mumkin
+  // Agar faqat massiv bo'lsa, 'number[]' yozing
+  // Agar ham raqam, ham massiv bo'lsa, 'number | number[]'
   @ApiProperty({
     required: false,
     description: "Sahifalashda ko'rsatiladigan elementlar soni",

@@ -527,7 +527,7 @@ export class ProductService {
     portfolio.commentsCount += 1;
     return this.productRepository.save(portfolio);
   }
-  
+
   async filter(
     filters: GetProductsDto,
     userId?: number,
@@ -614,15 +614,14 @@ export class ProductService {
         districtId.length <= 3
       ) {
         queryBuilder.andWhere('product.districtId IN (:...districtIds)', {
-          districtIds: districtId,
+          // Parametr nomi ':...districtIds' bilan mos kelishi kerak
+          districtIds: districtId, // <<<<<<<< Shu yerda `districtIds` bo'lishi kerak
         });
       } else if (typeof districtId === 'number') {
         queryBuilder.andWhere('product.districtId = :districtId', {
           districtId,
         });
       }
-    } else if (regionId) {
-      queryBuilder.andWhere('districtRegion.id = :regionId', { regionId });
     }
     // --- MODIFICATION END ---
 
