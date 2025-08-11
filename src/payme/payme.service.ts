@@ -84,7 +84,6 @@ export class PaymeService {
     const isValidAmount = this.validateAmount(params.amount, id);
     if (!isValidAmount) return;
 
-    
     const pendingTransaction = await this.transactionRepo.findOne({
       where: { userId, status: 'pending' },
     });
@@ -120,7 +119,6 @@ export class PaymeService {
       `[CreateTransaction] Params: ${JSON.stringify(params)}, ID: ${id}`,
     );
 
-    
     const existingTransaction = await this.transactionRepo.findOne({
       where: { paymeTransactionId: params.id },
       relations: ['user'],
@@ -130,11 +128,9 @@ export class PaymeService {
       return this.handleExistingTransaction(existingTransaction, id);
     }
 
-    
     const userId = this.parseUserId(params.account?.user_id, id);
     if (!userId) return;
 
-    
     const pendingTransaction = await this.transactionRepo.findOne({
       where: { userId, status: 'pending' },
     });
@@ -155,21 +151,17 @@ export class PaymeService {
       );
     }
 
-    
     const user = await this.findUserById(userId, id);
     if (!user) return;
 
-    
     const isValidAmount = this.validateAmount(params.amount, id);
     if (!isValidAmount) return;
 
-    
     const checkResult = await this.checkPerformTransaction(params, id);
     if (checkResult.error) {
       return checkResult;
     }
 
-    
     const newTransaction = this.transactionRepo.create({
       userId: user.id,
       paymeTransactionId: params.id,

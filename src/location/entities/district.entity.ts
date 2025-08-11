@@ -28,7 +28,7 @@ export class District {
   regionId: number;
   @OneToMany(() => Product, (product) => product.district)
   products: Product[];
-    
+
   @OneToMany(() => Profile, (profile) => profile.district)
   profiles: Profile[];
 }

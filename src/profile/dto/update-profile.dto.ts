@@ -55,4 +55,9 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsNumber()
   districtId?: number;
+
+  @ApiProperty({ required: false, example: 'https://example.com/avatar.jpg' })
+  @IsOptional()
+  @IsString()
+  avatar?: string; // profil rasmi URL
 }

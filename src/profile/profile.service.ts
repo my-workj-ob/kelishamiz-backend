@@ -1,5 +1,4 @@
-    
-import { Injectable, NotFoundException, Search } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { User } from './../auth/entities/user.entity';
@@ -56,7 +55,7 @@ export class ProfileService {
   }
 
   async update(
-    id: number,
+    id: number | undefined,
     updateProfileDto: UpdateProfileDto,
   ): Promise<Profile> {
     const profile = await this.profileRepository.findOne({
@@ -84,7 +83,6 @@ export class ProfileService {
     return updatedProfile;
   }
 
-    
   async removeUser(userId: number): Promise<void> {
     console.log(userId, 'User ID to remove');
 
@@ -107,7 +105,6 @@ export class ProfileService {
       throw new NotFoundException('User not found');
     }
 
-    
     await this.dataSource
       .createQueryBuilder()
       .delete()
@@ -115,7 +112,6 @@ export class ProfileService {
       .where('userId = :userId', { userId })
       .execute();
 
-    
     await this.dataSource
       .createQueryBuilder()
       .delete()
@@ -123,11 +119,10 @@ export class ProfileService {
       .where('userId = :userId', { userId })
       .execute();
 
-    
     await this.searchRepository.delete({ user: { id: userId } });
 
     await this.userRepository.delete(userId);
-    
+
     if (user.profile?.comments?.length) {
       await this.commentRepository.delete(
         user.profile.comments.map((c) => c.id),
@@ -138,14 +133,12 @@ export class ProfileService {
       await this.likeRepository.delete(user.profile.likes.map((l) => l.id));
     }
 
-    
     if (user.profile?.products?.length) {
       await this.productRepository.delete(
         user.profile.products.map((p) => p.id),
       );
     }
 
-    
     if (user.profile?.id) {
       await this.profileRepository.delete(user.profile.id);
     }
@@ -154,11 +147,11 @@ export class ProfileService {
       `DELETE FROM chat_room_participants_user WHERE "userId" = $1`,
       [userId],
     );
-    
+
     await this.userRepository.delete(userId);
   }
 
-  async findByUser(userId: number): Promise<Profile | any> {
+  async findByUser(userId: number): Promise<Profile> {
     const existUser = await this.profileRepository.findOne({
       where: { user: { id: userId } },
       relations: ['region', 'district', 'user'],

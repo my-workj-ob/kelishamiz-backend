@@ -28,7 +28,7 @@ import { ChatRoom } from './../chat/entities/chat-room.entity';
       Product,
       Like,
       UserSearch,
-      ChatRoom
+      ChatRoom,
     ]),
     PassportModule,
     JwtModule.register({
