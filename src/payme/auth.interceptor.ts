@@ -33,7 +33,6 @@ export class PaymeAuthInterceptor implements NestInterceptor {
     console.log('authHeader matches expected?', authHeader === expectedAuth);
     console.log('=============================\n');
 
-    
     if (!authHeader || authHeader !== expectedAuth) {
       const jsonRpcError = {
         jsonrpc: '2.0',
@@ -48,7 +47,6 @@ export class PaymeAuthInterceptor implements NestInterceptor {
         id: req.body?.id ?? null,
       };
 
-    
       const res = context.switchToHttp().getResponse();
       res.status(200).json(jsonRpcError);
       return throwError(() => null); // ✅ Interceptor ni to‘xtatish

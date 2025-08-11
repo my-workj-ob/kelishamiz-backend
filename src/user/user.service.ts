@@ -1,4 +1,3 @@
-    
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -107,7 +106,6 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
-    
     await this.dataSource
       .createQueryBuilder()
       .delete()
@@ -122,33 +120,27 @@ export class UserService {
       .where('userId = :userId', { userId: id }) // ✅ to‘g‘ri id ishlatildi
       .execute();
 
-    
     await this.searchRepository.delete({ user: { id } });
 
-    
     if (user.profile?.products?.length) {
       const productIds = user.profile.products.map((p) => p.id);
       await this.productRepository.delete(productIds);
     }
 
-    
     if (user.profile?.comments?.length) {
       const commentIds = user.profile.comments.map((c) => c.id);
       await this.commentRepository.delete(commentIds);
     }
 
-    
     if (user.profile?.likes?.length) {
       const likeIds = user.profile.likes.map((l) => l.id);
       await this.likeRepository.delete(likeIds);
     }
 
-    
     if (user.profile?.id !== undefined) {
       await this.profileRepository.delete(user.profile.id);
     }
 
-    
     await this.userRepository.delete(id);
   }
 }
