@@ -8,14 +8,12 @@ import {
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 import { ProfileService } from './../profile/profile.service';
-
 @WebSocketGateway({
   cors: {
     origin: ['https://kelishamiz.uz', 'https://api.kelishamiz.uz'],
     methods: ['GET', 'POST'],
     credentials: true,
   },
-  path: '/socket.io/',
 })
 export class ChatGateway {
   @WebSocketServer() server: Server;
