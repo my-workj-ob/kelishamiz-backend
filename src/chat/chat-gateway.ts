@@ -14,8 +14,8 @@ import { ProfileService } from './../profile/profile.service';
     origin: ['http://localhost:3030', 'https://api.kelishamiz.uz'], // Ishlab chiqarish va rivojlanish uchun URL manzillari
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
   },
-  credentials: true,
   transports: ['websocket', 'polling'],
 })
 export class ChatGateway {
