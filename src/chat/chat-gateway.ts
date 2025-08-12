@@ -11,14 +11,12 @@ import { ProfileService } from './../profile/profile.service';
 
 @WebSocketGateway({
   cors: {
-    origin: [
-      'https://kelishamiz.uz',
-      'https://api.kelishamiz.uz',
-      'http://localhost:5173',
-    ], // Ishlab chiqarish va rivojlanish uchun URL manzillari
-    credentials: true,
-    transports: ['websocket', 'polling'],
+    origin: ['http://localhost:3030', 'https://api.kelishamiz.uz'], // Ishlab chiqarish va rivojlanish uchun URL manzillari
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   },
+  credentials: true,
+  transports: ['websocket', 'polling'],
 })
 export class ChatGateway {
   @WebSocketServer() server: Server;
@@ -36,11 +34,11 @@ export class ChatGateway {
       client.disconnect();
       return;
     }
-  
+
     client.data.userId = userId;
     this.onlineUsers.set(userId, client.id);
     console.log(`User ${userId} connected: ${client.id}`);
-  
+
     this.server.emit('userStatusChange', { userId, isOnline: true });
   }
   handleDisconnect(@ConnectedSocket() client: Socket) {
@@ -146,7 +144,7 @@ export class ChatGateway {
       isTyping: true,
     });
   }
-  
+
   @SubscribeMessage('typingStopped')
   handleTypingStopped(
     @MessageBody() data: { chatRoomId: string; userId: number },

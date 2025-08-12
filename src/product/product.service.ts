@@ -941,7 +941,7 @@ export class ProductService {
             throw new BadRequestException('Invalid JSON format for properties');
           }
         }
-
+      
         if (Array.isArray(body.properties)) {
           for (const prop of body.properties) {
             const key = prop.value?.key;
