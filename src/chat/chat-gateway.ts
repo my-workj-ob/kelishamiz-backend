@@ -11,12 +11,10 @@ import { ProfileService } from './../profile/profile.service';
 
 @WebSocketGateway({
   cors: {
-    origin: '*', // Ishlab chiqarish va rivojlanish uchun URL manzillari
+    origin: ['https://kelishamiz.uz', 'https://api.kelishamiz.uz'],
     methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   },
-  transports: ['websocket', 'polling'],
 })
 export class ChatGateway {
   @WebSocketServer() server: Server;
