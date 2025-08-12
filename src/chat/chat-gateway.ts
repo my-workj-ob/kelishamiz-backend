@@ -18,6 +18,7 @@ import { ProfileService } from './../profile/profile.service';
     methods: ['GET', 'POST'],
     credentials: true,
   },
+  path: '/socket.io',
 })
 export class ChatGateway {
   @WebSocketServer() server: Server;
