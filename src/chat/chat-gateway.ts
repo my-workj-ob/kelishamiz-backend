@@ -10,10 +10,11 @@ import { ChatService } from './chat.service';
 import { ProfileService } from './../profile/profile.service';
 @WebSocketGateway({
   cors: {
-    origin: ['https://kelishamiz.uz', 'https://api.kelishamiz.uz'],
+    origin: '*',
     methods: ['GET', 'POST'],
     credentials: true,
   },
+  transports: ['websocket'], // muhim
 })
 export class ChatGateway {
   @WebSocketServer() server: Server;
