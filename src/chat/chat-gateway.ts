@@ -30,7 +30,7 @@ export class ChatGateway {
     private readonly userService: ProfileService, // UserService ni injektatsiya qilish
   ) {}
 
-  async handleConnection(@ConnectedSocket() client: Socket) {
+  handleConnection(@ConnectedSocket() client: Socket) {
     const userId = Number(client.handshake.query.userId);
     if (!userId) {
       client.disconnect();
