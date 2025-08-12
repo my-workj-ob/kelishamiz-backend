@@ -11,7 +11,7 @@ import { ProfileService } from './../profile/profile.service';
 
 @WebSocketGateway({
   cors: {
-    origin: ['https://kelishamiz.uz', 'https://api.kelishamiz.uz'], // Ishlab chiqarish va rivojlanish uchun URL manzillari
+    origin: '*', // Ishlab chiqarish va rivojlanish uchun URL manzillari
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
