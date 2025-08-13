@@ -68,7 +68,7 @@ export class OtpService {
   async sendOtp(phone: string): Promise<string> {
     const otp = this.generateOtp();
 
-    const isDevelopment = true;
+    const isDevelopment = false;
 
     if (isDevelopment) {
       console.log(`[DEV] OTP: ${otp} -> ${phone}`);
