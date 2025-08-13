@@ -72,7 +72,7 @@ export class OtpService {
     const otp = this.generateOtp();
 
     // Qo‘lda rejim belgilaymiz (true = development, false = production)
-    const isDevelopment = true; // dev uchun `true`, prod uchun `false`
+    const isDevelopment = false; // dev uchun `true`, prod uchun `false`
 
     if (isDevelopment) {
       console.log(`[DEV] OTP: ${otp} -> ${phone}`);
