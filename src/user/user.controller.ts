@@ -1,4 +1,3 @@
-    
 import {
   Controller,
   Patch,
@@ -64,7 +63,6 @@ export class UserController {
     @Param('id', ParseIntPipe) userId: number,
     @Body() updateUserRoleDto: UpdateUserRoleDto,
   ) {
-    
     if (!Object.values(UserRole).includes(updateUserRoleDto.role)) {
       throw new BadRequestException('Invalid user role provided.');
     }

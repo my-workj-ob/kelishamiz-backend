@@ -29,7 +29,7 @@ export class ChatController {
    * @param req Express so'rov obyekti (autentifikatsiya qilingan foydalanuvchi ma'lumotlari uchun)
    */
   @Get('my-chats')
-  async getUserChatRooms(@Req() req: any) {
+  async getUserChatRooms(@Req() req: { user: { userId: number } }) {
     // Type 'any' vaqtinchalik, User tipini o'rnating
     const userId = req.user.userId; // Haqiqiy autentifikatsiya qilingan user ID
     return this.chatService.getUserChatRooms(userId);
@@ -65,7 +65,7 @@ export class ChatController {
   async createOrGetChatRoom(
     @Body('productId') productId: number,
     @Body('participantIds') participantIds: string[],
-    @Req() req: any, // Hozirgi user ID sini olish uchun
+    @Req() req: { user: { userId: string } }, // Hozirgi user ID sini olish uchun
   ) {
     // Autentifikatsiya qilingan user ID sini participantIds ga qo'shamiz
     const authenticatedUserId = req.user.userId; // Haqiqiy autentifikatsiya qilingan user ID
