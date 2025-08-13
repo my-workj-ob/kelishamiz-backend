@@ -1,6 +1,3 @@
-    
-    
-    
 import {
   BadRequestException,
   ConflictException,
@@ -22,7 +19,7 @@ export class AuthService {
     string,
     { code: string; expiresAt: Date; isVerified: boolean }
   > = {};
-    
+
   private readonly otpExpiryTimeMs = 1 * 60 * 1000;
   private readonly saltRounds = 10;
 
@@ -91,7 +88,6 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + this.otpExpiryTimeMs);
     this.temporaryOtps[phone] = { code: otpCode, expiresAt, isVerified: false };
 
-    
     const expiresInMinutes = Math.ceil(this.otpExpiryTimeMs / (1000 * 60)); // Millisekundlarni daqiqaga aylantiramiz
 
     return {
@@ -161,7 +157,6 @@ export class AuthService {
     const storedOtp = this.temporaryOtps[phone];
     const now = new Date();
 
-    
     console.log(`Tekshirilmoqda: Telefon: ${phone}`);
     console.log(`Kiritilgan OTP kodi: ${code}`);
     if (storedOtp) {
@@ -244,7 +239,6 @@ export class AuthService {
       throw new BadRequestException('User saqlashda xatolik yuz berdi.');
     }
 
-    
     const existingProfile = await this.profileRepo.findOne({
       where: { user: { id: savedUser.id } },
     });
@@ -275,7 +269,6 @@ export class AuthService {
 
     const tokens = await this.generateTokens(savedUser);
 
-    
     delete this.temporaryOtps[phone];
 
     return { user: savedUser, ...tokens };
@@ -307,7 +300,7 @@ export class AuthService {
     }
 
     const tokens = await this.generateTokens(existingUser);
-    
+
     delete this.temporaryOtps[phone];
 
     return {

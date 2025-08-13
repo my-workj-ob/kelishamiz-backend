@@ -1,28 +1,23 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as qs from 'qs'; // For x-www-form-urlencoded
+import * as qs from 'qs';
 import { firstValueFrom } from 'rxjs';
 
 interface TokenData {
   token: string;
-  expiresAt: number; // timestamp in milliseconds
+  expiresAt: number;
 }
 
 @Injectable()
 export class OtpService {
-  private tokenData: TokenData | null = null;
+  private static tokenData: TokenData | null = null; // global token
 
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {}
 
-  /**
-   * Eskiz.uz API'si uchun yangi token oladi.
-   * Tokenning amal qilish muddati 24 soat, lekin xavfsizlik uchun 1 daqiqa oldin yangilanadi.
-   * @returns Token va uning tugash vaqti.
-   */
   private async fetchToken(): Promise<TokenData> {
     const email = this.configService.get<string>('ESKIZ_EMAIL');
     const password = this.configService.get<string>('ESKIZ_PASSWORD');
@@ -31,75 +26,60 @@ export class OtpService {
 
     const { data } = await firstValueFrom(
       this.httpService.post(loginUrl, qs.stringify({ email, password }), {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       }),
     );
-    if (!data || !data?.data || !data?.data?.token) {
+
+    if (!data?.data?.token) {
       throw new Error('Eskiz.uz API tokenini olishda xatolik yuz berdi.');
     }
 
-    console.log(`Eskiz.uz API tokeni muvaffaqiyatli olindi: ${data}`);
+    const expiresIn = 24 * 60 * 60 * 1000;
+    const expiresAt = Date.now() + expiresIn - 60_000;
 
-    const expiresIn = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-    const expiresAt = Date.now() + expiresIn - 60_000; // 1 minut oldin expire bo‘ladi
-
-    console.log(
-      `Eskiz.uz API tokeni olindi. Token tugash vaqti: ${new Date(expiresAt).toLocaleString()}`,
-    );
-
-    return {
-      token: data.data.token,
-      expiresAt: expiresAt,
-    };
+    return { token: data.data.token, expiresAt };
   }
 
-  /**
-   * Eskiz.uz API'si uchun token qaytaradi. Agar token mavjud bo'lmasa yoki muddati tugagan bo'lsa, yangisini oladi.
-   * @returns Eskiz.uz API tokeni.
-   */
   private async getToken(): Promise<string> {
-    if (!this.tokenData || Date.now() >= this.tokenData.expiresAt) {
-      console.log(
-        'Eskiz.uz API tokeni yangilanmoqda yoki birinchi marta olinmoqda...',
-      );
-      this.tokenData = await this.fetchToken();
+    if (!OtpService.tokenData || Date.now() >= OtpService.tokenData.expiresAt) {
+      OtpService.tokenData = await this.fetchToken();
     }
-    return this.tokenData.token;
+    return OtpService.tokenData.token;
+  }
+
+  private generateOtp(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
   /**
-   * 6 xonali tasodifiy OTP kodi yaratadi.
-   * @returns Yaratilgan OTP kodi.
-   */
-  generateOtp(): string {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    console.debug(`Generated OTP: ${otp}`); // Mana shu log chiqyapti
-    return otp;
-  }
-
-  /**
-   * Berilgan telefon raqamiga OTP kodini yuboradi.
-   * Rivojlanish muhitida (development mode) SMS yuborish simulyatsiya qilinadi.
-   * @param phone OTP yuboriladigan telefon raqami.
-   * @returns Yuborilgan OTP kodi.
+   * Eskiz.uz API orqali OTP yuboradi
    */
   async sendOtp(phone: string): Promise<string> {
-    const otpCode = this.generateOtp();
+    const otp = this.generateOtp();
     const isDevelopment =
       this.configService.get<string>('NODE_ENV') === 'development';
 
     if (isDevelopment) {
-      console.log(`[RIVOJLANISH REJIMI] OTP kodi: ${otpCode} -> ${phone}`); // Agar DEV mode bo'lsa, bu chiqyapti
-      return otpCode;
+      console.log(`[DEV] OTP: ${otp} -> ${phone}`);
+      return otp;
     }
 
-    console.log(
-      `OTP ${otpCode} raqamiga yuborilmoqda (simulyatsiya): ${phone}`, // Va mana bu log
+    const token = await this.getToken();
+    const smsUrl = 'https://notify.eskiz.uz/api/message/sms/send';
+
+    const payload = {
+      mobile_phone: phone,
+      message: `Sizning OTP kodingiz: ${otp}`,
+      from: otp, // Eskiz.uz da ro'yxatdan o'tgan short code
+    };
+
+    await firstValueFrom(
+      this.httpService.post(smsUrl, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
     );
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    console.debug(`OTP yuborildi (simulyatsiya) ${phone} raqamiga: ${otpCode}`); // Va bu log
-    return otpCode;
+
+    console.log(`OTP ${otp} raqamiga yuborildi: ${phone}`);
+    return otp;
   }
 }
