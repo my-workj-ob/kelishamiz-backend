@@ -11,7 +11,7 @@ interface TokenData {
 
 @Injectable()
 export class OtpService {
-  private static tokenData: TokenData | null = null; // global token
+  private static tokenData: TokenData | null = null; 
 
   constructor(
     private readonly httpService: HttpService,
