@@ -20,7 +20,7 @@ export class OtpService {
 
   private async fetchToken(): Promise<TokenData> {
     const email = 'yuldoshovich@mail.ru';
-    const password = 'Aylin1721';
+    const password = '0GzjPHd6pBn1jH83';
 
     const loginUrl = 'https://notify.eskiz.uz/api/auth/login';
 
