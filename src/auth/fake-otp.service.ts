@@ -103,7 +103,7 @@ export class OtpService {
     const smsUrl = 'https://notify.eskiz.uz/api/message/sms/send';
     const payload = {
       mobile_phone: phone,
-      message: `Sizning OTP kodingiz: ${otp}`,
+      message: `Kelishamiz.uz saytiga ro‘yxatdan o‘tish uchun tasdiqlash kodi: ${otp}`,
       from: '4546', // Eskiz sender nomi
     };
 
