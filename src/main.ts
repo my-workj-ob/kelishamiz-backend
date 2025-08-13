@@ -12,7 +12,6 @@ import { join } from 'path';
 
 import { AppModule } from './app.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
-import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -50,7 +49,7 @@ async function bootstrap() {
     express.static(join(__dirname, '../node_modules/swagger-ui-dist')),
   );
 
-  await app.listen(process.env.PORT || 3333);
+  await app.listen(process.env.PORT || 3030);
 }
 
 bootstrap();
