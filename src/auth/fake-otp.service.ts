@@ -11,7 +11,7 @@ interface TokenData {
 
 @Injectable()
 export class OtpService {
-  private static tokenData: TokenData | null = null; 
+  private static tokenData: TokenData | null = null;
 
   constructor(
     private readonly httpService: HttpService,
@@ -19,8 +19,8 @@ export class OtpService {
   ) {}
 
   private async fetchToken(): Promise<TokenData> {
-    const email = this.configService.get<string>('ESKIZ_EMAIL');
-    const password = this.configService.get<string>('ESKIZ_PASSWORD');
+    const email = 'Aylin1721';
+    const password = 'yuldoshovich@mail.ru';
 
     const loginUrl = 'https://notify.eskiz.uz/api/auth/login';
 
