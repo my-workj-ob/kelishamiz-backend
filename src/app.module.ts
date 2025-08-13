@@ -64,7 +64,7 @@ import { PaymeModule } from './payme/payme.module';
       database: 'postgres',
       synchronize: false,
       autoLoadEntities: true,
-    }), // }),
+    }),
 
     CacheModule.registerAsync({
       isGlobal: true,
