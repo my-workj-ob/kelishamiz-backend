@@ -36,12 +36,15 @@ export class OtpService {
         },
       }),
     );
+    if (!data || !data?.data || !data?.data?.token) {
+      throw new Error('Eskiz.uz API tokenini olishda xatolik yuz berdi.');
+    }
 
-    
+    console.log(`Eskiz.uz API tokeni muvaffaqiyatli olindi: ${data}`);
+
     const expiresIn = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
     const expiresAt = Date.now() + expiresIn - 60_000; // 1 minut oldin expire bo‘ladi
 
-    
     console.log(
       `Eskiz.uz API tokeni olindi. Token tugash vaqti: ${new Date(expiresAt).toLocaleString()}`,
     );
