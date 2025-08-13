@@ -54,7 +54,7 @@ import { PaymeModule } from './payme/payme.module';
     //   database: 'kelishamiz', // bu yerga lokal bazangiz nomini yozing
     //   synchronize: true, // true faqat dev uchun, prod-da false bo'lishi kerak
     //   autoLoadEntities: true,
-
+    // }),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: '45.92.173.136',
