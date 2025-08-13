@@ -10,11 +10,7 @@ import { NotificationService } from './notification.service';
 
 @WebSocketGateway({
   cors: {
-    origin: [
-      'https://api.kelishamiz.uz',
-      'https://kelishamiz.uz',
-      'http://localhost:8888',
-    ],
+    origin: ['https://kelishamiz.uz'],
     credentials: true,
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type', 'Authorization'],
