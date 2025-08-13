@@ -8,6 +8,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 import { ProfileService } from './../profile/profile.service';
+
 @WebSocketGateway({
   cors: {
     origin: ['https://kelishamiz.uz'],
@@ -25,7 +26,7 @@ export class ChatGateway {
 
   constructor(
     private readonly chatService: ChatService,
-    private readonly userService: ProfileService, // UserService ni injektatsiya qilish
+    private readonly userService: ProfileService,
   ) {}
 
   handleConnection(@ConnectedSocket() client: Socket) {
@@ -39,15 +40,24 @@ export class ChatGateway {
     this.onlineUsers.set(userId, client.id);
     console.log(`User ${userId} connected: ${client.id}`);
 
-    this.server.emit('userStatusChange', { userId, isOnline: true });
+    // Yangi ulangan mijozga mavjud online foydalanuvchilar ro'yxatini yuborish
+    client.emit('onlineUsersList', Array.from(this.onlineUsers.keys()));
+
+    // Boshqa foydalanuvchilarga yangi foydalanuvchining onlayn bo'lganligini xabar berish
+    client.broadcast.emit('userStatusChange', { userId, isOnline: true });
   }
+
   handleDisconnect(@ConnectedSocket() client: Socket) {
     const userId = client.data.userId;
     if (userId && this.onlineUsers.get(userId) === client.id) {
       this.onlineUsers.delete(userId);
+      console.log(`User ${userId} disconnected`);
+
+      // Barcha foydalanuvchilarga foydalanuvchining oflayn bo'lganligini xabar berish
       this.server.emit('userStatusChange', { userId, isOnline: false });
     }
   }
+
   @SubscribeMessage('sendMessage')
   async handleSendMessage(
     @MessageBody()
@@ -62,7 +72,7 @@ export class ChatGateway {
         data.senderId,
         data.message,
       );
-      //
+
       this.server.to(data.chatRoomId.toString()).emit('newMessage', {
         id: savedMessage.id,
         chatRoomId: savedMessage.chatRoomId,
@@ -89,6 +99,7 @@ export class ChatGateway {
   ): void {
     console.log(`Client ${client.id} joining room: ${chatRoomId}`);
     client.join(chatRoomId);
+
     const participantsInRoom =
       this.server.sockets.adapter.rooms.get(chatRoomId);
     if (participantsInRoom) {
@@ -117,7 +128,10 @@ export class ChatGateway {
     @MessageBody() userId: number,
     @ConnectedSocket() client: Socket,
   ): Promise<void> {
-    client.data.userId = userId; // Socketga userId ni bog'lash
+    // `handleConnection` allaqachon bu vazifani bajaradi.
+    // Qo'shimcha status o'rnatishga ehtiyoj yo'q, lekin agar kerak bo'lsa,
+    // bu yerda mantiqni ushlab qolishingiz mumkin.
+    client.data.userId = userId;
     this.onlineUsers.set(userId, client.id);
     console.log(
       `User ${userId} manually set online status. Socket: ${client.id}`,
