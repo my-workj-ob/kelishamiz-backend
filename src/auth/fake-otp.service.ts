@@ -65,25 +65,19 @@ export class OtpService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  /**
-   * Eskiz.uz API orqali OTP yuborish
-   */
   async sendOtp(phone: string): Promise<string> {
     const otp = this.generateOtp();
 
-    // Qo‘lda rejim belgilaymiz (true = development, false = production)
-    const isDevelopment = true; // dev uchun `true`, prod uchun `false`
+    const isDevelopment = true;
 
     if (isDevelopment) {
       console.log(`[DEV] OTP: ${otp} -> ${phone}`);
       return otp;
     }
 
-    // Login va parolni kod ichida yozamiz
     const email = 'yuldoshovich@mail.ru';
     const password = 'LybZx7ZSH6Uavso90lwRKZagdc5DDvBVKlfFNmi4';
 
-    // Token olish
     const loginUrl = 'https://notify.eskiz.uz/api/auth/login';
     const { data: loginData } = await firstValueFrom(
       this.httpService.post(
@@ -99,12 +93,11 @@ export class OtpService {
 
     const token = loginData.data.token;
 
-    // OTP yuborish
     const smsUrl = 'https://notify.eskiz.uz/api/message/sms/send';
     const payload = {
       mobile_phone: phone,
       message: `Kelishamiz.uz saytiga ro‘yxatdan o‘tish uchun tasdiqlash kodi: ${otp}`,
-      from: '4546', // Eskiz sender nomi
+      from: '4546',
     };
 
     await firstValueFrom(
