@@ -40,11 +40,12 @@ export class OtpService {
     return { token: data.data.token, expiresAt };
   }
 
-  private async getToken(): Promise<string> {
-    if (!OtpService.tokenData || Date.now() >= OtpService.tokenData.expiresAt) {
-      OtpService.tokenData = await this.fetchToken();
+  private getToken(): string {
+    const token = 'LybZx7ZSH6Uavso90lwRKZagdc5DDvBVKlfFNmi4';
+    if (!token) {
+      throw new Error('ESKIZ_API_TOKEN mavjud emas');
     }
-    return OtpService.tokenData.token;
+    return token;
   }
 
   private generateOtp(): string {
