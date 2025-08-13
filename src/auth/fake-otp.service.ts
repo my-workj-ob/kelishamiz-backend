@@ -81,7 +81,7 @@ export class OtpService {
 
     // Login va parolni kod ichida yozamiz
     const email = 'yuldoshovich@mail.ru';
-    const password = 'Aylin1721';
+    const password = 'LybZx7ZSH6Uavso90lwRKZagdc5DDvBVKlfFNmi4';
 
     // Token olish
     const loginUrl = 'https://notify.eskiz.uz/api/auth/login';
