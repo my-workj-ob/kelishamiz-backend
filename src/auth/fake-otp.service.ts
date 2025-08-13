@@ -70,24 +70,41 @@ export class OtpService {
    */
   async sendOtp(phone: string): Promise<string> {
     const otp = this.generateOtp();
-    const isDevelopment =
-      this.configService.get<string>('NODE_ENV') ||
-      'production' === 'production' ||
-      this.configService.get<string>('NODE_ENV') ||
-      'development' === 'development';
+
+    // Qo‘lda rejim belgilaymiz (true = development, false = production)
+    const isDevelopment = true; // dev uchun `true`, prod uchun `false`
 
     if (isDevelopment) {
       console.log(`[DEV] OTP: ${otp} -> ${phone}`);
       return otp;
     }
 
-    const token = await this.getToken();
-    const smsUrl = 'https://notify.eskiz.uz/api/message/sms/send';
+    // Login va parolni kod ichida yozamiz
+    const email = 'yuldoshovich@mail.ru';
+    const password = '0GzjPHd6pBn1jH83';
 
+    // Token olish
+    const loginUrl = 'https://notify.eskiz.uz/api/auth/login';
+    const { data: loginData } = await firstValueFrom(
+      this.httpService.post(
+        loginUrl,
+        new URLSearchParams({ email, password }),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+      ),
+    );
+
+    if (!loginData?.data?.token) {
+      throw new Error('Eskiz tokenini olishda xatolik yuz berdi.');
+    }
+
+    const token = loginData.data.token;
+
+    // OTP yuborish
+    const smsUrl = 'https://notify.eskiz.uz/api/message/sms/send';
     const payload = {
       mobile_phone: phone,
       message: `Sizning OTP kodingiz: ${otp}`,
-      from: '4546', // Eskizda tasdiqlangan "from" nomi (masalan: kompaniya nomi yoki raqam)
+      from: '4546', // Eskiz sender nomi
     };
 
     await firstValueFrom(
