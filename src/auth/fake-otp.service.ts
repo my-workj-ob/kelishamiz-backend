@@ -18,9 +18,16 @@ export class OtpService {
     private readonly configService: ConfigService,
   ) {}
 
+  /**
+   * Eskiz API dan yangi token olish
+   */
   private async fetchToken(): Promise<TokenData> {
     const email = 'yuldoshovich@mail.ru';
     const password = '0GzjPHd6pBn1jH83';
+
+    if (!email || !password) {
+      throw new Error('ESKIZ_EMAIL yoki ESKIZ_PASSWORD .env da topilmadi');
+    }
 
     const loginUrl = 'https://notify.eskiz.uz/api/auth/login';
 
@@ -34,26 +41,32 @@ export class OtpService {
       throw new Error('Eskiz.uz API tokenini olishda xatolik yuz berdi.');
     }
 
+    // Token muddati (24 soat - 1 daqiqa)
     const expiresIn = 24 * 60 * 60 * 1000;
     const expiresAt = Date.now() + expiresIn - 60_000;
 
     return { token: data.data.token, expiresAt };
   }
 
-  private getToken(): string {
-    const token = 'LybZx7ZSH6Uavso90lwRKZagdc5DDvBVKlfFNmi4';
-    if (!token) {
-      throw new Error('ESKIZ_API_TOKEN mavjud emas');
+  /**
+   * Token olish yoki yangilash
+   */
+  private async getToken(): Promise<string> {
+    if (!OtpService.tokenData || Date.now() >= OtpService.tokenData.expiresAt) {
+      OtpService.tokenData = await this.fetchToken();
     }
-    return token;
+    return OtpService.tokenData.token;
   }
 
+  /**
+   * Tasodifiy 6 xonali OTP yaratish
+   */
   private generateOtp(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
   /**
-   * Eskiz.uz API orqali OTP yuboradi
+   * Eskiz.uz API orqali OTP yuborish
    */
   async sendOtp(phone: string): Promise<string> {
     const otp = this.generateOtp();
@@ -71,7 +84,7 @@ export class OtpService {
     const payload = {
       mobile_phone: phone,
       message: `Sizning OTP kodingiz: ${otp}`,
-      from: otp, // Eskiz.uz da ro'yxatdan o'tgan short code
+      from: '4546', // Eskizda tasdiqlangan "from" nomi (masalan: kompaniya nomi yoki raqam)
     };
 
     await firstValueFrom(
