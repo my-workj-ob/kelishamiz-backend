@@ -45,26 +45,26 @@ import { PaymeModule } from './payme/payme.module';
       },
     ]),
     //
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost', // yoki 127.0.0.1
-      port: 5432,
-      username: 'postgres', // bu sizning lokal PostgreSQL foydalanuvchingiz
-      password: '0000', // bu yerga sizning lokal postgres parolingiz
-      database: 'kelishamiz', // bu yerga lokal bazangiz nomini yozing
-      synchronize: true, // true faqat dev uchun, prod-da false bo'lishi kerak
-      autoLoadEntities: true,
-    }),
     // TypeOrmModule.forRoot({
     //   type: 'postgres',
-    //   host: '45.92.173.136',
+    //   host: 'localhost', // yoki 127.0.0.1
     //   port: 5432,
-    //   username: 'postgres',
-    //   password: '0GzjPHd6pBn1jH83',
-    //   database: 'postgres',
-    //   synchronize: false,
+    //   username: 'postgres', // bu sizning lokal PostgreSQL foydalanuvchingiz
+    //   password: '0000', // bu yerga sizning lokal postgres parolingiz
+    //   database: 'kelishamiz', // bu yerga lokal bazangiz nomini yozing
+    //   synchronize: true, // true faqat dev uchun, prod-da false bo'lishi kerak
     //   autoLoadEntities: true,
     // }),
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: '45.92.173.136',
+      port: 5432,
+      username: 'postgres',
+      password: '0GzjPHd6pBn1jH83',
+      database: 'postgres',
+      synchronize: false,
+      autoLoadEntities: true,
+    }),
 
     CacheModule.registerAsync({
       isGlobal: true,
