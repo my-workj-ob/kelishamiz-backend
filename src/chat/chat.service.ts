@@ -38,6 +38,7 @@ export class ChatService {
         { userId },
       ) // Faqat user qatnashgan chatlar
       .leftJoinAndSelect('chatRoom.product', 'product') // Mahsulot ma'lumotlari
+      .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('chatRoom.participants', 'participant') // Barcha ishtirokchilar (filterlanmagan)
       .leftJoinAndSelect('chatRoom.messages', 'message') // Xabarlar
       .orderBy('chatRoom.updatedAt', 'DESC')
@@ -136,7 +137,10 @@ export class ChatService {
     }
 
     // Mahsulotni topamiz
-    const product = await this.productRepository.findOneBy({ id: productId });
+    const product = await this.productRepository.findOne({
+      where: { id: productId },
+      relations: ['images', 'imageIndex', 'title'],
+    });
     if (!product) {
       throw new NotFoundException('Mahsulot topilmadi.');
     }
