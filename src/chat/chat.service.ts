@@ -61,7 +61,7 @@ export class ChatService {
             Array.isArray(room.product?.images) &&
             room.product.imageIndex !== undefined
               ? room.product.images[room.product.imageIndex]
-              : 'Mahsulot topilmadi' || 'Mahsulot topilmadi',
+              : 'Mahsulot topilmadi',
           otherParticipant: otherParticipant
             ? { id: otherParticipant.id, username: otherParticipant.username }
             : null,
