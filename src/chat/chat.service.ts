@@ -57,6 +57,9 @@ export class ChatService {
         return {
           id: room.id,
           productName: room.product?.title || 'Mahsulot topilmadi',
+          imageUrl:
+            room.product?.images[room.product.imageIndex] ||
+            'Mahsulot topilmadi',
           otherParticipant: otherParticipant
             ? { id: otherParticipant.id, username: otherParticipant.username }
             : null,
