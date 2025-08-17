@@ -10,6 +10,7 @@ import { ChatRoom } from './entities/chat-room.entity';
 import { Message } from './entities/message.entity';
 import { User } from 'src/auth/entities/user.entity';
 import { Product } from 'src/product/entities/product.entity';
+import { isArray } from 'class-validator';
 
 @Injectable()
 export class ChatService {
@@ -54,13 +55,16 @@ export class ChatService {
 
         // Endi bu yerda barcha ishtirokchilar bor bo'ladi
         const otherParticipant = room.participants.find((p) => p.id !== userId);
-        const imageUrl =
-          room.product?.images?.length > 0 ? room.product.images[0] : null;
 
         return {
           id: room.id,
           productName: room.product?.title || 'Mahsulot topilmadi',
-          imageUrl: imageUrl,
+          imageUrl:
+            isArray(room.product.images) &&
+            room.product.imageIndex !== undefined &&
+            room.product.images[room.product.imageIndex]
+              ? room.product.images[room.product.imageIndex]
+              : null,
 
           otherParticipant: otherParticipant
             ? { id: otherParticipant.id, username: otherParticipant.username }
@@ -69,7 +73,7 @@ export class ChatService {
             ? {
                 content: lastMessage.content,
                 createdAt: lastMessage.createdAt,
-                senderId: lastMessage.senderId,
+                senderId: lastMessage.sender.id,
                 senderUsername: lastMessage.sender.username,
               }
             : null,
