@@ -53,11 +53,13 @@ export class ChatService {
 
         // Endi bu yerda barcha ishtirokchilar bor bo'ladi
         const otherParticipant = room.participants.find((p) => p.id !== userId);
+        const imageUrl =
+          room.product?.images?.length > 0 ? room.product.images[0] : null;
 
         return {
           id: room.id,
           productName: room.product?.title || 'Mahsulot topilmadi',
-          imageUrl: room.product,
+          imageUrl: imageUrl,
 
           otherParticipant: otherParticipant
             ? { id: otherParticipant.id, username: otherParticipant.username }
