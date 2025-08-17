@@ -571,9 +571,23 @@ export class ProductService {
       .leftJoinAndSelect('product.likes', 'likes')
       .addOrderBy('images.order', 'ASC')
       .addOrderBy('images.images.id', 'DESC');
-
     if (categoryId) {
-      queryBuilder.andWhere('product.categoryId = :categoryId', { categoryId });
+      // 1) Parentni va childlarni olib kelish
+      const parentCategory = await this.categoryRepository.findOne({
+        where: { id: categoryId },
+        relations: ['children'],
+      });
+
+      // 2) Hamma child id larini yig‘ib olish
+      const categoryIds = [categoryId];
+      if (parentCategory?.children?.length) {
+        categoryIds.push(...parentCategory.children.map((c) => c.id));
+      }
+
+      // 3) QueryBuilderga qo‘shish
+      queryBuilder.andWhere('product.categoryId IN (:...categoryIds)', {
+        categoryIds,
+      });
     }
 
     if (minPrice !== null && minPrice !== undefined) {
@@ -941,7 +955,7 @@ export class ProductService {
             throw new BadRequestException('Invalid JSON format for properties');
           }
         }
-      
+
         if (Array.isArray(body.properties)) {
           for (const prop of body.properties) {
             const key = prop.value?.key;
