@@ -8,6 +8,7 @@ import {
   Req,
   UseGuards,
   Query,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
