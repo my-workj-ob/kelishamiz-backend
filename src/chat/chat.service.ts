@@ -10,7 +10,6 @@ import { ChatRoom } from './entities/chat-room.entity';
 import { Message } from './entities/message.entity';
 import { User } from 'src/auth/entities/user.entity';
 import { Product } from 'src/product/entities/product.entity';
-import { isArray } from 'class-validator';
 
 @Injectable()
 export class ChatService {
@@ -25,11 +24,9 @@ export class ChatService {
     private productRepository: Repository<Product>,
   ) {}
 
-  /**
-   * Foydalanuvchining barcha chat xonalarini olish.
-   */
   async getUserChatRooms(userId: number) {
-    const chatRooms = await this.chatRoomRepository
+    // Hamma chat xonalarini olish
+    const allChatRooms = await this.chatRoomRepository
       .createQueryBuilder('chatRoom')
       .innerJoin(
         'chatRoom.participants',
@@ -43,68 +40,59 @@ export class ChatService {
       .orderBy('chatRoom.updatedAt', 'DESC')
       .getMany();
 
-    const chatRoomsWithData = await Promise.all(
-      chatRooms.map(async (room, index) => {
-        const lastMessage = await this.messageRepository.findOne({
-          where: { chatRoomId: room.id },
-          order: { createdAt: 'DESC' },
-          relations: ['sender'],
-        });
+    // Xonani bitta objectga map qilib beradigan helper
+    const mapChatRoom = async (room: ChatRoom) => {
+      const lastMessage = await this.messageRepository.findOne({
+        where: { chatRoomId: room.id },
+        order: { createdAt: 'DESC' },
+        relations: ['sender'],
+      });
 
-        const unreadCount = await this.messageRepository.count({
-          where: {
-            chatRoomId: room.id,
-            read: false,
-            senderId: Not(userId),
-          },
-        });
+      const unreadCount = await this.messageRepository.count({
+        where: { chatRoomId: room.id, read: false, senderId: Not(userId) },
+      });
 
-        // Chat xonasidagi barcha xabarlarni olish (faqat so'nggi 50ta)
-        const messages = await this.messageRepository.find({
-          where: { chatRoom: { id: room.id } },
-          relations: ['sender'],
-          order: { createdAt: 'ASC' },
-          take: 50, // Paginatsiya o'rniga standart 50 ta xabar
-        });
+      const otherParticipant = room.participants.find((p) => p.id !== userId);
 
-        const otherParticipant = room.participants.find((p) => p.id !== userId);
-
-        return {
-          index: index, // Har bir chat xonasiga indeks berildi
-          id: room.id,
-          productName: room.product?.title || 'Mahsulot topilmadi',
-          imageUrl:
-            isArray(room.product.images) &&
-            room.product.imageIndex !== undefined &&
-            room.product.images[room.product.imageIndex]
-              ? room.product.images[room.product.imageIndex].url
-              : null,
-          otherParticipant: otherParticipant
-            ? { id: otherParticipant.id, username: otherParticipant.username }
+      // Room objectini tayyorlash
+      return {
+        id: room.id,
+        productName: room.product?.title || 'Mahsulot topilmadi',
+        imageUrl:
+          Array.isArray(room.product?.images) &&
+          room.product?.imageIndex !== undefined &&
+          room.product.images[room.product.imageIndex]
+            ? room.product.images[room.product.imageIndex].url
             : null,
-          lastMessage: lastMessage
-            ? {
-                content: lastMessage.content,
-                createdAt: lastMessage.createdAt,
-                senderId: lastMessage.sender.id,
-                senderUsername: lastMessage.sender.username,
-              }
-            : null,
-          updatedAt: room.updatedAt,
-          unreadCount: unreadCount,
-          messages: messages.map((message) => ({
-            id: message.id,
-            content: message.content,
-            createdAt: message.createdAt,
-            senderId: message.sender.id,
-            senderUsername: message.sender.username,
-            read: message.read,
-          })),
-        };
-      }),
-    );
+        otherParticipant: otherParticipant
+          ? { id: otherParticipant.id, username: otherParticipant.username }
+          : null,
+        lastMessage: lastMessage
+          ? {
+              content: lastMessage.content,
+              createdAt: lastMessage.createdAt,
+              senderId: lastMessage.sender.id,
+              senderUsername: lastMessage.sender.username,
+              read: lastMessage.read,
+            }
+          : null,
+        updatedAt: room.updatedAt,
+        unreadCount,
+        index: (() => {
+          if (!lastMessage) return 0; // faqat hammasi
+          if (!lastMessage.read && lastMessage.sender.id !== userId) return 3; // o'qilmagan
+          if (lastMessage.sender.id === userId) return 1; // men yuborgan
+          if (lastMessage.sender.id !== userId) return 2; // menga kelgan
+          return 0; // default
+        })(),
+      };
+    };
 
-    return chatRoomsWithData;
+    // Bitta marta barcha roomlarni map qilib olish
+    const mappedRooms = await Promise.all(allChatRooms.map(mapChatRoom));
+
+    // Response sifatida faqat array qaytariladi, filter qilish index orqali bo'ladi
+    return mappedRooms;
   }
 
   /**
