@@ -21,8 +21,6 @@ export class ChatController {
 
   /**
    * Foydalanuvchining barcha chat xonalarini (konversatsiyalarini) olish.
-   * Bu sizning "Habarlar" ro'yxatiga mos keladi.
-   * @param req Express so'rov obyekti (autentifikatsiya qilingan foydalanuvchi ma'lumotlari uchun)
    */
   @Get('my-chats')
   async getUserChatRooms(@Req() req: { user: { userId: number } }) {
@@ -31,22 +29,24 @@ export class ChatController {
   }
 
   /**
-   * Muayyan chat xonasidagi xabarlar tarixini olish (paginatsiya bilan).
-   * Foydalanuvchi chatni ochganda chaqiriladi.
-   * @param chatRoomId Chat xonasining IDsi.
-   * @param page Paginatsiya sahifa raqami.
-   * @param limit Bir sahifadagi xabarlar soni.
+   * Muayyan chat xonasidagi xabarlar tarixini olish (paginatsiya va raqamli filtr bilan).
+   * 0 - Hammasi, 1 - Menga kelgan xabarlar, 2 - Men yuborgan xabarlar.
    */
   @Get(':chatRoomId/messages')
   async getChatRoomMessages(
     @Param('chatRoomId') chatRoomId: number,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '50',
+    @Query('filter') filter: string = '0', // Yangi raqamli filtr
+    @Req() req: { user: { userId: number } },
   ) {
+    const userId = req.user.userId;
     return this.chatService.getChatRoomMessages(
       chatRoomId,
+      userId,
       parseInt(page),
       parseInt(limit),
+      parseInt(filter),
     );
   }
 
@@ -70,9 +70,6 @@ export class ChatController {
   }
   /**
    * Yangi chat xonasini yaratish yoki mavjudini topish.
-   * Foydalanuvchi biror mahsulot e'lonini ko'rganda "Chatni boshlash" tugmasini bosganda.
-   * @param productId Yangi chat ochilayotgan mahsulotning IDsi.
-   * @param participantIds Chatda ishtirok etadigan foydalanuvchilar IDlari (odatda 2 ta).
    */
   @Post('create-or-get')
   async createOrGetChatRoom(

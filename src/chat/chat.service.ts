@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, Not } from 'typeorm';
+import { Repository, In, Not, FindOptionsWhere } from 'typeorm';
 import { ChatRoom } from './entities/chat-room.entity';
 import { Message } from './entities/message.entity';
 import { User } from 'src/auth/entities/user.entity';
@@ -27,7 +27,6 @@ export class ChatService {
 
   /**
    * Foydalanuvchining barcha chat xonalarini olish.
-   * Dizayndagi "Habarlar" ro'yxati uchun.
    */
   async getUserChatRooms(userId: number) {
     const chatRooms = await this.chatRoomRepository
@@ -92,21 +91,39 @@ export class ChatService {
   }
 
   /**
-   * Muayyan chat xonasidagi xabarlar tarixini olish (paginatsiya bilan).
-   * Foydalanuvchi chatni ochganda chaqiriladi.
+   * Muayyan chat xonasidagi xabarlar tarixini olish (paginatsiya va raqamli filtr bilan).
+   * 0 - Hammasi, 1 - Menga kelgan xabarlar, 2 - Men yuborgan xabarlar.
    */
   async getChatRoomMessages(
     chatRoomId: number,
+    userId: number,
     page: number = 1,
     limit: number = 50,
+    filter: number = 0,
   ) {
     const skip = (page - 1) * limit;
 
+    let whereClause: FindOptionsWhere<Message> = {
+      chatRoom: { id: chatRoomId },
+    };
+
+    switch (filter) {
+      case 1: // Menga kelgan xabarlar
+        whereClause = { ...whereClause, sender: { id: Not(userId) } };
+        break;
+      case 2: // Men yuborgan xabarlar
+        whereClause = { ...whereClause, sender: { id: userId } };
+        break;
+      case 0: // Hammasi (standart)
+      default:
+        break;
+    }
+
     const messages = await this.messageRepository.find({
-      where: { chatRoom: { id: chatRoomId } },
+      where: whereClause,
       relations: ['sender'],
       order: { createdAt: 'ASC' },
-      skip: skip,
+      skip,
       take: limit,
     });
 
@@ -255,7 +272,7 @@ export class ChatService {
       chatRoom: chatRoom,
       sender: sender,
       content: messageContent,
-      read: false, // YANGI: Xabar dastlab o'qilmagan deb belgilanadi
+      read: false,
     });
 
     const savedMessage = await this.messageRepository.save(newMessage);
