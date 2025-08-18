@@ -95,6 +95,36 @@ export class ChatService {
     return mappedRooms;
   }
 
+  async getChatRoomMessages(
+    chatRoomId: number,
+    userId: number,
+    skip: number = 0,
+    take: number = 50,
+  ) {
+    const messages = await this.messageRepository.find({
+      where: { chatRoom: { id: chatRoomId } },
+      relations: ['sender'],
+      order: { createdAt: 'ASC' },
+      skip,
+      take,
+    });
+
+    // index logikasi: 1 = men yuborgan, 2 = menga kelgan, 3 = o'qilmagan
+    return messages.map((msg) => ({
+      id: msg.id,
+      content: msg.content,
+      createdAt: msg.createdAt,
+      senderId: msg.sender.id,
+      senderUsername: msg.sender.username,
+      read: msg.read,
+      index:
+        !msg.read && msg.sender.id !== userId
+          ? 3
+          : msg.sender.id === userId
+            ? 1
+            : 2,
+    }));
+  }
   /**
    * Yangi chat xonasini yaratish yoki mavjudini topish.
    */

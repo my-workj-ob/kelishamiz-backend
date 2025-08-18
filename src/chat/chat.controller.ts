@@ -7,6 +7,7 @@ import {
   Param,
   Req,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
@@ -30,6 +31,26 @@ export class ChatController {
     return this.chatService.getUnreadMessageCount(userId);
   }
 
+  @Get(':id/messages')
+  async getChatRoomMessages(
+    @Param('id', ParseIntPipe) chatRoomId: number,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 50,
+  ) {
+    // userId odatda auth guard orqali olinadi
+    const userId = 1; // TEMP, o'zgartiring auth bilan
+
+    const skip = (page - 1) * limit;
+
+    const messages = await this.chatService.getChatRoomMessages(
+      chatRoomId,
+      userId,
+      skip,
+      limit,
+    );
+
+    return messages;
+  }
   /**
    * Muayyan chat xonasidagi barcha xabarlarni o'qilgan deb belgilash.
    */
