@@ -38,8 +38,7 @@ export class ChatController {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 50,
   ) {
-    // userId odatda auth guard orqali olinadi
-    const userId = 1; // TEMP, o'zgartiring auth bilan
+    const userId = 1;
 
     const skip = (page - 1) * limit;
 
