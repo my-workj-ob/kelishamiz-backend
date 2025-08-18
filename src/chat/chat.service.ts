@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, Not, FindOptionsWhere } from 'typeorm';
+import { Repository, In, Not } from 'typeorm';
 import { ChatRoom } from './entities/chat-room.entity';
 import { Message } from './entities/message.entity';
 import { User } from 'src/auth/entities/user.entity';
@@ -43,8 +43,8 @@ export class ChatService {
       .orderBy('chatRoom.updatedAt', 'DESC')
       .getMany();
 
-    const chatRoomsWithLastMessage = await Promise.all(
-      chatRooms.map(async (room) => {
+    const chatRoomsWithData = await Promise.all(
+      chatRooms.map(async (room, index) => {
         const lastMessage = await this.messageRepository.findOne({
           where: { chatRoomId: room.id },
           order: { createdAt: 'DESC' },
@@ -59,9 +59,18 @@ export class ChatService {
           },
         });
 
+        // Chat xonasidagi barcha xabarlarni olish (faqat so'nggi 50ta)
+        const messages = await this.messageRepository.find({
+          where: { chatRoom: { id: room.id } },
+          relations: ['sender'],
+          order: { createdAt: 'ASC' },
+          take: 50, // Paginatsiya o'rniga standart 50 ta xabar
+        });
+
         const otherParticipant = room.participants.find((p) => p.id !== userId);
 
         return {
+          index: index, // Har bir chat xonasiga indeks berildi
           id: room.id,
           productName: room.product?.title || 'Mahsulot topilmadi',
           imageUrl:
@@ -83,83 +92,19 @@ export class ChatService {
             : null,
           updatedAt: room.updatedAt,
           unreadCount: unreadCount,
+          messages: messages.map((message) => ({
+            id: message.id,
+            content: message.content,
+            createdAt: message.createdAt,
+            senderId: message.sender.id,
+            senderUsername: message.sender.username,
+            read: message.read,
+          })),
         };
       }),
     );
 
-    return chatRoomsWithLastMessage;
-  }
-
-  /**
-   * Muayyan chat xonasidagi xabarlar tarixini olish (paginatsiya va raqamli filtr bilan).
-   * 0 - Hammasi, 1 - Menga kelgan xabarlar, 2 - Men yuborgan xabarlar.
-   */
-  async getChatRoomMessages(
-    chatRoomId: number,
-    userId: number,
-    page: number = 1,
-    limit: number = 50,
-    filter: number = 0,
-  ) {
-    const chatRoom = await this.chatRoomRepository.findOne({
-      where: { id: chatRoomId },
-      relations: ['participants', 'product', 'product.images'],
-    });
-
-    if (!chatRoom) {
-      throw new NotFoundException('Chat xonasi topilmadi.');
-    }
-
-    const skip = (page - 1) * limit;
-
-    let whereClause: FindOptionsWhere<Message> = {
-      chatRoom: { id: chatRoomId },
-    };
-
-    switch (filter) {
-      case 1: // Menga kelgan xabarlar
-        whereClause = { ...whereClause, sender: { id: Not(userId) } };
-        break;
-      case 2: // Men yuborgan xabarlar
-        whereClause = { ...whereClause, sender: { id: userId } };
-        break;
-      case 0: // Hammasi (standart)
-      default:
-        break;
-    }
-
-    const messages = await this.messageRepository.find({
-      where: whereClause,
-      relations: ['sender'],
-      order: { createdAt: 'ASC' },
-      skip,
-      take: limit,
-    });
-
-    const otherParticipant = chatRoom.participants.find((p) => p.id !== userId);
-
-    return {
-      id: chatRoom.id,
-      productName: chatRoom.product?.title || 'Mahsulot topilmadi',
-      imageUrl:
-        isArray(chatRoom.product.images) &&
-        chatRoom.product.imageIndex !== undefined &&
-        chatRoom.product.images[chatRoom.product.imageIndex]
-          ? chatRoom.product.images[chatRoom.product.imageIndex].url
-          : null,
-      otherParticipant: otherParticipant
-        ? { id: otherParticipant.id, username: otherParticipant.username }
-        : null,
-      messages: messages.map((message) => ({
-        id: message.id,
-        content: message.content,
-        createdAt: message.createdAt,
-        senderId: message.sender.id,
-        senderUsername: message.sender.username,
-        read: message.read,
-      })),
-      updatedAt: chatRoom.updatedAt,
-    };
+    return chatRoomsWithData;
   }
 
   /**

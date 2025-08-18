@@ -7,7 +7,6 @@ import {
   Param,
   Req,
   UseGuards,
-  Query,
 } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
@@ -19,36 +18,11 @@ import { AuthGuard } from '@nestjs/passport';
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
-  /**
-   * Foydalanuvchining barcha chat xonalarini (konversatsiyalarini) olish.
-   * Agar `chatId` berilsa, o'sha chatning xabarlarini qaytaradi.
-   * `filter` parametri: 0-hammasi, 1-menga kelgan, 2-men yuborgan.
-   */
   @Get('my-chats')
-  async getUserChatRooms(
-    @Req() req: { user: { userId: number } },
-    @Query('page') page: string = '1',
-    @Query('limit') limit: string = '50',
-    @Query('chatId') chatId?: string, // Yangi ixtiyoriy parametr
-    @Query('filter') filter: string = '0', // Yangi ixtiyoriy parametr
-  ) {
+  async getUserChatRooms(@Req() req: { user: { userId: number } }) {
     const userId = req.user.userId;
-    if (chatId) {
-      // Agar chatId berilsa, faqat bitta chatning xabarlarini qaytarish
-      return this.chatService.getChatRoomMessages(
-        parseInt(chatId),
-        userId,
-        parseInt(page),
-        parseInt(limit),
-        parseInt(filter),
-      );
-    } else {
-      // Aks holda, barcha chatlar ro'yxatini qaytarish
-      return this.chatService.getUserChatRooms(userId);
-    }
+    return this.chatService.getUserChatRooms(userId);
   }
-
-  // `getChatRoomMessages` funksiyasi endi kerak emas, chunki u yuqoriga birlashtirildi.
 
   @Get('unread-count')
   getUnreadMessageCount(@Req() req: { user: { userId: number } }) {
