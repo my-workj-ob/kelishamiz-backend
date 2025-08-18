@@ -1,3 +1,4 @@
+// src/chat/chat.gateway.ts
 import {
   WebSocketGateway,
   SubscribeMessage,
@@ -43,10 +44,7 @@ export class ChatGateway {
 
     console.log(`User ${userId} connected: ${client.id}`);
 
-    // Faqat shu foydalanuvchiga barcha online foydalanuvchilarni yuborish
     client.emit('onlineUsersList', Array.from(this.onlineUsers.keys()));
-
-    // Boshqalarga yangi foydalanuvchi onlayn bo‘lgani haqida xabar berish
     client.broadcast.emit('userStatusChange', { userId, isOnline: true });
   }
 
@@ -57,8 +55,6 @@ export class ChatGateway {
     if (userId && this.onlineUsers.get(userId) === client.id) {
       this.onlineUsers.delete(userId);
       console.log(`User ${userId} disconnected`);
-
-      // Boshqalarga foydalanuvchi oflayn bo‘lgani haqida xabar berish
       this.server.emit('userStatusChange', { userId, isOnline: false });
     }
   }
@@ -79,7 +75,6 @@ export class ChatGateway {
         data.message,
       );
 
-      // Shu xonadagi barcha foydalanuvchilarga xabar yuborish
       this.server.to(data.chatRoomId.toString()).emit('newMessage', {
         id: savedMessage.id,
         chatRoomId: savedMessage.chatRoomId,
@@ -87,9 +82,10 @@ export class ChatGateway {
         senderUsername: savedMessage.sender.username,
         content: savedMessage.content,
         createdAt: savedMessage.createdAt.toISOString(),
+        read: savedMessage.read,
       });
 
-      // Faqat yuboruvchiga status qaytarish
+      // Foydalanuvchiga xabar yuborilgani haqida status qaytarish
       client.emit('messageSent', {
         status: 'success',
         messageId: savedMessage.id,
@@ -102,29 +98,46 @@ export class ChatGateway {
 
   /** Xonaga qo‘shilish */
   @SubscribeMessage('joinRoom')
-  handleJoinRoom(
+  async handleJoinRoom(
     @MessageBody() chatRoomId: string,
     @ConnectedSocket() client: Socket,
-  ): void {
-    console.log(`Client ${client.id} joining room: ${chatRoomId}`);
+  ): Promise<void> {
+    const userId = client.data.userId;
+    if (!userId) {
+      console.log('User ID not found in client data.');
+      return;
+    }
 
-    // Xonaga qo‘shish
+    console.log(
+      `Client ${client.id} (User: ${userId}) joining room: ${chatRoomId}`,
+    );
     client.join(chatRoomId);
 
-    // Shu xonadagi foydalanuvchilarni olish
+    try {
+      // Xonaga qo'shilgan zahoti xabarlarni o'qildi deb belgilash
+      await this.chatService.markMessagesAsRead(Number(chatRoomId), userId);
+
+      const unreadCount = await this.chatService.getUnreadMessageCount(userId);
+      client.emit('unreadCountUpdate', { unreadCount });
+      console.log(
+        `User ${userId} total unread count updated to: ${unreadCount}`,
+      );
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+
     const participantsInRoom =
-      this.server.sockets.adapter.rooms.get(chatRoomId);
+      this.server.sockets?.adapter?.rooms.get(chatRoomId);
 
     if (participantsInRoom) {
       const onlineParticipants = Array.from(participantsInRoom)
         .map((socketId) => {
           const socket = this.server.sockets.sockets.get(socketId);
-          return socket?.data.userId;
+          return socket?.data?.userId as number | undefined;
         })
         .filter((id) => id && this.onlineUsers.has(id))
         .map((id) => ({ userId: id, isOnline: true }));
 
-      // Faqat shu mijozga xonadagi online foydalanuvchilarni yuborish
       client.emit('roomOnlineUsers', onlineParticipants);
     }
   }

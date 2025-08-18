@@ -12,10 +12,6 @@ import {
 import { ChatService } from './chat.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-// import { AuthGuard } from '@nestjs/passport'; // Agar autentifikatsiya ishlatayotgan bo'lsangiz
-// import { Request } from 'express'; // Agar express Request ishlatayotgan bo'lsangiz
-// import { GetUser } from '../auth/decorators/get-user.decorator'; // Custom decorator bo'lsa
-// import { User } from '../entities/user.entity'; // User entity/interface
 
 @Controller('chat')
 @ApiBearerAuth()
@@ -30,8 +26,7 @@ export class ChatController {
    */
   @Get('my-chats')
   async getUserChatRooms(@Req() req: { user: { userId: number } }) {
-    // Type 'any' vaqtinchalik, User tipini o'rnating
-    const userId = req.user.userId; // Haqiqiy autentifikatsiya qilingan user ID
+    const userId = req.user.userId;
     return this.chatService.getUserChatRooms(userId);
   }
 
@@ -55,6 +50,24 @@ export class ChatController {
     );
   }
 
+  @Get('unread-count')
+  getUnreadMessageCount(@Req() req: { user: { userId: number } }) {
+    const userId = req.user.userId;
+    return this.chatService.getUnreadMessageCount(userId);
+  }
+
+  /**
+   * Muayyan chat xonasidagi barcha xabarlarni o'qilgan deb belgilash.
+   */
+  @Post(':chatRoomId/mark-as-read')
+  async markMessagesAsRead(
+    @Param('chatRoomId') chatRoomId: number,
+    @Req() req: { user: { userId: number } },
+  ) {
+    const userId = req.user.userId;
+    await this.chatService.markMessagesAsRead(chatRoomId, userId);
+    return { success: true };
+  }
   /**
    * Yangi chat xonasini yaratish yoki mavjudini topish.
    * Foydalanuvchi biror mahsulot e'lonini ko'rganda "Chatni boshlash" tugmasini bosganda.
@@ -65,10 +78,9 @@ export class ChatController {
   async createOrGetChatRoom(
     @Body('productId') productId: number,
     @Body('participantIds') participantIds: string[],
-    @Req() req: { user: { userId: string } }, // Hozirgi user ID sini olish uchun
+    @Req() req: { user: { userId: string } },
   ) {
-    // Autentifikatsiya qilingan user ID sini participantIds ga qo'shamiz
-    const authenticatedUserId = req.user.userId; // Haqiqiy autentifikatsiya qilingan user ID
+    const authenticatedUserId = req.user.userId;
     if (!participantIds.includes(authenticatedUserId)) {
       participantIds.push(authenticatedUserId);
     }

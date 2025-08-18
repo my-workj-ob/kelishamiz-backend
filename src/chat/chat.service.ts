@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, Not } from 'typeorm';
 import { ChatRoom } from './entities/chat-room.entity';
 import { Message } from './entities/message.entity';
 import { User } from 'src/auth/entities/user.entity';
@@ -37,23 +37,29 @@ export class ChatService {
         'userParticipant',
         'userParticipant.id = :userId',
         { userId },
-      ) // Faqat user qatnashgan chatlar
-      .leftJoinAndSelect('chatRoom.product', 'product') // Mahsulot ma'lumotlari
+      )
+      .leftJoinAndSelect('chatRoom.product', 'product')
       .leftJoinAndSelect('product.images', 'images')
-      .leftJoinAndSelect('chatRoom.participants', 'participant') // Barcha ishtirokchilar (filterlanmagan)
-      .leftJoinAndSelect('chatRoom.messages', 'message') // Xabarlar
+      .leftJoinAndSelect('chatRoom.participants', 'participant')
       .orderBy('chatRoom.updatedAt', 'DESC')
       .getMany();
 
     const chatRoomsWithLastMessage = await Promise.all(
       chatRooms.map(async (room) => {
         const lastMessage = await this.messageRepository.findOne({
-          where: { chatRoom: { id: room.id } },
+          where: { chatRoomId: room.id },
           order: { createdAt: 'DESC' },
           relations: ['sender'],
         });
 
-        // Endi bu yerda barcha ishtirokchilar bor bo'ladi
+        const unreadCount = await this.messageRepository.count({
+          where: {
+            chatRoomId: room.id,
+            read: false,
+            senderId: Not(userId),
+          },
+        });
+
         const otherParticipant = room.participants.find((p) => p.id !== userId);
 
         return {
@@ -65,7 +71,6 @@ export class ChatService {
             room.product.images[room.product.imageIndex]
               ? room.product.images[room.product.imageIndex].url
               : null,
-
           otherParticipant: otherParticipant
             ? { id: otherParticipant.id, username: otherParticipant.username }
             : null,
@@ -78,6 +83,7 @@ export class ChatService {
               }
             : null,
           updatedAt: room.updatedAt,
+          unreadCount: unreadCount,
         };
       }),
     );
@@ -98,8 +104,8 @@ export class ChatService {
 
     const messages = await this.messageRepository.find({
       where: { chatRoom: { id: chatRoomId } },
-      relations: ['sender'], // Kim yuborganligini ham olish
-      order: { createdAt: 'ASC' }, // Eng eski xabarlar birinchi keladi
+      relations: ['sender'],
+      order: { createdAt: 'ASC' },
       skip: skip,
       take: limit,
     });
@@ -110,12 +116,12 @@ export class ChatService {
       createdAt: message.createdAt,
       senderId: message.sender.id,
       senderUsername: message.sender.username,
+      read: message.read,
     }));
   }
 
   /**
    * Yangi chat xonasini yaratish yoki mavjudini topish.
-   * Foydalanuvchi biror mahsulot e'lonini ko'rganda "Chatni boshlash" tugmasini bosganda.
    */
   async findOrCreateChatRoom(
     productId: number,
@@ -127,12 +133,9 @@ export class ChatService {
       );
     }
 
-    // Foydalanuvchilarning mavjudligini tekshirish
     const participants = await this.userRepository.findBy({
       id: In(participantIds),
     });
-
-    console.log(participantIds);
 
     if (participants.length !== 2) {
       throw new NotFoundException(
@@ -140,10 +143,9 @@ export class ChatService {
       );
     }
 
-    // Mahsulotni topamiz
     const product = await this.productRepository.findOne({
       where: { id: productId },
-      relations: ['images', 'imageIndex', 'title'],
+      relations: ['images'],
     });
     if (!product) {
       throw new NotFoundException('Mahsulot topilmadi.');
@@ -171,6 +173,61 @@ export class ChatService {
   }
 
   /**
+   * Muayyan chatdagi xabarlarni o'qilgan deb belgilash.
+   */
+  async markMessagesAsRead(chatRoomId: number, userId: number): Promise<void> {
+    const chatRoom = await this.chatRoomRepository.findOne({
+      where: { id: chatRoomId },
+      relations: ['participants'],
+    });
+
+    if (!chatRoom) {
+      throw new NotFoundException('Chat xonasi topilmadi.');
+    }
+
+    const isParticipant = chatRoom.participants.some((p) => p.id === userId);
+    if (!isParticipant) {
+      throw new BadRequestException(
+        'Siz bu chat xonasining ishtirokchisi emassiz.',
+      );
+    }
+
+    await this.messageRepository.update(
+      {
+        chatRoomId: chatRoomId,
+        read: false,
+        senderId: Not(userId),
+      },
+      { read: true },
+    );
+  }
+
+  /**
+   * Foydalanuvchining umumiy o'qilmagan xabarlar sonini olish.
+   */
+  async getUnreadMessageCount(userId: number): Promise<number> {
+    const chatRooms = await this.chatRoomRepository
+      .createQueryBuilder('chatRoom')
+      .innerJoin(
+        'chatRoom.participants',
+        'userParticipant',
+        'userParticipant.id = :userId',
+        { userId },
+      )
+      .getMany();
+
+    const chatRoomIds = chatRooms.map((room) => room.id);
+
+    return this.messageRepository.count({
+      where: {
+        chatRoomId: In(chatRoomIds),
+        read: false,
+        senderId: Not(userId),
+      },
+    });
+  }
+
+  /**
    * Xabarni saqlash. Bu funksiyani ChatGateway ham ishlatadi.
    */
   async saveMessage(
@@ -178,9 +235,6 @@ export class ChatService {
     senderId: number,
     messageContent: string,
   ): Promise<Message> {
-    console.log('Incoming message:', messageContent);
-
-    // Validatsiya
     if (typeof messageContent !== 'string' || messageContent.length > 10000) {
       throw new BadRequestException('Xabar formati noto‘g‘ri yoki juda uzun.');
     }
@@ -201,6 +255,7 @@ export class ChatService {
       chatRoom: chatRoom,
       sender: sender,
       content: messageContent,
+      read: false, // YANGI: Xabar dastlab o'qilmagan deb belgilanadi
     });
 
     const savedMessage = await this.messageRepository.save(newMessage);
