@@ -101,6 +101,15 @@ export class ChatService {
     limit: number = 50,
     filter: number = 0,
   ) {
+    const chatRoom = await this.chatRoomRepository.findOne({
+      where: { id: chatRoomId },
+      relations: ['participants', 'product', 'product.images'],
+    });
+
+    if (!chatRoom) {
+      throw new NotFoundException('Chat xonasi topilmadi.');
+    }
+
     const skip = (page - 1) * limit;
 
     let whereClause: FindOptionsWhere<Message> = {
@@ -127,14 +136,30 @@ export class ChatService {
       take: limit,
     });
 
-    return messages.map((message) => ({
-      id: message.id,
-      content: message.content,
-      createdAt: message.createdAt,
-      senderId: message.sender.id,
-      senderUsername: message.sender.username,
-      read: message.read,
-    }));
+    const otherParticipant = chatRoom.participants.find((p) => p.id !== userId);
+
+    return {
+      id: chatRoom.id,
+      productName: chatRoom.product?.title || 'Mahsulot topilmadi',
+      imageUrl:
+        isArray(chatRoom.product.images) &&
+        chatRoom.product.imageIndex !== undefined &&
+        chatRoom.product.images[chatRoom.product.imageIndex]
+          ? chatRoom.product.images[chatRoom.product.imageIndex].url
+          : null,
+      otherParticipant: otherParticipant
+        ? { id: otherParticipant.id, username: otherParticipant.username }
+        : null,
+      messages: messages.map((message) => ({
+        id: message.id,
+        content: message.content,
+        createdAt: message.createdAt,
+        senderId: message.sender.id,
+        senderUsername: message.sender.username,
+        read: message.read,
+      })),
+      updatedAt: chatRoom.updatedAt,
+    };
   }
 
   /**

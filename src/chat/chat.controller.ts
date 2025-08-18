@@ -21,34 +21,34 @@ export class ChatController {
 
   /**
    * Foydalanuvchining barcha chat xonalarini (konversatsiyalarini) olish.
+   * Agar `chatId` berilsa, o'sha chatning xabarlarini qaytaradi.
+   * `filter` parametri: 0-hammasi, 1-menga kelgan, 2-men yuborgan.
    */
   @Get('my-chats')
-  async getUserChatRooms(@Req() req: { user: { userId: number } }) {
-    const userId = req.user.userId;
-    return this.chatService.getUserChatRooms(userId);
-  }
-
-  /**
-   * Muayyan chat xonasidagi xabarlar tarixini olish (paginatsiya va raqamli filtr bilan).
-   * 0 - Hammasi, 1 - Menga kelgan xabarlar, 2 - Men yuborgan xabarlar.
-   */
-  @Get(':chatRoomId/messages')
-  async getChatRoomMessages(
-    @Param('chatRoomId') chatRoomId: number,
+  async getUserChatRooms(
+    @Req() req: { user: { userId: number } },
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '50',
-    @Query('filter') filter: string = '0', // Yangi raqamli filtr
-    @Req() req: { user: { userId: number } },
+    @Query('chatId') chatId?: string, // Yangi ixtiyoriy parametr
+    @Query('filter') filter: string = '0', // Yangi ixtiyoriy parametr
   ) {
     const userId = req.user.userId;
-    return this.chatService.getChatRoomMessages(
-      chatRoomId,
-      userId,
-      parseInt(page),
-      parseInt(limit),
-      parseInt(filter),
-    );
+    if (chatId) {
+      // Agar chatId berilsa, faqat bitta chatning xabarlarini qaytarish
+      return this.chatService.getChatRoomMessages(
+        parseInt(chatId),
+        userId,
+        parseInt(page),
+        parseInt(limit),
+        parseInt(filter),
+      );
+    } else {
+      // Aks holda, barcha chatlar ro'yxatini qaytarish
+      return this.chatService.getUserChatRooms(userId);
+    }
   }
+
+  // `getChatRoomMessages` funksiyasi endi kerak emas, chunki u yuqoriga birlashtirildi.
 
   @Get('unread-count')
   getUnreadMessageCount(@Req() req: { user: { userId: number } }) {
