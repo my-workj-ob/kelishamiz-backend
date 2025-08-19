@@ -115,6 +115,7 @@ export class ChatService {
     return messages.map((msg) => ({
       id: msg.id,
       content: msg.content,
+      isDeleted: msg.isDeleted,
       createdAt: msg.createdAt,
       senderId: msg.sender.id,
       senderUsername: msg.sender.username,
