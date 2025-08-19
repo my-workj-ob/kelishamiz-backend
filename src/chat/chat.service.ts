@@ -103,13 +103,12 @@ export class ChatService {
   ) {
     const messages = await this.messageRepository.find({
       where: { chatRoom: { id: chatRoomId } },
-      relations: ['sender'],
+      relations: ['sender', 'chatRoom'], // chatRoom relation ni qo'shdik
       order: { createdAt: 'ASC' },
       skip,
       take,
     });
 
-    // index logikasi: 1 = men yuborgan, 2 = menga kelgan, 3 = o'qilmagan
     return messages.map((msg) => ({
       id: msg.id,
       content: msg.content,
@@ -117,8 +116,9 @@ export class ChatService {
       senderId: msg.sender.id,
       senderUsername: msg.sender.username,
       read: msg.read,
-      index:
-        !msg.read && msg.sender.id !== userId
+      index: msg.chatRoom.isDeleted
+        ? 4
+        : !msg.read && msg.sender.id !== userId
           ? 3
           : msg.sender.id === userId
             ? 1
