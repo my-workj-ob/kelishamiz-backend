@@ -57,6 +57,7 @@ export class ChatService {
       // Room objectini tayyorlash
       return {
         id: room.id,
+        isDeleted: room.isDeleted,
         productName: room.product?.title || 'Mahsulot topilmadi',
         imageUrl:
           Array.isArray(room.product?.images) &&
@@ -79,7 +80,7 @@ export class ChatService {
         updatedAt: room.updatedAt,
         unreadCount,
         index: (() => {
-          if (!lastMessage) return 0; // faqat hammasi
+          if (!lastMessage) return 0;
           if (!lastMessage.read && lastMessage.sender.id !== userId) return 3; // o'qilmagan
           if (lastMessage.sender.id === userId) return 1; // men yuborgan
           if (lastMessage.sender.id !== userId) return 2; // menga kelgan

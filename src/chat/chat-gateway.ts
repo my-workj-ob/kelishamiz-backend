@@ -237,7 +237,7 @@ export class ChatGateway {
     }
   }
 
-  /** Chat xonasini o'chirish */
+
   @SubscribeMessage('deleteChatRoom')
   async handleDeleteChatRoom(
     @MessageBody() data: { chatRoomId: number; userId: number },
