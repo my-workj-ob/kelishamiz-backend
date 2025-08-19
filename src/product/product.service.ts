@@ -409,6 +409,7 @@ export class ProductService {
       const orderedProducts = (localLikedProductIds ?? [])
         .map((id) => products.find((p) => p.id === id))
         .filter((p): p is Product => !!p);
+      console.log(orderedProducts);
 
       return orderedProducts;
     }
