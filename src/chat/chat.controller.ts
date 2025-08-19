@@ -9,6 +9,7 @@ import {
   UseGuards,
   Query,
   ParseIntPipe,
+  Delete,
 } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
@@ -51,6 +52,7 @@ export class ChatController {
 
     return messages;
   }
+
   /**
    * Muayyan chat xonasidagi barcha xabarlarni o'qilgan deb belgilash.
    */
@@ -77,5 +79,28 @@ export class ChatController {
       participantIds.push(authenticatedUserId);
     }
     return this.chatService.findOrCreateChatRoom(productId, participantIds);
+  }
+
+  @Delete(':id')
+  async softDeleteChatRoom(
+    @Param('id', ParseIntPipe) chatRoomId: number,
+    @Req() req: { user: { userId: number } },
+  ) {
+    const userId = req.user.userId;
+    await this.chatService.softDeleteChatRoom(chatRoomId, userId);
+    return { success: true, message: 'Chat xonasi oʻchirildi.' };
+  }
+
+  /**
+   * Xabarni yumshoq o'chirish.
+   */
+  @Delete('message/:id')
+  async softDeleteMessage(
+    @Param('id', ParseIntPipe) messageId: number,
+    @Req() req: { user: { userId: number } },
+  ) {
+    const userId = req.user.userId;
+    await this.chatService.softDeleteMessage(messageId, userId);
+    return { success: true, message: 'Xabar oʻchirildi.' };
   }
 }

@@ -204,4 +204,62 @@ export class ChatGateway {
       isTyping: false,
     });
   }
+
+  @SubscribeMessage('deleteMessage')
+  async handleDeleteMessage(
+    @MessageBody() data: { messageId: number; userId: number },
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      // 1. Xabarni yumshoq o'chirish funksiyasini chaqirish
+      await this.chatService.softDeleteMessage(data.messageId, data.userId);
+
+      // 2. Xabarni topish uchun ChatService ichidagi funksiyadan foydalanish
+      const message = await this.chatService.getMessageById(data.messageId);
+
+      if (message && message.chatRoom) {
+        // 3. Xabar o'chirilgani haqida xona ishtirokchilariga ma'lumot yuborish
+        this.server
+          .to(message.chatRoom.id.toString())
+          .emit('messageDeleted', { messageId: data.messageId });
+      }
+
+      client.emit('messageDeleteStatus', {
+        status: 'success',
+        message: 'Xabar muvaffaqiyatli oʻchirildi.',
+      });
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      client.emit('messageDeleteStatus', {
+        status: 'error',
+        message: 'Xabar oʻchirilmadi: ',
+      });
+    }
+  }
+
+  /** Chat xonasini o'chirish */
+  @SubscribeMessage('deleteChatRoom')
+  async handleDeleteChatRoom(
+    @MessageBody() data: { chatRoomId: number; userId: number },
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      await this.chatService.softDeleteChatRoom(data.chatRoomId, data.userId);
+
+      this.server
+        .to(data.chatRoomId.toString())
+        .emit('chatRoomDeleted', { chatRoomId: data.chatRoomId });
+
+      client.emit('chatRoomDeleteStatus', {
+        status: 'success',
+        message: 'Chat xonasi muvaffaqiyatli oʻchirildi.',
+      });
+    } catch (error) {
+      console.error('Error deleting chat room:', error);
+      client.emit('chatRoomDeleteStatus', {
+        status: 'error',
+        message: 'error.message',
+      });
+    }
+  }
 }

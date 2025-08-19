@@ -125,6 +125,54 @@ export class ChatService {
             : 2,
     }));
   }
+
+  async softDeleteChatRoom(chatRoomId: number, userId: number): Promise<void> {
+    const chatRoom = await this.chatRoomRepository.findOne({
+      where: { id: chatRoomId },
+      relations: ['participants'],
+    });
+
+    if (!chatRoom) {
+      throw new NotFoundException('Chat xonasi topilmadi.');
+    }
+
+    const isParticipant = chatRoom.participants.some((p) => p.id === userId);
+    if (!isParticipant) {
+      throw new BadRequestException(
+        'Siz bu chat xonasini oʻchirish huquqiga ega emassiz.',
+      );
+    }
+
+    await this.chatRoomRepository.update(
+      { id: chatRoomId },
+      { isDeleted: true },
+    );
+  }
+
+  /**
+   * Xabarni yumshoq o'chirish (isDeleted: true).
+   */
+  async softDeleteMessage(messageId: number, userId: number): Promise<void> {
+    const message = await this.messageRepository.findOne({
+      where: { id: String(messageId) },
+      relations: ['sender'],
+    });
+
+    if (!message) {
+      throw new NotFoundException('Xabar topilmadi.');
+    }
+
+    if (message.sender.id !== userId) {
+      throw new BadRequestException(
+        'Siz bu xabarni oʻchirish huquqiga ega emassiz.',
+      );
+    }
+
+    await this.messageRepository.update(
+      { id: String(messageId) },
+      { isDeleted: true },
+    );
+  }
   /**
    * Yangi chat xonasini yaratish yoki mavjudini topish.
    */
@@ -229,6 +277,15 @@ export class ChatService {
         read: false,
         senderId: Not(userId),
       },
+    });
+  }
+  /**
+   * Xabarni ID orqali topish.
+   */
+  async getMessageById(messageId: number): Promise<Message | null> {
+    return this.messageRepository.findOne({
+      where: { id: messageId.toString() },
+      relations: ['chatRoom', 'sender'],
     });
   }
 

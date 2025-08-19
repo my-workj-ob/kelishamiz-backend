@@ -27,7 +27,7 @@ export class ChatRoom {
 
   @ManyToMany(() => User, (user) => user.chatRooms, { cascade: true })
   @JoinTable({
-    name: 'chat_room_participants_user', 
+    name: 'chat_room_participants_user',
     joinColumn: {
       name: 'chatRoomId',
       referencedColumnName: 'id',
@@ -48,4 +48,6 @@ export class ChatRoom {
 
   @UpdateDateColumn({ name: 'updatedat' })
   updatedAt: Date;
+  @Column({ default: false })
+  isDeleted: boolean; // Bu qator qo'shildi
 }
