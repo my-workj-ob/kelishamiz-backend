@@ -158,7 +158,7 @@ export class ChatService {
    */
   async softDeleteMessage(messageId: string, userId: number): Promise<void> {
     const message = await this.messageRepository.findOne({
-      where: { id: String(messageId) },
+      where: { id: messageId },
       relations: ['sender'],
     });
 
@@ -172,10 +172,7 @@ export class ChatService {
       );
     }
 
-    await this.messageRepository.update(
-      { id: String(messageId) },
-      { isDeleted: true },
-    );
+    await this.messageRepository.update({ id: messageId }, { isDeleted: true });
   }
   /**
    * Yangi chat xonasini yaratish yoki mavjudini topish.
