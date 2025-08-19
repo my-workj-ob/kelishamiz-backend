@@ -207,7 +207,7 @@ export class ChatGateway {
 
   @SubscribeMessage('deleteMessage')
   async handleDeleteMessage(
-    @MessageBody() data: { messageId: number; userId: number },
+    @MessageBody() data: { messageId: string; userId: number },
     @ConnectedSocket() client: Socket,
   ) {
     try {

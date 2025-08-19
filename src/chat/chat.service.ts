@@ -283,7 +283,7 @@ export class ChatService {
   /**
    * Xabarni ID orqali topish.
    */
-  async getMessageById(messageId: number): Promise<Message | null> {
+  async getMessageById(messageId: string): Promise<Message | null> {
     return this.messageRepository.findOne({
       where: { id: messageId.toString() },
       relations: ['chatRoom', 'sender'],
