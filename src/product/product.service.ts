@@ -463,6 +463,8 @@ export class ProductService {
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.likes', 'likes')
       .leftJoinAndSelect('product.profile', 'profile')
+      .leftJoinAndSelect('product.region', 'region')
+      .leftJoinAndSelect('product.district', 'district')
       .where('product.id IN (:...ids)', { ids: finalLikedProductIds })
       .orderBy('images.order', 'ASC')
       .getMany();
