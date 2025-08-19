@@ -96,7 +96,7 @@ export class ChatController {
    */
   @Delete('message/:id')
   async softDeleteMessage(
-    @Param('id', ParseIntPipe) messageId: number,
+    @Param('id', ParseIntPipe) messageId: string,
     @Req() req: { user: { userId: number } },
   ) {
     const userId = req.user.userId;

@@ -156,7 +156,7 @@ export class ChatService {
   /**
    * Xabarni yumshoq o'chirish (isDeleted: true).
    */
-  async softDeleteMessage(messageId: number, userId: number): Promise<void> {
+  async softDeleteMessage(messageId: string, userId: number): Promise<void> {
     const message = await this.messageRepository.findOne({
       where: { id: String(messageId) },
       relations: ['sender'],
