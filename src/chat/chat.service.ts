@@ -75,6 +75,7 @@ export class ChatService {
               senderId: lastMessage.sender.id,
               senderUsername: lastMessage.sender.username,
               read: lastMessage.read,
+              isDeleted: lastMessage.isDeleted,
             }
           : null,
         updatedAt: room.updatedAt,
