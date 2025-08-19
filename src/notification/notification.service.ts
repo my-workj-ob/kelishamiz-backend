@@ -23,14 +23,12 @@ export class NotificationService {
     private readonly notificationRepo: Repository<Notification>,
     private readonly configService: ConfigService,
   ) {
-    
     this.oneSignalClient = new OneSignal.Client(
       this.configService.get<string>('ONESIGNAL_APP_ID')!,
       this.configService.get<string>('ONESIGNAL_REST_API_KEY')!,
     );
   }
 
-  
   async createNotification(
     userId: number,
     type: NotificationType,
@@ -38,8 +36,8 @@ export class NotificationService {
     relatedId?: number,
     externalId?: string,
   ) {
-    console.log(process.env.ONESIGNAL_APP_ID)
-    console.log(process.env.ONESIGNAL_REST_API_KEY)
+    console.log(process.env.ONESIGNAL_APP_ID);
+    console.log(process.env.ONESIGNAL_REST_API_KEY);
     try {
       const notification = this.notificationRepo.create({
         userId,
@@ -49,7 +47,6 @@ export class NotificationService {
       });
       const savedNotification = await this.notificationRepo.save(notification);
 
-    
       if (externalId) {
         await this.sendPushNotification(userId, type, message, externalId);
       }

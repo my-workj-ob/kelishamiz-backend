@@ -1,48 +1,29 @@
-    
-import {
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { JwtOptionalAuthGuard } from './../common/jwt/guards/jwt-optional-auth.guard';
-import { NotificationService } from './notification.service';
+import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
+import { FirebaseService } from 'src/firebase.service';
 
-@ApiTags('Notifications')
-@ApiBearerAuth()
-@UseGuards(JwtOptionalAuthGuard)
-@Controller('notifications')
+@Controller('notification')
 export class NotificationController {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(private readonly firebaseService: FirebaseService) {}
 
-  @Get('')
-  @ApiOperation({ summary: 'Get all notifications for user' })
-  async getNotifications(@Req() req) {
-    const userId = req.user?.userId as number;
-    return this.notificationService.getUserNotifications(userId);
-  }
+  @Post('send')
+  async sendNotification(
+    @Body('token') token: string,
+    @Body('title') title: string,
+    @Body('body') body: string,
+  ): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    try {
+      const messageId = await this.firebaseService.sendNotification(
+        token,
+        title,
+        body,
+        {
+          route: '/orderDetail',
+        },
+      );
 
-  @Get('/unread-count')
-  @ApiOperation({ summary: 'Get unread notifications count' })
-  async getUnreadCount(@Req() req) {
-    const userId = req.user?.userId as number;
-    return this.notificationService.getUnreadCount(userId);
-  }
-
-  @Patch(':id/read')
-  @ApiOperation({ summary: 'Mark one notification as read' })
-  async markAsRead(@Param('id') id: number) {
-    return this.notificationService.markAsRead(+id);
-  }
-
-  @Post('/read-all')
-  @ApiOperation({ summary: 'Mark all notifications as read for a user' })
-  async markAllAsRead(@Req() req) {
-    const userId = req.user?.userId as number;
-    return this.notificationService.markAllAsRead(userId);
+      return { success: true, messageId };
+    } catch (err) {
+      throw new BadRequestException((err as Error).message); // ✅ always throw Nest exception
+    }
   }
 }
