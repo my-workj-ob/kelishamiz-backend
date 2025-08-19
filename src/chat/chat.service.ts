@@ -85,6 +85,7 @@ export class ChatService {
           if (!lastMessage.read && lastMessage.sender.id !== userId) return 3; // o'qilmagan
           if (lastMessage.sender.id === userId) return 1; // men yuborgan
           if (lastMessage.sender.id !== userId) return 2; // menga kelgan
+          if (lastMessage.isDeleted !== false) return 4;
           return 0; // default
         })(),
       };

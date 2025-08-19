@@ -237,7 +237,6 @@ export class ChatGateway {
     }
   }
 
-
   @SubscribeMessage('deleteChatRoom')
   async handleDeleteChatRoom(
     @MessageBody() data: { chatRoomId: number; userId: number },
