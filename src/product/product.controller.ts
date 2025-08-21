@@ -239,21 +239,13 @@ export class ProductController {
   ) {
     const userId = req.user?.userId ?? null;
 
-    // ❌ You used "throw NotFoundException(HttpStatus.NOT_FOUND)" – that’s not valid
-    // ✅ Correct usage:
-    if (!ids) {
-      throw new NotFoundException('Mahsulot IDlari topilmadi');
-    }
-
-    // Convert "1,2,3" → [1,2,3]
     const localIds = ids
-      .split(',')
-      .map((id) => Number(id.trim()))
-      .filter((id) => !isNaN(id));
+      ? ids
+          .split(',')
+          .map((id) => Number(id))
+          .filter((id) => !isNaN(id))
+      : [];
 
-    if (localIds.length === 0) {
-      return []; // yoki [], hech qanday product qaytarmaslik
-    }
     return this.productService.syncLikesFromLocal(userId, localIds);
   }
 
