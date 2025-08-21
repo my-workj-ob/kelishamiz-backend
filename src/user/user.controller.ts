@@ -79,16 +79,6 @@ export class UserController {
     };
   }
 
-  @Patch('/notification/token')
-  async updateToken(
-    @Req() req: { user: { userId: number } },
-    @Body('token') token: string,
-  ) {
-    if (!req.user?.userId) throw new Error('User not found');
-
-    return this.userService.updateToken(req.user.userId, token);
-  }
-
   @Get()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.ADMIN) // FAQAT ADMINLAR barcha foydalanuvchilarni ko'rishi mumkin
@@ -154,6 +144,15 @@ export class UserController {
     };
   }
 
+  @Patch('/notification/token')
+  async updateToken(
+    @Req() req: { user: { userId: number } },
+    @Body('token') token: string,
+  ) {
+    if (!req.user?.userId) throw new Error('User not found');
+
+    return this.userService.updateToken(req.user.userId, token);
+  }
   @Delete(':id') // <-- Yangi DELETE endpoint
   @ApiOperation({
     summary: 'Foydalanuvchini oʻchirish (faqat admin uchun)',
