@@ -78,7 +78,7 @@ export class UserController {
       user: updatedUser,
     };
   }
-// 
+  //
   @Patch('token/notification')
   async updateToken(
     @Req() req: { user: { userId: number } },
