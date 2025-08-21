@@ -1,4 +1,3 @@
-    
 import { ApiProperty } from '@nestjs/swagger';
 import {
   Column,
@@ -32,8 +31,6 @@ export class Product {
   @Column()
   title: string;
 
-    
-    
   @OneToMany(() => Comment, (comment) => comment.profile, { cascade: true })
   comments?: Comment[];
 
@@ -47,6 +44,9 @@ export class Product {
   @ApiProperty({ example: 1299.99, description: 'Mahsulot narxi' })
   @Column('decimal', { precision: 10, scale: 2 })
   price: number;
+
+  @Column('text', { array: true, default: () => "'{}'" })
+  liked_ids: string[];
 
   @ApiProperty({
     example: 1200.0,
@@ -62,7 +62,6 @@ export class Product {
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   maxPrice: number;
 
-    
   @ManyToOne(() => Profile, (profile) => profile.products, {
     onDelete: 'CASCADE',
   })
@@ -72,7 +71,6 @@ export class Product {
   @Column({ nullable: true })
   profileId: number;
 
-    
   @OneToMany(() => ProductImage, (image) => image.product, {
     eager: true,
     cascade: true,
@@ -83,7 +81,6 @@ export class Product {
     type: () => Category,
     description: "Mahsulot tegishli bo'lgan kategoriya",
   })
-    
   @ManyToOne(() => Category, (category) => category.products, {
     onDelete: 'CASCADE',
   })
@@ -100,7 +97,6 @@ export class Product {
   @Column({ nullable: true })
   viewCount: number;
 
-    
   @OneToMany(
     () => ProductProperty,
     (productProperty) => productProperty.product,
@@ -129,11 +125,9 @@ export class Product {
   @Column({ default: 0 })
   commentsCount: number;
 
-    
   @ManyToMany(() => User, (user) => user.likes, { onDelete: 'CASCADE' })
   likes: User[];
 
-    
   @ManyToOne(() => Region, (region) => region.products, { eager: true })
   @JoinColumn({ name: 'regionId' })
   region: Region;
@@ -141,7 +135,6 @@ export class Product {
   @Column({ nullable: true })
   regionId: number;
 
-    
   @ManyToOne(() => District, (district) => district.products, { eager: true })
   @JoinColumn({ name: 'districtId' })
   district: District;
@@ -155,7 +148,6 @@ export class Product {
   @Column({ type: 'int', default: 0, nullable: true })
   imageIndex: number;
 
-    
   @OneToMany(() => ChatRoom, (chatRoom) => chatRoom.product)
   chatRooms: ChatRoom[];
 
@@ -181,5 +173,5 @@ export class Product {
   })
   @CreateDateColumn()
   createdAt: Date;
-  product: { id: any; };
+  product: { id: any };
 }
