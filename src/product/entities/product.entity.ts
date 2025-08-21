@@ -4,7 +4,6 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
-  JoinTable,
   ManyToMany,
   ManyToOne,
   OneToMany,
@@ -44,9 +43,6 @@ export class Product {
   @ApiProperty({ example: 1299.99, description: 'Mahsulot narxi' })
   @Column('decimal', { precision: 10, scale: 2 })
   price: number;
-
-  @Column('text', { array: true, default: () => "'{}'" })
-  liked_ids: string[];
 
   @ApiProperty({
     example: 1200.0,
