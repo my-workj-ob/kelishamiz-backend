@@ -212,7 +212,10 @@ export class ChatGateway {
   ) {
     try {
       // 1. Xabarni yumshoq o'chirish funksiyasini chaqirish
-      await this.chatService.softDeleteMessage(data.messageId, data.userId);
+      await this.chatService.softDeleteMessage(
+        data.messageId.toString(),
+        data.userId,
+      );
 
       // 2. Xabarni topish uchun ChatService ichidagi funksiyadan foydalanish
       const message = await this.chatService.getMessageById(data.messageId);
