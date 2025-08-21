@@ -162,21 +162,16 @@ export class ChatService {
       relations: ['sender'],
     });
 
-    if (!message) {
-      throw new NotFoundException('Xabar topilmadi.');
-    }
+    if (!message) throw new NotFoundException('Xabar topilmadi.');
 
-    if (message.sender.id !== userId) {
+    if (message.sender.id !== userId)
       throw new BadRequestException(
         'Siz bu xabarni oʻchirish huquqiga ega emassiz.',
       );
-    }
 
-    await this.messageRepository.update(
-      { id: messageId.toString() },
-      { isDeleted: true },
-    );
+    await this.messageRepository.update({ id: messageId }, { isDeleted: true });
   }
+
   /**
    * Yangi chat xonasini yaratish yoki mavjudini topish.
    */

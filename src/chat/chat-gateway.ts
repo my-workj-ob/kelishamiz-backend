@@ -211,14 +211,10 @@ export class ChatGateway {
     @ConnectedSocket() client: Socket,
   ) {
     try {
-      // 1. Xabarni yumshoq o'chirish funksiyasini chaqirish
       await this.chatService.softDeleteMessage(data.messageId, data.userId);
-
-      // 2. Xabarni topish uchun ChatService ichidagi funksiyadan foydalanish
       const message = await this.chatService.getMessageById(data.messageId);
 
       if (message && message.chatRoom) {
-        // 3. Xabar o'chirilgani haqida xona ishtirokchilariga ma'lumot yuborish
         this.server
           .to(message.chatRoom.id.toString())
           .emit('messageDeleted', { messageId: data.messageId });
@@ -232,7 +228,7 @@ export class ChatGateway {
       console.error('Error deleting message:', error);
       client.emit('messageDeleteStatus', {
         status: 'error',
-        message: 'Xabar oʻchirilmadi: ',
+        message: 'Xabar oʻchirilmadi',
       });
     }
   }
