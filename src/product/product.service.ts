@@ -87,8 +87,27 @@ export class ProductService {
 
     const skip = (page - 1) * pageSize;
 
+    // Yechim
     const queryBuilder = this.productRepository
       .createQueryBuilder('product')
+      .select([
+        'product.id',
+        'product.title',
+        'product.description',
+        'product.price',
+        'product.minPrice',
+        'product.maxPrice',
+        'product.paymentType',
+        'product.currencyType',
+        'product.negotiable',
+        'product.likesCount',
+        'product.commentsCount',
+        'product.viewCount', // ✅ Mana bu ustunni qo'shish kerak
+        'product.isTop',
+        'product.isPublish',
+        'product.createdAt',
+        'product.updatedAt',
+      ])
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('category.parent', 'parentCategory')
       .leftJoinAndSelect('product.profile', 'profile')
@@ -97,8 +116,7 @@ export class ProductService {
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.likes', 'likes')
       .orderBy('product.isTop', 'DESC')
-      .addOrderBy('product.createdAt', 'DESC'); // Yangi mahsulotlar yuqorida
-
+      .addOrderBy('product.createdAt', 'DESC');
     // Asosiy WHERE shartlari (barcha filtrlar uchun)
     const whereConditions: string[] = [];
     const parameters: { [key: string]: any } = {};
