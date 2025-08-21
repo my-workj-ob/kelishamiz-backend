@@ -156,9 +156,9 @@ export class ChatService {
   /**
    * Xabarni yumshoq o'chirish (isDeleted: true).
    */
-  async softDeleteMessage(messageId: number, userId: number): Promise<void> {
+  async softDeleteMessage(messageId: string, userId: number): Promise<void> {
     const message = await this.messageRepository.findOne({
-      where: { id: messageId.toString() },
+      where: { id: messageId },
       relations: ['sender'],
     });
 
@@ -169,10 +169,7 @@ export class ChatService {
         'Siz bu xabarni oʻchirish huquqiga ega emassiz.',
       );
 
-    await this.messageRepository.update(
-      { id: messageId.toString() },
-      { isDeleted: true },
-    );
+    await this.messageRepository.update({ id: messageId }, { isDeleted: true });
   }
 
   /**
@@ -284,9 +281,9 @@ export class ChatService {
   /**
    * Xabarni ID orqali topish.
    */
-  async getMessageById(messageId: number): Promise<Message | null> {
+  async getMessageById(messageId: string): Promise<Message | null> {
     return this.messageRepository.findOne({
-      where: { id: messageId.toString() },
+      where: { id: messageId },
       relations: ['chatRoom', 'sender'],
     });
   }
