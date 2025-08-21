@@ -1,15 +1,24 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import * as admin from 'firebase-admin';
-import * as serviceAccount from './firebase-service-account.json';
+import * as path from 'path';
+import * as fs from 'fs';
 
 @Injectable()
 export class FirebaseService implements OnModuleInit {
   onModuleInit() {
     if (!admin.apps.length) {
+      const serviceAccountPath = path.resolve(
+        __dirname,
+        '../src/firebase-service-account.json',
+      );
+
+      // TypeScript ga aytamiz: JSON parse qilingan object admin.ServiceAccount turida
+      const serviceAccount = JSON.parse(
+        fs.readFileSync(serviceAccountPath, 'utf8'),
+      ) as admin.ServiceAccount;
+
       admin.initializeApp({
-        credential: admin.credential.cert(
-          serviceAccount as admin.ServiceAccount,
-        ),
+        credential: admin.credential.cert(serviceAccount),
       });
       console.log('✅ Firebase initialized');
     }
