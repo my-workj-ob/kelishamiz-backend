@@ -392,8 +392,13 @@ export class ProductService {
     userId: number | null,
     localLikedProductIds?: number[],
   ) {
-    // 1. Mehmon foydalanuvchi bo‘lsa, faqat localLikedProductIds asosida qaytaramiz
     if (!userId) {
+      if (!localLikedProductIds || localLikedProductIds.length === 0) {
+        return []; // hech narsa yo‘q – query yubormaymiz
+      }
+
+      // 1. Mehmon foydalanuvchi bo‘lsa, faqat localLikedProductIds asosida qaytaramiz
+
       const products = await this.productRepository
         .createQueryBuilder('product')
         .leftJoinAndSelect('product.category', 'category')

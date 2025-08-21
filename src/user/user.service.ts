@@ -83,6 +83,14 @@ export class UserService {
     return { users: usersWithoutPassword, total };
   }
 
+  async updateToken(userId: number, token: string) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new Error('User not found');
+
+    user.token = token;
+    return this.userRepository.save(user);
+  }
+
   /**
    * Foydalanuvchini ID bo'yicha o'chiradi.
    * @param userId O'chiriladigan foydalanuvchining ID'si.

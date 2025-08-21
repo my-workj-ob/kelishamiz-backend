@@ -10,7 +10,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Comment } from './../../comments/entities/comments.entity';
-import { Like } from './../../like/entities/like.entity';
+
 import { Product } from './../../product/entities/product.entity';
 import { Profile } from './../../profile/enities/profile.entity';
 import { UserSearch } from './../../search-filter/entities/user-search.entity';
@@ -104,6 +104,9 @@ export class User {
 
   @OneToMany(() => Notification, (message) => message.user)
   notifications: Notification[];
+
+  @Column({ nullable: true })
+  token?: string;
 
   @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
   role: UserRole;

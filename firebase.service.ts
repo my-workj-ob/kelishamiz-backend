@@ -1,23 +1,17 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import * as admin from 'firebase-admin';
-import * as path from 'path';
-import * as fs from 'fs';
+import serviceAccount from './firebase-service-account.json'; // 🔹 JSON fayl
 
 @Injectable()
 export class FirebaseService implements OnModuleInit {
   onModuleInit() {
     if (!admin.apps.length) {
-      const serviceAccountPath = path.resolve(
-        __dirname,
-        '../firebase-service-account.json',
-      );
-      const serviceAccount = JSON.parse(
-        fs.readFileSync(serviceAccountPath, 'utf8'),
-      ) as admin.ServiceAccount;
-
       admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
+        credential: admin.credential.cert(
+          serviceAccount as admin.ServiceAccount,
+        ),
       });
+      console.log('✅ Firebase initialized');
     }
   }
 
@@ -29,10 +23,7 @@ export class FirebaseService implements OnModuleInit {
   ): Promise<string> {
     const message: admin.messaging.Message = {
       token,
-      notification: {
-        title,
-        body,
-      },
+      notification: { title, body },
       data: {
         route: data?.route ?? '',
         ...data,
@@ -45,7 +36,7 @@ export class FirebaseService implements OnModuleInit {
       return response;
     } catch (error) {
       console.error('❌ Notification error:', error);
-      throw new Error(`Notification failed: ${error}`);
+      throw new Error(`Notification failed: ${(error as Error).message}`);
     }
   }
 }

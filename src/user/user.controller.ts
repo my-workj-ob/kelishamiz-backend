@@ -11,7 +11,8 @@ import {
   DefaultValuePipe,
   Delete, // <-- Delete dekoratorini import qiling
   HttpCode, // <-- HttpCode dekoratorini import qiling
-  HttpStatus, // <-- HttpStatus ni import qiling
+  HttpStatus,
+  Req, // <-- HttpStatus ni import qiling
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -76,6 +77,16 @@ export class UserController {
       message: 'User role updated successfully',
       user: updatedUser,
     };
+  }
+
+  @Patch('/notification/token')
+  async updateToken(
+    @Req() req: { user: { userId: number } },
+    @Body('token') token: string,
+  ) {
+    if (!req.user?.userId) throw new Error('User not found');
+
+    return this.userService.updateToken(req.user.userId, token);
   }
 
   @Get()

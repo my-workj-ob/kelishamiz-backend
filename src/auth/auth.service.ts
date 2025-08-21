@@ -274,6 +274,8 @@ export class AuthService {
     return { user: savedUser, ...tokens };
   }
 
+ 
+
   /**
    * OTP yordamida foydalanuvchini tizimga kiritadi.
    * @param phone Tizimga kirish uchun telefon raqami.

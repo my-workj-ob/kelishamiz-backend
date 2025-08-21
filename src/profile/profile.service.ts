@@ -9,7 +9,6 @@ import { Product } from './../product/entities/product.entity';
 import { UserSearch } from './../search-filter/entities/user-search.entity';
 import { Like } from './../like/entities/like.entity';
 import { Comment } from './../comments/entities/comments.entity';
-import { ChatRoom } from './../chat/entities/chat-room.entity';
 
 @Injectable()
 export class ProfileService {
@@ -28,8 +27,6 @@ export class ProfileService {
     @InjectRepository(Like) private readonly likeRepository: Repository<Like>,
     @InjectRepository(UserSearch)
     private readonly searchRepository: Repository<UserSearch>, // agar bor bo‘lsa
-    @InjectRepository(ChatRoom)
-    private readonly chatRoomParticipantRepository: Repository<ChatRoom>,
   ) {}
 
   async create(createProfileDto: CreateProfileDto): Promise<Profile> {
