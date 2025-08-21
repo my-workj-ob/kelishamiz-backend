@@ -152,6 +152,8 @@ export class Product {
 
   @Column({ default: false })
   isPublish: boolean;
+  @Column({ type: 'text', array: true, default: '{}' })
+  liked_ids: string[];
 
   @Column({ type: 'timestamp with time zone', nullable: true })
   topExpiresAt: Date | null;
