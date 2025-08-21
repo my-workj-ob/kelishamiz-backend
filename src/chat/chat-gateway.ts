@@ -213,7 +213,7 @@ export class ChatGateway {
     try {
       // 1. Xabarni yumshoq o'chirish funksiyasini chaqirish
       await this.chatService.softDeleteMessage(
-        data.messageId.toString(),
+        Number(data.messageId),
         data.userId,
       );
 
