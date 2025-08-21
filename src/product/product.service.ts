@@ -90,31 +90,23 @@ export class ProductService {
     // Yechim
     const queryBuilder = this.productRepository
       .createQueryBuilder('product')
-      .select([
-        'product.id',
-        'product.title',
-        'product.description',
-        'product.price',
-        'product.minPrice',
-        'product.maxPrice',
-        'product.paymentType',
-        'product.currencyType',
-        'product.negotiable',
-        'product.likesCount',
-        'product.commentsCount',
-        'product.viewCount', // ✅ Mana bu ustunni qo'shish kerak
-        'product.isTop',
-        'product.isPublish',
-        'product.createdAt',
-        'product.updatedAt',
-      ])
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('category.parent', 'parentCategory')
       .leftJoinAndSelect('product.profile', 'profile')
       .leftJoinAndSelect('product.district', 'district')
       .leftJoinAndSelect('product.region', 'region')
       .leftJoinAndSelect('product.images', 'images')
-      .leftJoinAndSelect('product.likes', 'likes')
+      .leftJoin('product.likes', 'likes') // ✅ Endi bu joinni tanlamaymiz
+      .addSelect([
+        'product', // ✅ product jadvalini tanlash
+        'category',
+        'parentCategory',
+        'profile',
+        'district',
+        'region',
+        'images',
+        'likes.id', // ✅ faqat likes.id ni tanlaymiz
+      ])
       .orderBy('product.isTop', 'DESC')
       .addOrderBy('product.createdAt', 'DESC');
     // Asosiy WHERE shartlari (barcha filtrlar uchun)
