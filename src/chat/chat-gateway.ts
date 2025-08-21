@@ -207,12 +207,12 @@ export class ChatGateway {
 
   @SubscribeMessage('deleteMessage')
   async handleDeleteMessage(
-    @MessageBody() data: { messageId: string; userId: number },
+    @MessageBody() data: { messageId: number; userId: number },
     @ConnectedSocket() client: Socket,
   ) {
     try {
       await this.chatService.softDeleteMessage(
-        data.messageId.toString(),
+        data?.messageId.toString(),
         data.userId,
       );
       const message = await this.chatService.getMessageById(data.messageId);
