@@ -211,7 +211,10 @@ export class ChatGateway {
     @ConnectedSocket() client: Socket,
   ) {
     try {
-      await this.chatService.softDeleteMessage(data.messageId, data.userId);
+      await this.chatService.softDeleteMessage(
+        data.messageId.toString(),
+        data.userId,
+      );
       const message = await this.chatService.getMessageById(data.messageId);
 
       if (message && message.chatRoom) {
