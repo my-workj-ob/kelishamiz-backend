@@ -708,6 +708,7 @@ export class ProductService {
     createProductDto: Omit<ProductDto, 'images'>,
     userId: number,
   ): Promise<Product> {
+    console.log('BLOB_READ_WRITE_TOKEN:', process.env.BLOB_READ_WRITE_TOKEN);
     const { categoryId, properties, ...productData } = createProductDto;
     console.log('files:', files);
     console.log('createProductDto:', createProductDto);

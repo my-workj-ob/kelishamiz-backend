@@ -338,6 +338,7 @@ export class ProductController {
     @Body() body: any, // To'g'ridan-to'g'ri ProductDto ni ishlatish maqsadga muvofiq
     @Req() req: AuthenticatedRequest,
   ): Promise<Product> {
+    console.log('BLOB_READ_WRITE_TOKEN:', process.env.BLOB_READ_WRITE_TOKEN);
     console.log('Qabul qilingan fayllar:', files); // Debugging uchun
     console.log('Qabul qilingan body:', body); // Debugging uchun
     console.log('User from request:', req.user); // Debugging uchun
