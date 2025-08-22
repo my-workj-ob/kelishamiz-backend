@@ -26,7 +26,8 @@
     "test/**/*.ts",
     "src/**/*.js",
     "firebase.service.ts",
-    "firebase-service-account.json"
+    "firebase-service-account.json",
+     "ecosystem.config.js"
   ],
   "exclude": ["node_modules", "**/*.spec.ts"],
   "compileOnSave": false,
