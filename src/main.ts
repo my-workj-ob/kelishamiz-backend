@@ -22,6 +22,8 @@ async function bootstrap() {
   // Remove global CORS (handled by WebSocketGateway)
   // app.enableCors(...);
 
+  console.log('BLOB_READ_WRITE_TOKEN:', process.env.BLOB_READ_WRITE_TOKEN);
+
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   const config = new DocumentBuilder()
