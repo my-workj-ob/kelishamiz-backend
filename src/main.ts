@@ -17,7 +17,7 @@ async function bootstrap() {
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
 
   // Set up Socket.IO adapter
-  app.useWebSocketAdapter(new IoAdapter(app));
+  // app.useWebSocketAdapter(new IoAdapter(app));
 
   // Remove global CORS (handled by WebSocketGateway)
   // app.enableCors(...);
