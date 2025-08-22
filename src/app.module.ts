@@ -60,7 +60,7 @@ import { PaymeModule } from './payme/payme.module';
       host: process.env.DATABASE_HOST,
       port: parseInt(process.env.DATABASE_PORT || '5432', 10),
       username: process.env.DATABASE_USER,
-      password: process.env.DATABASE_PASSWORD,
+      password: '0GzjPHd6pBn1jH83',
       database: process.env.DATABASE_NAME,
       synchronize: true,
       autoLoadEntities: true,
