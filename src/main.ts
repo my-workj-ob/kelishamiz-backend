@@ -44,7 +44,7 @@ async function bootstrap() {
     express.static(join(__dirname, '../node_modules/swagger-ui-dist')),
   );
 
-  await app.listen(process.env.PORT || 3030); // Use consistent port with PM2
+  await app.listen(3030, '0.0.0.0'); // Use consistent port with PM2
 }
 
 bootstrap();
