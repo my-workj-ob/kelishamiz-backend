@@ -65,6 +65,7 @@ import { PaymeModule } from './payme/payme.module';
       synchronize: process.env.DATABASE_SYNCHRONIZE === 'true',
       autoLoadEntities: true,
     }),
+    // s
 
     CacheModule.registerAsync({
       isGlobal: true,
@@ -74,6 +75,7 @@ import { PaymeModule } from './payme/payme.module';
         ttl: 600,
       }),
     }),
+
     AuthModule,
     CategoryModule,
     PropertyModule,
