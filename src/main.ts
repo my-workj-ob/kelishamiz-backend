@@ -12,11 +12,14 @@ import { join } from 'path';
 
 import { AppModule } from './app.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
+  // ✅ Bu qatorni qo'shing
+  app.useWebSocketAdapter(new IoAdapter(app));
   app.enableCors({
     origin: [
       'http://localhost:5173',
