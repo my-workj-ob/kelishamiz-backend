@@ -22,15 +22,18 @@
     "composite": true
   },
   "include": [
+    "src",
     "src/**/*.ts",
     "test/**/*.ts",
     "src/**/*.js",
     "firebase.service.ts",
     "firebase-service-account.json",
-     "ecosystem.config.js"
+    "ecosystem.config.js"
   ],
-  "exclude": ["node_modules", "**/*.spec.ts"],
+
+  "exclude": ["node_modules", "**/*.spec.ts", "ecosystem.config.js"],
   "compileOnSave": false,
+
   "references": [{ "path": "./tsconfig.build.json" }],
 
   "buildOptions": {
