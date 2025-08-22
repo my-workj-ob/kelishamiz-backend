@@ -87,7 +87,6 @@ export class ProductService {
 
     const skip = (page - 1) * pageSize;
 
-    // Yechim
     const queryBuilder = this.productRepository
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.category', 'category')
@@ -96,19 +95,10 @@ export class ProductService {
       .leftJoinAndSelect('product.district', 'district')
       .leftJoinAndSelect('product.region', 'region')
       .leftJoinAndSelect('product.images', 'images')
-      .leftJoin('product.likes', 'likes') // ✅ Endi bu joinni tanlamaymiz
-      .addSelect([
-        'product', // ✅ product jadvalini tanlash
-        'category',
-        'parentCategory',
-        'profile',
-        'district',
-        'region',
-        'images',
-        'likes.id', // ✅ faqat likes.id ni tanlaymiz
-      ])
+      .leftJoinAndSelect('product.likes', 'likes')
       .orderBy('product.isTop', 'DESC')
-      .addOrderBy('product.createdAt', 'DESC');
+      .addOrderBy('product.createdAt', 'DESC'); // Yangi mahsulotlar yuqorida
+
     // Asosiy WHERE shartlari (barcha filtrlar uchun)
     const whereConditions: string[] = [];
     const parameters: { [key: string]: any } = {};
@@ -402,6 +392,7 @@ export class ProductService {
     userId: number | null,
     localLikedProductIds?: number[],
   ) {
+    // 1. Mehmon foydalanuvchi bo‘lsa, faqat localLikedProductIds asosida qaytaramiz
     if (!userId) {
       const products = await this.productRepository
         .createQueryBuilder('product')
