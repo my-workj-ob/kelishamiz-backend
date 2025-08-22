@@ -64,6 +64,7 @@ import { PaymeModule } from './payme/payme.module';
       database: process.env.DATABASE_NAME,
       synchronize: process.env.DATABASE_SYNCHRONIZE === 'true',
       autoLoadEntities: true,
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
     }),
     // s
 
