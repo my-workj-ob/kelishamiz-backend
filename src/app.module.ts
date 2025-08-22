@@ -57,12 +57,12 @@ import { PaymeModule } from './payme/payme.module';
     // }),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: '45.92.173.136',
-      port: 5432,
-      username: 'postgres',
-      password: '0GzjPHd6pBn1jH83',
-      database: 'postgres',
-      synchronize: false,
+      host: process.env.DATABASE_HOST,
+      port: parseInt(process.env.DATABASE_PORT || '5432', 10),
+      username: process.env.DATABASE_USER,
+      password: process.env.DATABASE_PASSWORD,
+      database: process.env.DATABASE_NAME,
+      synchronize: process.env.DATABASE_SYNCHRONIZE === 'true',
       autoLoadEntities: true,
     }),
 
