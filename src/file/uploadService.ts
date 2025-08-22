@@ -4,10 +4,18 @@ import { put } from '@vercel/blob';
 @Injectable()
 export class UploadService {
   async uploadFile(file: Express.Multer.File): Promise<string> {
+    // .env dan tokenni olamiz
+    const token =
+      process.env.BLOB_READ_WRITE_TOKEN ||
+      'vercel_blob_rw_Hl2g4VY0JzwRnHdy_88alBWTCk3BJPoDyuNMIP3E3FCm8CI';
+    if (!token) {
+      throw new Error('BLOB_READ_WRITE_TOKEN topilmadi!');
+    }
     try {
       const blob = await put(file.originalname, file.buffer, {
         access: 'public',
         addRandomSuffix: true,
+        token,
       });
 
       return blob.url;
