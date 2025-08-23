@@ -24,7 +24,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:5173', // local dev
       'https://kelishamiz.uz', // production frontend
-      'https://kelishamiz-admin-panels.vercel.app/',
+      'https://kelishamiz-admin-panels.vercel.app',
     ],
     credentials: true, // agar cookie yoki auth token yuborilsa
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
