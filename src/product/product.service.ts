@@ -74,7 +74,8 @@ export class ProductService {
     likedIds: number[] = [],
     isAdmin: boolean = false,
     regionId?: number, // Yangi: regionId raqam bo'lishi kerak
-    districtIds: number[] = [], // Yangi: districtIds raqamlar massivi bo'lishi kerak
+    districtIds: number[] = [],
+    // Yangi: districtIds raqamlar massivi bo'lishi kerak
   ): Promise<{
     data: (Product & { isLike: boolean })[];
     total: number;
@@ -165,7 +166,7 @@ export class ProductService {
         isLike,
         profile: {
           ...product.profile, // endi TypeScript tipini biladi
-          userId: product.profile.user?.id,
+          ...product.likes.map((item) => item.id === userId && item.id),
         },
       };
     });
