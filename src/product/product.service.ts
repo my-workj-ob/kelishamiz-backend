@@ -163,7 +163,10 @@ export class ProductService {
       return {
         ...product,
         isLike,
-        profile: product.profile,
+        profile: {
+          ...product.profile, // endi TypeScript tipini biladi
+          userId: product.profile.user?.id,
+        },
       };
     });
 
