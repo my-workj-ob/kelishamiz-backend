@@ -252,13 +252,13 @@ export class ProductService {
     id: number,
     isAdmin: boolean = false,
   ): Promise<Product | null> {
-    // <-- Yangi parametr
     const where: any = { id };
     if (!isAdmin) {
-      where.isPublish = true; // Faqat ADMIN bo'lmaganda publish qilingan bo'lishi kerak
+      where.isPublish = true;
     }
 
-    return this.productRepository.findOne({
+    // Mahsulotni barcha kerakli relations bilan topish
+    const product = await this.productRepository.findOne({
       where,
       relations: [
         'profile',
@@ -266,9 +266,35 @@ export class ProductService {
         'productProperties.property',
         'images',
         'category',
-        'profile.user',
+        'profile.user', // User ma'lumotlarini olish uchun muhim
       ],
     });
+
+    // Agar mahsulot topilmasa, null qaytarish
+    if (!product) {
+      return null;
+    }
+
+    // Mahsulot topilsa, profile ob'ektiga userId qo'shish
+    if (product.profile && product.profile.user) {
+      // product obyektini o'zgartiramiz, chunki
+      // TypeORM ning findOne metodi ob'ekt reference'ni qaytaradi
+      (product.profile as any).userId = product.profile.user.id;
+    }
+
+    // Yangi ob'ekt yaratish
+    const result = {
+      ...product,
+      profile: {
+        ...product.profile,
+        userId: product.profile?.user?.id,
+      },
+    };
+
+    // Natijani qaytarish, lekin user ma'lumotini yashirish
+    delete (result.profile as any).user;
+
+    return result as Product;
   }
 
   async getFullTextSearchByCategory(
