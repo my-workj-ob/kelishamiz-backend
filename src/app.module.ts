@@ -61,7 +61,7 @@ import { PaymeModule } from './payme/payme.module';
       port: parseInt(process.env.DATABASE_PORT || '5432', 10),
       username: 'postgres',
       password: '0GzjPHd6pBn1jH83',
-      database: 'postgres',
+      database: 'kelishamiz',
       synchronize: true,
       autoLoadEntities: true,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
