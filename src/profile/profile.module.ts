@@ -31,7 +31,7 @@ import { ChatRoom } from './../chat/entities/chat-room.entity';
       FileEntity,
       Like,
       ProductProperty,
-      ChatRoom
+      ChatRoom,
     ]),
   ],
   providers: [

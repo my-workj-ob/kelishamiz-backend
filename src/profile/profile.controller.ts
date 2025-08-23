@@ -65,13 +65,17 @@ export class ProfileController {
 
   @Get('me')
   @ApiOkResponse({ description: 'Foydalanuvchining profili', type: Profile })
-  async getMe(@Req() req: { user: { userId: number } }): Promise<Profile> {
+  async getMe(@Req() req: { user: { userId: number } }): Promise<any> {
     const user = req.user;
     const existUser = await this.profileService.findByUser(user.userId);
     if (!existUser) {
       throw new NotFoundException('Foydalanuvchi profili topilmadi');
     }
-    return existUser;
+
+    return {
+      ...existUser,
+      userId: user.userId, // userId qo'shildi
+    };
   }
 
   @Get(':id')
