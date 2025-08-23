@@ -301,13 +301,15 @@ export class ChatService {
     }
 
     const chatRoom = await this.chatRoomRepository.findOneBy({
-      id: chatRoomId,
+      id: Number(chatRoomId),
     });
     if (!chatRoom) {
       throw new NotFoundException('Chat xonasi topilmadi.');
     }
 
-    const sender = await this.userRepository.findOneBy({ id: senderId });
+    const sender = await this.userRepository.findOneBy({
+      id: Number(senderId),
+    });
     if (!sender) {
       throw new NotFoundException('Yuboruvchi foydalanuvchi topilmadi.');
     }
