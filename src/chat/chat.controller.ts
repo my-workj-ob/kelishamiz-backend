@@ -71,8 +71,8 @@ export class ChatController {
   @Post('create-or-get')
   async createOrGetChatRoom(
     @Body('productId') productId: number,
-    @Body('participantIds') participantIds: string[],
-    @Req() req: { user: { userId: string } },
+    @Body('participantIds') participantIds: number[],
+    @Req() req: { user: { userId: number } },
   ) {
     const authenticatedUserId = req.user.userId;
     if (!participantIds.includes(authenticatedUserId)) {

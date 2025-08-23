@@ -177,7 +177,7 @@ export class ChatService {
    */
   async findOrCreateChatRoom(
     productId: number,
-    participantIds: string[],
+    participantIds: number[],
   ): Promise<ChatRoom> {
     if (participantIds.length !== 2) {
       throw new BadRequestException(
@@ -301,15 +301,13 @@ export class ChatService {
     }
 
     const chatRoom = await this.chatRoomRepository.findOneBy({
-      id: Number(chatRoomId),
+      id: chatRoomId,
     });
     if (!chatRoom) {
       throw new NotFoundException('Chat xonasi topilmadi.');
     }
 
-    const sender = await this.userRepository.findOneBy({
-      id: Number(senderId),
-    });
+    const sender = await this.userRepository.findOneBy({ id: senderId });
     if (!sender) {
       throw new NotFoundException('Yuboruvchi foydalanuvchi topilmadi.');
     }
