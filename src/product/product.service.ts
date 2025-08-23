@@ -161,12 +161,14 @@ export class ProductService {
       } else {
         isLike = likedIds.includes(product.id);
       }
+      console.log(`userId: ${product.profile.user?.id}`);
+
       return {
         ...product,
         isLike,
         profile: {
           ...product.profile, // endi TypeScript tipini biladi
-          ...product.likes.map((item) => item.id === userId && item.id),
+          userId: product.profile.user?.id,
         },
       };
     });
