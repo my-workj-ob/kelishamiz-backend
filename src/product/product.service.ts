@@ -73,9 +73,8 @@ export class ProductService {
     pageSize = 10,
     likedIds: number[] = [],
     isAdmin: boolean = false,
-    regionId?: number, // Yangi: regionId raqam bo'lishi kerak
+    regionId?: number,
     districtIds: number[] = [],
-    // Yangi: districtIds raqamlar massivi bo'lishi kerak
   ): Promise<{
     data: (Product & { isLike: boolean })[];
     total: number;
@@ -93,67 +92,53 @@ export class ProductService {
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('category.parent', 'parentCategory')
       .leftJoinAndSelect('product.profile', 'profile')
+      .leftJoinAndSelect('profile.user', 'user') // <--- Bu yangi qator
       .leftJoinAndSelect('product.district', 'district')
       .leftJoinAndSelect('product.region', 'region')
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.likes', 'likes')
       .orderBy('product.isTop', 'DESC')
-      .addOrderBy('product.createdAt', 'DESC'); // Yangi mahsulotlar yuqorida
+      .addOrderBy('product.createdAt', 'DESC');
 
-    // Asosiy WHERE shartlari (barcha filtrlar uchun)
+    // ... (boshqa shartlar va pagination qismi o'zgarishsiz qoladi) ...
+
     const whereConditions: string[] = [];
     const parameters: { [key: string]: any } = {};
 
-    // 1. Faqat publish qilingan mahsulotlar (admin bo'lmasa)
     if (!isAdmin) {
       whereConditions.push('product.isPublish = :isPublish');
       parameters.isPublish = true;
       this.logger.debug('Filtering for published products (non-admin user).');
     }
 
-    // 2. Region bo'yicha filtrlash
     if (regionId) {
       whereConditions.push('product.region.id = :regionId');
       parameters.regionId = regionId;
       this.logger.debug(`Filtering by regionId: ${regionId}`);
     }
 
-    // 3. Tumanlar bo'yicha filtrlash (maksimal 3 ta tuman)
-    const effectiveDistrictIds = districtIds.slice(0, 3); // Eng ko'pi bilan 3 ta tuman
+    const effectiveDistrictIds = districtIds.slice(0, 3);
 
     if (effectiveDistrictIds.length > 0) {
-      // Agar tumanlar tanlangan bo'lsa, ularni queryga qo'shamiz
-      whereConditions.push('product.district.id IN (:...effectiveDistrictIds)'); // `IN` operatori TypeORM uchun
+      whereConditions.push('product.district.id IN (:...effectiveDistrictIds)');
       parameters.effectiveDistrictIds = effectiveDistrictIds;
       this.logger.debug(
         `Filtering by effectiveDistrictIds: ${effectiveDistrictIds.join(', ')}`,
       );
     } else if (regionId && effectiveDistrictIds.length === 0) {
-      // Agar tumanlar tanlanmagan bo'lsa va faqat regionId berilgan bo'lsa,
-      // bu o'sha regiondagi barcha mahsulotlarni qidirishni anglatadi.
-      // Bu holatda districtIdga qo'shimcha shart qo'yilmaydi.
       this.logger.debug('No districts selected, searching by region only.');
-    } else {
-      // Agar na regionId na districtId berilmagan bo'lsa,
-      // bu yerda qanday xatti-harakat qilishni belgilashingiz kerak.
-      // Hozirda bu holatda boshqa filtrlarga bog'liq bo'lmagan
-      // barcha (yoki publish qilingan) mahsulotlar qaytariladi.
     }
 
-    // Barcha WHERE shartlarini qo'shish
     if (whereConditions.length > 0) {
       queryBuilder.where(whereConditions.join(' AND '), parameters);
     }
 
-    // Total count
     const total = await queryBuilder.getCount();
     this.logger.debug(`Total products found (before pagination): ${total}`);
 
-    // Pagination
     const products = await queryBuilder.skip(skip).take(pageSize).getMany();
     this.logger.debug(`Found ${products.length} products after pagination.`);
 
-    // isLike flag
     const result = products.map((product) => {
       let isLike: boolean = false;
       if (userId) {
@@ -161,13 +146,11 @@ export class ProductService {
       } else {
         isLike = likedIds.includes(product.id);
       }
-      console.log(`userId: ${product.profile.user?.id}`);
-
       return {
         ...product,
         isLike,
         profile: {
-          ...product.profile, // endi TypeScript tipini biladi
+          ...product.profile,
           userId: product.profile.user?.id,
         },
       };
