@@ -163,8 +163,7 @@ export class ProductService {
       return {
         ...product,
         isLike,
-        profile: product.profile.user,
-        profiles: product.profile,
+        profile: product.profile,
       };
     });
 
