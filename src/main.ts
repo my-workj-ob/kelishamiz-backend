@@ -20,7 +20,15 @@ async function bootstrap() {
   // app.useWebSocketAdapter(new IoAdapter(app));
 
   // Remove global CORS (handled by WebSocketGateway)
-  // app.enableCors(...);
+  app.enableCors({
+    origin: [
+      'http://localhost:5173', // local dev
+      'https://kelishamiz.uz', // production frontend
+    ],
+    credentials: true, // agar cookie yoki auth token yuborilsa
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
 
   console.log('BLOB_READ_WRITE_TOKEN:', process.env.BLOB_READ_WRITE_TOKEN);
 
