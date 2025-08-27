@@ -82,6 +82,32 @@ export class UserController {
   @Patch('token/notification')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.USER) // ADMIN va USER ikkalasi ham tokenni yangilashi mumkin
+  @ApiOperation({
+    summary: 'Foydalanuvchi tokenini yangilash (admin va user uchun)',
+    description:
+      'Foydalanuvchi tokenini yangilaydi. Har ikkala rol uchun ham mavjud.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        token: { type: 'string', example: 'new_device_token_12345' },
+      },
+      required: ['token'],
+    },
+    description: 'Yangi token qiymati',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Token muvaffaqiyatli yangilandi.',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Token updated successfully' },
+        user: { $ref: '#/components/schemas/User' },
+      },
+    },
+  })
   async updateToken(
     @Req() req: { user: { userId: number } },
     @Body('token') token: string,
