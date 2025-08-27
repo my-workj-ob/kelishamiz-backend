@@ -25,7 +25,7 @@ export class ChatService {
   ) {}
 
   async getUserChatRooms(userId: number) {
-    // Hamma chat xonalarini olish
+    // Faqat o'chirilmagan chat xonalarini (isDeleted: false) olish
     const allChatRooms = await this.chatRoomRepository
       .createQueryBuilder('chatRoom')
       .innerJoin(
@@ -34,6 +34,7 @@ export class ChatService {
         'userParticipant.id = :userId',
         { userId },
       )
+      .where('chatRoom.isDeleted = :isDeleted', { isDeleted: false }) // Yangi qo'shilgan qator
       .leftJoinAndSelect('chatRoom.product', 'product')
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('chatRoom.participants', 'participant')
@@ -54,7 +55,6 @@ export class ChatService {
 
       const otherParticipant = room.participants.find((p) => p.id !== userId);
 
-      // Room objectini tayyorlash
       return {
         id: room.id,
         isDeleted: room.isDeleted,
@@ -104,9 +104,17 @@ export class ChatService {
     skip: number = 0,
     take: number = 50,
   ) {
+    const chatRoom = await this.chatRoomRepository.findOne({
+      where: { id: chatRoomId },
+    });
+
+    if (!chatRoom) {
+      throw new NotFoundException('Chat xonasi topilmadi.');
+    }
+
     const messages = await this.messageRepository.find({
       where: { chatRoom: { id: chatRoomId } },
-      relations: ['sender', 'chatRoom'], // chatRoom relation ni qo'shdik
+      relations: ['sender'],
       order: { createdAt: 'ASC' },
       skip,
       take,
@@ -120,7 +128,7 @@ export class ChatService {
       senderId: msg.sender.id,
       senderUsername: msg.sender.username,
       read: msg.read,
-      index: msg.chatRoom.isDeleted
+      index: chatRoom.isDeleted
         ? 4
         : !msg.read && msg.sender.id !== userId
           ? 3
