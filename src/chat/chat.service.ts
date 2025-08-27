@@ -25,7 +25,6 @@ export class ChatService {
   ) {}
 
   async getUserChatRooms(userId: number) {
-    // Faqat o'chirilmagan chat xonalarini (isDeleted: false) olish
     const allChatRooms = await this.chatRoomRepository
       .createQueryBuilder('chatRoom')
       .innerJoin(
@@ -34,17 +33,16 @@ export class ChatService {
         'userParticipant.id = :userId',
         { userId },
       )
-      .where('chatRoom.isDeleted = :isDeleted', { isDeleted: false }) // Yangi qo'shilgan qator
+      .where('chatRoom.isDeleted = :isDeleted', { isDeleted: false })
       .leftJoinAndSelect('chatRoom.product', 'product')
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('chatRoom.participants', 'participant')
       .orderBy('chatRoom.updatedAt', 'DESC')
       .getMany();
 
-    // Xonani bitta objectga map qilib beradigan helper
     const mapChatRoom = async (room: ChatRoom) => {
       const lastMessage = await this.messageRepository.findOne({
-        where: { chatRoomId: room.id },
+        where: { chatRoomId: room.id, isDeleted: false }, // Faqat o'chirilmagan oxirgi xabarni oladi
         order: { createdAt: 'DESC' },
         relations: ['sender'],
       });
@@ -82,19 +80,15 @@ export class ChatService {
         unreadCount,
         index: (() => {
           if (!lastMessage) return 0;
-          if (!lastMessage.read && lastMessage.sender.id !== userId) return 3; // o'qilmagan
-          if (lastMessage.sender.id === userId) return 1; // men yuborgan
-          if (lastMessage.sender.id !== userId) return 2; // menga kelgan
-          if (lastMessage.isDeleted !== false) return 4;
-          return 0; // default
+          if (!lastMessage.read && lastMessage.sender.id !== userId) return 3;
+          if (lastMessage.sender.id === userId) return 1;
+          if (lastMessage.sender.id !== userId) return 2;
+          return 0;
         })(),
       };
     };
 
-    // Bitta marta barcha roomlarni map qilib olish
     const mappedRooms = await Promise.all(allChatRooms.map(mapChatRoom));
-
-    // Response sifatida faqat array qaytariladi, filter qilish index orqali bo'ladi
     return mappedRooms;
   }
 
@@ -113,7 +107,7 @@ export class ChatService {
     }
 
     const messages = await this.messageRepository.find({
-      where: { chatRoom: { id: chatRoomId } },
+      where: { chatRoom: { id: chatRoomId }, isDeleted: false }, // Faqat o'chirilmagan xabarlarni oladi
       relations: ['sender'],
       order: { createdAt: 'ASC' },
       skip,
@@ -221,6 +215,13 @@ export class ChatService {
       .getOne();
 
     if (existingChatRoom) {
+      await this.messageRepository.update(
+        { chatRoom: { id: existingChatRoom.id } },
+        { isDeleted: true },
+      );
+
+      existingChatRoom.isDeleted = false;
+      await this.chatRoomRepository.save(existingChatRoom);
       return existingChatRoom;
     }
 
