@@ -1,7 +1,3 @@
-    
-    
-    
-    
 import {
   BadRequestException,
   Body,
@@ -64,14 +60,13 @@ export class AuthController {
           nullable: true,
           example: {
             id: 1,
-            phoneNumber: '+998901234567'     ,
+            phoneNumber: '+998901234567',
           },
         },
         id: { type: 'number', example: 1 },
         phone: { type: 'string', example: '+998901234567' },
         username: { type: 'string', example: 'user123' },
         location: { type: 'string', example: 'Toshkent' },
-    
       },
     },
   })
@@ -306,7 +301,6 @@ export class AuthController {
       throw new NotFoundException('Foydalanuvchi topilmadi.');
     }
 
-    
     const { otp } = await this.authService.sendOtp(body.phone);
     return { success: true, message: 'SMS kod yuborildi.', otp };
   }

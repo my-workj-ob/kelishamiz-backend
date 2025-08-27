@@ -78,8 +78,10 @@ export class UserController {
       user: updatedUser,
     };
   }
-  //
+
   @Patch('token/notification')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.USER) // ADMIN va USER ikkalasi ham tokenni yangilashi mumkin
   async updateToken(
     @Req() req: { user: { userId: number } },
     @Body('token') token: string,
