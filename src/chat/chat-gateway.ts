@@ -59,6 +59,35 @@ export class ChatGateway {
     }
   }
 
+  @SubscribeMessage('readMessage')
+  async handleReadMessage(
+    @MessageBody()
+    data: { chatRoomId: number; messageId: string; readerId: number },
+    @ConnectedSocket() client: Socket,
+  ): Promise<void> {
+    try {
+      // 1. O'qilganlik holatini o'zgartirish
+      await this.chatService.markMessageAsRead(data.messageId, data.readerId);
+
+      // 2. Xabar haqida ma'lumot olish
+      const message = await this.chatService.getMessageById(data.messageId);
+
+      if (message) {
+        // 3. Xabarning yuboruvchisiga xabar o'qilgani haqida ma'lumot yuborish
+        const senderSocketId = this.onlineUsers.get(message.sender.id);
+        if (senderSocketId) {
+          this.server.to(senderSocketId).emit('messageRead', {
+            messageId: data.messageId,
+            chatRoomId: data.chatRoomId,
+            readerId: data.readerId,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error handling readMessage event:', error);
+    }
+  }
+
   /** Xabar yuborish */
   @SubscribeMessage('sendMessage')
   async handleSendMessage(
@@ -85,7 +114,6 @@ export class ChatGateway {
         read: savedMessage.read,
       });
 
-      // Foydalanuvchiga xabar yuborilgani haqida status qaytarish
       client.emit('messageSent', {
         status: 'success',
         messageId: savedMessage.id,
@@ -96,7 +124,6 @@ export class ChatGateway {
     }
   }
 
-  /** Xonaga qo‘shilish */
   @SubscribeMessage('joinRoom')
   async handleJoinRoom(
     @MessageBody() chatRoomId: string,
@@ -114,7 +141,6 @@ export class ChatGateway {
     client.join(chatRoomId);
 
     try {
-      // Xonaga qo'shilgan zahoti xabarlarni o'qildi deb belgilash
       await this.chatService.markMessagesAsRead(Number(chatRoomId), userId);
 
       const unreadCount = await this.chatService.getUnreadMessageCount(userId);

@@ -297,6 +297,29 @@ export class ChatService {
     });
   }
 
+  async markMessageAsRead(messageId: string, readerId: number): Promise<void> {
+    const message = await this.messageRepository.findOne({
+      where: { id: messageId },
+      relations: ['sender'],
+    });
+
+    if (!message) {
+      throw new NotFoundException('Xabar topilmadi.');
+    }
+
+    // Faqat xabar yuboruvchisi bo'lmagan foydalanuvchi uni o'qiganida o'zgartirish
+    if (message.sender.id === readerId) {
+      throw new BadRequestException(
+        'Siz o‘z xabaringizni o‘qilgan deb belgilay olmaysiz.',
+      );
+    }
+
+    await this.messageRepository.update(
+      { id: messageId, read: false },
+      { read: true },
+    );
+  }
+
   /**
    * Xabarni saqlash. Bu funksiyani ChatGateway ham ishlatadi.
    */
