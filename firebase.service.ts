@@ -8,8 +8,8 @@ export class FirebaseService implements OnModuleInit {
   onModuleInit() {
     if (!admin.apps.length) {
       const serviceAccountPath = path.resolve(
-        __dirname,
-        '../firebase-service-account.json',
+        process.cwd(), // project root papka
+        'src/firebase-service-account.json', // JSON fayl sizning src ichida
       );
 
       // TypeScript ga aytamiz: JSON parse qilingan object admin.ServiceAccount turida
