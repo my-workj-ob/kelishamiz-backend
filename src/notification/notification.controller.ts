@@ -92,16 +92,17 @@ export class NotificationController {
     return this.notificationService.getUnreadCount(req.user.userId);
   }
 
-  // 🔹 Bitta notificationni o‘qilgan qilish
-  @Patch('read/:id')
-  async markAsRead(@Param('id') id: number, @Req() req: AuthRequest) {
-    if (!req.user?.userId) throw new ForbiddenException('User not found');
-    return this.notificationService.markAsRead(id, req.user.userId);
-  }
   // 🔹 Barcha notificationlarni o‘qilgan qilish
   @Patch('mark-all')
   async markAllAsRead(@Req() req: AuthRequest) {
     if (!req.user?.userId) throw new ForbiddenException('User not found');
     return this.notificationService.markAllAsRead(req.user.userId);
+  }
+
+  // 🔹 Bitta notificationni o‘qilgan qilish
+  @Patch('read/:id')
+  async markAsRead(@Param('id') id: number, @Req() req: AuthRequest) {
+    if (!req.user?.userId) throw new ForbiddenException('User not found');
+    return this.notificationService.markAsRead(id, req.user.userId);
   }
 }
