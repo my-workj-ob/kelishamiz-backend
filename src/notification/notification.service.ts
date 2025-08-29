@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
 import { SendNotificationDto } from './dto/send-notification.dto';
@@ -13,14 +17,19 @@ export class NotificationsService {
 
   // 🔹 Bildirishnoma saqlash
   async saveNotification(dto: SendNotificationDto) {
+    if (!dto.type) {
+      throw new BadRequestException('Notification type is required');
+    }
+
     const notification = this.notificationRepo.create({
       title: dto.title,
       body: dto.body,
       type: dto.type,
-      chatId: dto.chatId ?? undefined, // null emas, undefined ishlatamiz
+      chatId: dto.chatId ?? undefined,
       isRead: false,
-      user: { id: dto.userId || 1 }, // relation orqali bog‘laymiz
+      user: { id: dto.userId! }, // JWT orqali beriladi
     });
+
     return this.notificationRepo.save(notification);
   }
 
@@ -41,10 +50,10 @@ export class NotificationsService {
     }));
   }
 
-  // 🔹 Bitta bildirishnomani o‘qilgan deb belgilash
+  // 🔹 Bitta notificationni o‘qilgan qilish
   async markAsRead(id: number, userId: number) {
     const result = await this.notificationRepo.update(
-      { id, user: { id: userId } }, // ⚠️ notification id va userId bilan filter
+      { id, user: { id: userId } },
       { isRead: true },
     );
 
@@ -55,31 +64,37 @@ export class NotificationsService {
 
     return { success: true };
   }
-  // 🔹 Barcha bildirishnomalarni o‘qilgan qilish
+
+  // 🔹 Barcha notificationlarni o‘qilgan qilish
   async markAllAsRead(userId: number) {
     await this.notificationRepo.update(
-      { user: { id: userId } }, // ⚠️ relation orqali filter
+      { user: { id: userId } },
       { isRead: true },
     );
     return { success: true };
   }
 
-  // 🔹 O‘qilmagan bildirishnomalar soni
+  // 🔹 O‘qilmagan notificationlar soni
   async getUnreadCount(userId: number) {
     return this.notificationRepo.count({
       where: { user: { id: userId }, isRead: false },
     });
   }
 
-  // 🔹 Bitta bildirishnomani o‘chirish
-  async deleteNotification(id: number) {
-    const result = await this.notificationRepo.delete(id);
+  // 🔹 Bitta notificationni o‘chirish
+  async deleteNotification(id: number, userId: number) {
+    const result = await this.notificationRepo.delete({
+      id,
+      user: { id: userId },
+    });
     if (result.affected === 0)
-      throw new NotFoundException('Notification not found');
+      throw new NotFoundException(
+        'Notification not found or does not belong to user',
+      );
     return { success: true };
   }
 
-  // 🔹 Chat bildirishnomalarini chiqarib tashlash (faqat boshqa turlarni olish)
+  // 🔹 Chat notificationlarni chiqarib tashlash (faqat boshqa turlar)
   async getNonChatNotifications(userId: number) {
     return this.notificationRepo.find({
       where: { user: { id: userId }, type: Not('CHAT_MESSAGE') },

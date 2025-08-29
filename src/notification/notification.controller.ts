@@ -5,10 +5,10 @@ import {
   Patch,
   Param,
   Get,
-  BadRequestException,
   Req,
   UseGuards,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -26,7 +26,7 @@ import { RolesGuard } from 'src/common/interceptors/roles/roles.guard';
 
 interface AuthRequest {
   user?: {
-    userId: number; // userId type
+    userId: number;
     role?: UserRole;
   };
 }
@@ -56,25 +56,27 @@ export class NotificationController {
     }
 
     try {
+      // 🔹 FCM data faqat string bo‘lishi kerak
+      const fcmData: Record<string, string> = {};
+      if (body.type) fcmData.type = String(body.type);
+      if (body.chatId) fcmData.chatId = String(body.chatId);
+
       const messageId = await this.firebaseService.sendNotification(
         body.token,
         body.title,
         body.body,
-        {
-          type: String(body.type),
-          chatId: String(body.chatId || ''),
-        },
+        fcmData,
       );
 
       await this.notificationService.saveNotification({
         ...body,
-        userId: req.user.userId, // JWT orqali userId
+        userId: req.user.userId,
       });
 
       return {
         to: body.token,
         notification: { title: body.title, body: body.body },
-        data: { type: body.type, chatId: body.chatId || '' },
+        data: fcmData,
         messageId,
       };
     } catch (err) {
@@ -93,7 +95,7 @@ export class NotificationController {
   @Patch(':id')
   async markAsRead(@Param('id') id: number, @Req() req: AuthRequest) {
     if (!req.user?.userId) throw new ForbiddenException('User not found');
-    return this.notificationService.markAsRead(id, req?.user?.userId);
+    return this.notificationService.markAsRead(id, req.user.userId);
   }
 
   // 🔹 O‘qilmagan notificationlar soni

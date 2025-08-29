@@ -4,9 +4,7 @@ export class SendNotificationDto {
   @ApiProperty({ description: 'FCM token of the target device' })
   token: string;
 
-  @ApiProperty({ description: 'FCM token of the target device' })
-  userId: number;
-  @ApiProperty({ description: 'FCM token of the target device' })
+  @ApiProperty({ description: 'Title of the notification' })
   title: string;
 
   @ApiProperty({ description: 'Body text of the notification' })
@@ -16,7 +14,14 @@ export class SendNotificationDto {
     description: 'Type of the notification',
     example: 'PRODUCT_PUBLISHED',
   })
-  @ApiProperty({ description: 'Chat ID if the type is chat', required: false })
+  type: string; // majburiy
+
+  @ApiProperty({
+    description: 'Optional chat ID associated with the notification',
+    required: false,
+  })
   chatId?: string;
-  type: string; // Yangi qo'shildi
+
+  // userId backendda JWT orqali olinadi, shuning uchun optional qilib qo‘ymoqchimiz
+  userId?: number;
 }
