@@ -42,7 +42,7 @@ export class NotificationController {
   constructor(
     private readonly firebaseService: FirebaseService,
     private readonly notificationService: NotificationsService,
-    @InjectRepository(Notification)
+    @InjectRepository(User)
     private readonly userRepo: Repository<User>,
   ) {}
 
