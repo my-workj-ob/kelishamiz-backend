@@ -71,6 +71,9 @@ export class NotificationController {
       throw new NotFoundException('User not found');
     }
 
+    console.log('user', user);
+    console.log('token', user?.token);
+
     const messageId = await this.firebaseService.sendNotification(
       user?.token ??
         (() => {
