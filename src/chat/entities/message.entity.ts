@@ -40,6 +40,7 @@ export class Message {
 
   @Column({ default: false })
   read: boolean;
+
   @Column({ default: false })
-  isDeleted: boolean; // Bu qator qo'shildi
+  isDeleted: boolean;
 }

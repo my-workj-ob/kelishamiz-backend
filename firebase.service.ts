@@ -1,3 +1,5 @@
+// src/firebase/firebase.service.ts
+
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import * as path from 'path';
@@ -7,19 +9,23 @@ import * as fs from 'fs';
 export class FirebaseService implements OnModuleInit {
   onModuleInit() {
     if (!admin.apps.length) {
-      const serviceAccountPath = path.resolve(
-        process.cwd(),
-        'src/firebase-service-account.json',
-      );
+      try {
+        const serviceAccountPath = path.resolve(
+          process.cwd(),
+          'firebase-service-account.json',
+        );
 
-      const serviceAccount = JSON.parse(
-        fs.readFileSync(serviceAccountPath, 'utf8'),
-      ) as admin.ServiceAccount;
+        const serviceAccount = JSON.parse(
+          fs.readFileSync(serviceAccountPath, 'utf8'),
+        ) as admin.ServiceAccount;
 
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-      });
-      console.log('✅ Firebase initialized');
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+        });
+        console.log('✅ Firebase initialized');
+      } catch (err) {
+        console.error('❌ Failed to initialize Firebase:', err);
+      }
     }
   }
 
@@ -32,10 +38,7 @@ export class FirebaseService implements OnModuleInit {
     const message: admin.messaging.Message = {
       token,
       notification: { title, body },
-      data: {
-        route: data?.route ?? '',
-        ...data,
-      },
+      data,
     };
 
     try {

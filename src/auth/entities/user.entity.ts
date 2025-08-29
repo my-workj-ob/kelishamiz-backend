@@ -10,7 +10,6 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Comment } from './../../comments/entities/comments.entity';
-
 import { Product } from './../../product/entities/product.entity';
 import { Profile } from './../../profile/enities/profile.entity';
 import { UserSearch } from './../../search-filter/entities/user-search.entity';
@@ -20,13 +19,14 @@ import { District } from './../../location/entities/district.entity';
 import { ChatRoom } from './../../chat/entities/chat-room.entity';
 import { Message } from './../../chat/entities/message.entity';
 import { Notification } from './../../notification/entities/notification.entity';
-import { ApiProperty } from '@nestjs/swagger';
 import { Transaction } from './../../payme/transaction/transaction.entity';
+import { ApiProperty } from '@nestjs/swagger';
 
 export enum UserRole {
   USER = 'USER',
   ADMIN = 'ADMIN',
 }
+
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
@@ -35,7 +35,7 @@ export class User {
   @Column({ unique: true, nullable: false })
   phone: string;
 
-  @Column({ unique: false, nullable: false })
+  @Column({ nullable: false })
   username: string;
 
   @Column({ nullable: true })
@@ -50,14 +50,8 @@ export class User {
   @ManyToMany(() => Product, (product) => product.likes)
   @JoinTable({
     name: 'product_likes_user',
-    joinColumn: {
-      name: 'userId',
-      referencedColumnName: 'id',
-    },
-    inverseJoinColumn: {
-      name: 'productId',
-      referencedColumnName: 'id',
-    },
+    joinColumn: { name: 'userId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'productId', referencedColumnName: 'id' },
   })
   likes: Product[];
 
@@ -102,7 +96,7 @@ export class User {
   @OneToMany(() => Transaction, (tx) => tx.user)
   transactions: Transaction[];
 
-  @OneToMany(() => Notification, (message) => message.user)
+  @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
 
   @Column({ nullable: true })

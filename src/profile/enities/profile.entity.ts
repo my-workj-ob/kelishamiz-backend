@@ -14,7 +14,6 @@ import { Like } from './../../like/entities/like.entity';
 import { Product } from './../../product/entities/product.entity';
 import { Region } from './../../location/entities/region.entity';
 import { District } from './../../location/entities/district.entity';
-import { Notification } from './../../notification/entities/notification.entity';
 
 @Entity()
 export class Profile {
@@ -66,6 +65,4 @@ export class Profile {
 
   @OneToMany(() => Like, (like) => like.user, { cascade: true })
   likes?: Like[];
-  @OneToMany(() => Notification, (notification) => notification.profile)
-  notification: Notification[];
 }
