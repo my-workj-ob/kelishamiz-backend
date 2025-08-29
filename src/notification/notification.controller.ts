@@ -93,7 +93,7 @@ export class NotificationController {
   }
 
   // 🔹 Bitta notificationni o‘qilgan qilish
-  @Patch(':id')
+  @Patch('read/:id')
   async markAsRead(@Param('id') id: number, @Req() req: AuthRequest) {
     if (!req.user?.userId) throw new ForbiddenException('User not found');
     return this.notificationService.markAsRead(id, req.user.userId);
