@@ -9,6 +9,7 @@ import {
   UseGuards,
   ForbiddenException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -21,8 +22,10 @@ import { SendNotificationDto } from './dto/send-notification.dto';
 import { FirebaseService } from 'firebase.service';
 import { NotificationsService } from './notification.service';
 import { AuthGuard } from '@nestjs/passport';
-import { UserRole } from 'src/auth/entities/user.entity';
+import { User, UserRole } from 'src/auth/entities/user.entity';
 import { RolesGuard } from 'src/common/interceptors/roles/roles.guard';
+import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 
 interface AuthRequest {
   user?: {
@@ -39,6 +42,8 @@ export class NotificationController {
   constructor(
     private readonly firebaseService: FirebaseService,
     private readonly notificationService: NotificationsService,
+    @InjectRepository(Notification)
+    private readonly userRepo: Repository<User>,
   ) {}
 
   // 🔹 Push notification yuborish
@@ -58,8 +63,20 @@ export class NotificationController {
     if (body.entityId) fcmData.entityId = String(body.entityId);
 
     // 🔹 Firebase notification yuborish
+
+    const user = await this.userRepo.findOne({
+      where: { id: body.userId },
+      relations: ['token'],
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
     const messageId = await this.firebaseService.sendNotification(
-      body.token,
+      user?.token ??
+        (() => {
+          throw new BadRequestException('User token is required');
+        })(),
       body.title,
       body.body,
       fcmData,
