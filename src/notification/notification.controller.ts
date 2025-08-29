@@ -88,7 +88,7 @@ export class NotificationController {
     });
 
     return {
-      to: body.token,
+      to: user?.token,
       notification: { title: body.title, body: body.body },
       data: fcmData,
       messageId,

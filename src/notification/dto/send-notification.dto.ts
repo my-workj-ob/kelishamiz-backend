@@ -10,9 +10,6 @@ export enum NotificationType {
 }
 
 export class SendNotificationDto {
-  @ApiProperty({ description: 'FCM token of the target device' })
-  token: string;
-
   @ApiProperty({ description: 'User ID to whom notification belongs' })
   userId: number; // optionalni olib tashladik, JWT orqali ham beriladi
 
