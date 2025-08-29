@@ -47,41 +47,35 @@ export class NotificationController {
   @ApiBody({ type: SendNotificationDto })
   @ApiResponse({ status: 201, description: 'Notification sent successfully.' })
   @ApiResponse({ status: 400, description: 'Bad request / invalid token.' })
-  async sendNotification(
-    @Body() body: SendNotificationDto,
-    @Req() req: AuthRequest,
-  ) {
-    if (!req.user?.userId) {
-      throw new ForbiddenException('User not found in request');
-    }
+  async sendNotification(@Body() body: SendNotificationDto) {
+    if (!body.userId) throw new BadRequestException('userId is required');
+    if (!body.type) throw new BadRequestException('type is required');
 
-    try {
-      // 🔹 FCM data faqat string bo‘lishi kerak
-      const fcmData: Record<string, string> = {};
-      if (body.type) fcmData.type = String(body.type);
-      if (body.chatId) fcmData.chatId = String(body.chatId);
+    // 🔹 FCM data: type va entityId string bo‘lishi kerak
+    const fcmData: Record<string, string> = {
+      type: String(body.type),
+    };
+    if (body.entityId) fcmData.entityId = String(body.entityId);
 
-      const messageId = await this.firebaseService.sendNotification(
-        body.token,
-        body.title,
-        body.body,
-        fcmData,
-      );
+    // 🔹 Firebase notification yuborish
+    const messageId = await this.firebaseService.sendNotification(
+      body.token,
+      body.title,
+      body.body,
+      fcmData,
+    );
 
-      await this.notificationService.saveNotification({
-        ...body,
-        userId: req.user.userId,
-      });
+    // 🔹 DB saqlash
+    await this.notificationService.saveNotification({
+      ...body,
+    });
 
-      return {
-        to: body.token,
-        notification: { title: body.title, body: body.body },
-        data: fcmData,
-        messageId,
-      };
-    } catch (err) {
-      throw new BadRequestException((err as Error).message);
-    }
+    return {
+      to: body.token,
+      notification: { title: body.title, body: body.body },
+      data: fcmData,
+      messageId,
+    };
   }
 
   // 🔹 Userning barcha notificationlari

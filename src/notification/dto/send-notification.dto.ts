@@ -1,8 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger';
 
+export enum NotificationType {
+  PRODUCT_PUBLISHED = 'PRODUCT_PUBLISHED',
+  CHAT_MESSAGE = 'CHAT_MESSAGE',
+  CHAT_ROOM = 'CHAT_ROOM',
+  NEW_AD = 'NEW_AD', // elonlar sayti uchun
+  AD_EXPIRED = 'AD_EXPIRED', // elonlar sayti uchun
+  PROMOTION = 'PROMOTION', // reklama yoki promo uchun
+}
+
 export class SendNotificationDto {
   @ApiProperty({ description: 'FCM token of the target device' })
   token: string;
+
+  @ApiProperty({ description: 'User ID to whom notification belongs' })
+  userId: number; // optionalni olib tashladik, JWT orqali ham beriladi
 
   @ApiProperty({ description: 'Title of the notification' })
   title: string;
@@ -12,16 +24,13 @@ export class SendNotificationDto {
 
   @ApiProperty({
     description: 'Type of the notification',
-    example: 'PRODUCT_PUBLISHED',
+    enum: NotificationType,
   })
-  type: string; // majburiy
+  type: NotificationType;
 
   @ApiProperty({
-    description: 'Optional chat ID associated with the notification',
+    description: 'Related entity ID (ProductId, ChatId, AdId etc.)',
     required: false,
   })
-  chatId?: string;
-
-  // userId backendda JWT orqali olinadi, shuning uchun optional qilib qo‘ymoqchimiz
-  userId?: number;
+  entityId?: string; // optional, FCM data uchun
 }

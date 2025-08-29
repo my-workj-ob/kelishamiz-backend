@@ -17,17 +17,16 @@ export class NotificationsService {
 
   // 🔹 Bildirishnoma saqlash
   async saveNotification(dto: SendNotificationDto) {
-    if (!dto.type) {
+    if (!dto.type)
       throw new BadRequestException('Notification type is required');
-    }
 
     const notification = this.notificationRepo.create({
       title: dto.title,
       body: dto.body,
       type: dto.type,
-      chatId: dto.chatId ?? undefined,
+      chatId: dto.entityId ?? undefined, // Chat yoki Product Id
       isRead: false,
-      user: { id: dto.userId! }, // JWT orqali beriladi
+      user: { id: dto.userId },
     });
 
     return this.notificationRepo.save(notification);
