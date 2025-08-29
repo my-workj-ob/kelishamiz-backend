@@ -60,7 +60,10 @@ export class NotificationController {
         body.token,
         body.title,
         body.body,
-        { type: body.type, chatId: body.chatId || '' },
+        {
+          type: String(body.type),
+          chatId: String(body.chatId || ''),
+        },
       );
 
       await this.notificationService.saveNotification({
