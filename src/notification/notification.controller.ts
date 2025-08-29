@@ -66,7 +66,6 @@ export class NotificationController {
 
     const user = await this.userRepo.findOne({
       where: { id: body.userId },
-      relations: ['token'],
     });
     if (!user) {
       throw new NotFoundException('User not found');
