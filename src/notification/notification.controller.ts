@@ -54,7 +54,6 @@ export class NotificationController {
       throw new BadRequestException((err as Error).message);
     }
   }
-
   @Get(':userId')
   async getNotifications(@Param('userId') userId: number) {
     return this.notificationService.getUserNotifications(userId);
