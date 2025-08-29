@@ -42,13 +42,19 @@ export class NotificationsService {
   }
 
   // 🔹 Bitta bildirishnomani o‘qilgan deb belgilash
-  async markAsRead(id: number) {
-    const result = await this.notificationRepo.update(id, { isRead: true });
+  async markAsRead(id: number, userId: number) {
+    const result = await this.notificationRepo.update(
+      { id, user: { id: userId } }, // ⚠️ notification id va userId bilan filter
+      { isRead: true },
+    );
+
     if (result.affected === 0)
-      throw new NotFoundException('Notification not found');
+      throw new NotFoundException(
+        'Notification not found or does not belong to user',
+      );
+
     return { success: true };
   }
-
   // 🔹 Barcha bildirishnomalarni o‘qilgan qilish
   async markAllAsRead(userId: number) {
     await this.notificationRepo.update(

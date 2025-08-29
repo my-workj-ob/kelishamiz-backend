@@ -6,27 +6,49 @@ import {
   Param,
   Get,
   BadRequestException,
+  Req,
+  UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { SendNotificationDto } from './dto/send-notification.dto';
 import { FirebaseService } from 'firebase.service';
 import { NotificationsService } from './notification.service';
+import { AuthGuard } from '@nestjs/passport';
+import { UserRole } from 'src/auth/entities/user.entity';
+import { RolesGuard } from 'src/common/interceptors/roles/roles.guard';
+
+interface AuthRequest {
+  user?: {
+    userId: number; // userId type
+    role?: UserRole;
+  };
+}
 
 @ApiTags('Notifications')
 @Controller('notification')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class NotificationController {
   constructor(
     private readonly firebaseService: FirebaseService,
     private readonly notificationService: NotificationsService,
   ) {}
+
+  // 🔹 Push notification yuborish
   @Post('send')
   @ApiOperation({ summary: 'Send a push notification via Firebase' })
   @ApiBody({ type: SendNotificationDto })
   @ApiResponse({ status: 201, description: 'Notification sent successfully.' })
   @ApiResponse({ status: 400, description: 'Bad request / invalid token.' })
-  async sendNotification(@Body() body: SendNotificationDto) {
+  async sendNotification(
+    @Body() body: SendNotificationDto,
+    @Req() req: AuthRequest,
+  ) {
+    if (!req.user?.userId) {
+      throw new ForbiddenException('User not found in request');
+    }
+
     try {
-      // Firebase orqali yuboramiz
       const messageId = await this.firebaseService.sendNotification(
         body.token,
         body.title,
@@ -34,41 +56,47 @@ export class NotificationController {
         { type: body.type, chatId: body.chatId || '' },
       );
 
-      // DB ga saqlaymiz
-      await this.notificationService.saveNotification(body);
+      await this.notificationService.saveNotification({
+        ...body,
+        userId: req.user.userId, // JWT orqali userId
+      });
 
-      // 🔹 FCM formatida javob qaytaramiz
       return {
         to: body.token,
-        notification: {
-          title: body.title,
-          body: body.body,
-        },
-        data: {
-          type: body.type,
-          chatId: body.chatId || '',
-        },
-        messageId, // 🔹 Qo'shildi
+        notification: { title: body.title, body: body.body },
+        data: { type: body.type, chatId: body.chatId || '' },
+        messageId,
       };
     } catch (err) {
       throw new BadRequestException((err as Error).message);
     }
   }
-  @Get(':userId')
-  async getNotifications(@Param('userId') userId: number) {
-    return this.notificationService.getUserNotifications(userId);
+
+  // 🔹 Userning barcha notificationlari
+  @Get()
+  async getNotifications(@Req() req: AuthRequest) {
+    if (!req.user?.userId) throw new ForbiddenException('User not found');
+    return this.notificationService.getUserNotifications(req.user.userId);
   }
 
+  // 🔹 Bitta notificationni o‘qilgan qilish
   @Patch(':id')
-  async markAsRead(@Param('id') id: number) {
-    return this.notificationService.markAsRead(id);
+  async markAsRead(@Param('id') id: number, @Req() req: AuthRequest) {
+    if (!req.user?.userId) throw new ForbiddenException('User not found');
+    return this.notificationService.markAsRead(id, req?.user?.userId);
   }
-  @Get('unread-count/:userId')
-  async getUnreadCount(@Param('userId') userId: number) {
-    return this.notificationService.getUnreadCount(userId);
+
+  // 🔹 O‘qilmagan notificationlar soni
+  @Get('unread-count')
+  async getUnreadCount(@Req() req: AuthRequest) {
+    if (!req.user?.userId) throw new ForbiddenException('User not found');
+    return this.notificationService.getUnreadCount(req.user.userId);
   }
-  @Patch('mark-all/:userId')
-  async markAllAsRead(@Param('userId') userId: number) {
-    return this.notificationService.markAllAsRead(userId);
+
+  // 🔹 Barcha notificationlarni o‘qilgan qilish
+  @Patch('mark-all')
+  async markAllAsRead(@Req() req: AuthRequest) {
+    if (!req.user?.userId) throw new ForbiddenException('User not found');
+    return this.notificationService.markAllAsRead(req.user.userId);
   }
 }
