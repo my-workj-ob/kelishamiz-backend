@@ -10,7 +10,13 @@ import {
   UseGuards,
   ForbiddenException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { SendNotificationDto } from './dto/send-notification.dto';
 import { FirebaseService } from 'firebase.service';
 import { NotificationsService } from './notification.service';
@@ -26,6 +32,7 @@ interface AuthRequest {
 }
 
 @ApiTags('Notifications')
+@ApiBearerAuth()
 @Controller('notification')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class NotificationController {
