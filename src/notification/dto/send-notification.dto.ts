@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional } from 'class-validator';
 
 export enum NotificationType {
   PRODUCT_PUBLISHED = 'PRODUCT_PUBLISHED',
@@ -10,7 +11,11 @@ export enum NotificationType {
 }
 
 export class SendNotificationDto {
-  @ApiProperty({ description: 'User ID to whom notification belongs' })
+  @IsOptional()
+  @ApiProperty({
+    description: 'User ID to whom the notification will be sent',
+    required: false,
+  })
   userId: number; // optionalni olib tashladik, JWT orqali ham beriladi
 
   @ApiProperty({ description: 'Title of the notification' })
