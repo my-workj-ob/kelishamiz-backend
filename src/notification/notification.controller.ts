@@ -10,6 +10,7 @@ import {
   ForbiddenException,
   BadRequestException,
   NotFoundException,
+  Delete,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -118,5 +119,11 @@ export class NotificationController {
   async markAsRead(@Param('id') id: number, @Req() req: AuthRequest) {
     if (!req.user?.userId) throw new ForbiddenException('User not found');
     return this.notificationService.markAsRead(id, req.user.userId);
+  }
+  // 🔹 Bitta notificationni o'chirish
+  @Delete('delete/:id')
+  async deleteNotification(@Param('id') id: number, @Req() req: AuthRequest) {
+    if (!req.user?.userId) throw new ForbiddenException('User not found');
+    return this.notificationService.deleteNotification(id, req.user.userId);
   }
 }

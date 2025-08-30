@@ -44,7 +44,7 @@ export class NotificationsService {
     if (dto.type === NotificationType.PRODUCT_PUBLISHED) {
       const unpublishedProducts = await this.productRepo.find({
         where: { profile: { user: { id: dto.userId } }, isPublish: false },
-        relations: ['profile', 'profile.user'], // ⚡ profile va profile.user relationlari kerak
+        relations: ['profile', 'profile.user'],
         select: ['id'],
       });
 
@@ -109,6 +109,13 @@ export class NotificationsService {
     });
   }
 
+  async getNonChatNotifications(userId: number) {
+    return this.notificationRepo.find({
+      where: { user: { id: userId }, type: Not('CHAT_MESSAGE') },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   async deleteNotification(id: number, userId: number) {
     const result = await this.notificationRepo.delete({
       id,
@@ -120,12 +127,5 @@ export class NotificationsService {
       );
 
     return { success: true };
-  }
-
-  async getNonChatNotifications(userId: number) {
-    return this.notificationRepo.find({
-      where: { user: { id: userId }, type: Not('CHAT_MESSAGE') },
-      order: { createdAt: 'DESC' },
-    });
   }
 }
