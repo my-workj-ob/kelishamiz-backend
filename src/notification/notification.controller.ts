@@ -76,7 +76,7 @@ export class NotificationController {
 
     if (body.type === NotificationType.UPDATE_APP) {
       await this.firebaseService.sendNotificationToTopic(
-        `all`,
+        '/topics/all',
         body.title,
         body.body,
         { click_action: 'FLUTTER_NOTIFICATION_CLICK' },
