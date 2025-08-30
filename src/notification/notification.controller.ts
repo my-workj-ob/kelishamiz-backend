@@ -19,7 +19,10 @@ import {
   ApiBody,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { SendNotificationDto } from './dto/send-notification.dto';
+import {
+  NotificationType,
+  SendNotificationDto,
+} from './dto/send-notification.dto';
 import { FirebaseService } from 'firebase.service';
 import { NotificationsService } from './notification.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -34,6 +37,16 @@ interface AuthRequest {
     role?: UserRole;
   };
 }
+export interface NotificationResult {
+  message: string;
+}
+interface SendNotificationResponse {
+  to?: string; // FCM topic yoki user token
+  notification: { title: string; body: string };
+  data: Record<string, string>;
+  messageId?: string;
+  resultMessage: string; // NotificationResult uchun
+}
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
@@ -47,47 +60,51 @@ export class NotificationController {
     private readonly userRepo: Repository<User>,
   ) {}
 
-  // 🔹 Push notification yuborish
   @Post('send')
   @ApiOperation({ summary: 'Send a push notification via Firebase' })
   @ApiBody({ type: SendNotificationDto })
   @ApiResponse({ status: 201, description: 'Notification sent successfully.' })
   @ApiResponse({ status: 400, description: 'Bad request / invalid token.' })
-  async sendNotification(@Body() body: SendNotificationDto) {
-    if (!body.userId) throw new BadRequestException('userId is required');
-    if (!body.type) throw new BadRequestException('type is required');
-
-    const fcmData: Record<string, string> = {
-      type: String(body.type),
-    };
+  async sendNotification(
+    @Body() body: SendNotificationDto,
+  ): Promise<SendNotificationResponse> {
+    const fcmData: Record<string, string> = { type: String(body.type) };
     if (body.entityId) fcmData.entityId = String(body.entityId);
 
-    const user = await this.userRepo.findOne({
-      where: { id: body.userId },
-    });
-    if (!user) {
-      throw new NotFoundException('User not found');
+    let messageId: string | undefined;
+    let resultMessage: string;
+
+    if (body.type === NotificationType.UPDATE_APP) {
+      await this.firebaseService.sendNotificationToTopic(
+        '/topics/all',
+        body.title,
+        body.body,
+        { click_action: 'FLUTTER_NOTIFICATION_CLICK' },
+      );
+      resultMessage = 'Notification sent to all users via topic';
+    } else {
+      if (!body.userId) throw new BadRequestException('userId is required');
+
+      const user = await this.userRepo.findOne({ where: { id: body.userId } });
+      if (!user) throw new NotFoundException('User not found');
+
+      messageId = await this.firebaseService.sendNotification(
+        user.token!,
+        body.title,
+        body.body,
+        fcmData,
+      );
+
+      await this.notificationService.saveNotification(body);
+      resultMessage = 'Notification saved and sent to user';
     }
 
-    const messageId = await this.firebaseService.sendNotification(
-      user?.token ??
-        (() => {
-          throw new BadRequestException('User token is required');
-        })(),
-      body.title,
-      body.body,
-      fcmData,
-    );
-
-    await this.notificationService.saveNotification({
-      ...body,
-    });
-
     return {
-      to: user?.token,
+      to: body.type === NotificationType.UPDATE_APP ? '/topics/all' : undefined,
       notification: { title: body.title, body: body.body },
       data: fcmData,
       messageId,
+      resultMessage,
     };
   }
 

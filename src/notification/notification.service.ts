@@ -14,10 +14,6 @@ import { Product } from 'src/product/entities/product.entity';
 import { User } from 'src/auth/entities/user.entity';
 import { FirebaseService } from 'firebase.service';
 
-interface NotificationResult {
-  message: string;
-}
-
 @Injectable()
 export class NotificationsService {
   constructor(
@@ -29,55 +25,12 @@ export class NotificationsService {
     private readonly userRepo: Repository<User>,
     private readonly firebaseService: FirebaseService,
   ) {}
-
-  async saveNotification(
-    dto: SendNotificationDto,
-  ): Promise<Notification | NotificationResult> {
-    console.log(
-      `[NotificationsService] Received notification request for type: ${dto.type}`,
-    );
-
-    if (!dto.type) {
-      throw new BadRequestException('Notification type is required');
-    }
-
-    // 🔹 Agar notification turi UPDATE_APP bo'lsa, userId shart emas.
-    if (dto.type === NotificationType.UPDATE_APP) {
-      try {
-        console.log(
-          `[NotificationsService] Sending topic notification to '/topics/all' for title: "${dto.title}"`,
-        );
-        await this.firebaseService.sendNotificationToTopic(
-          '/topics/all',
-          dto.title,
-          dto.body,
-          { click_action: 'FLUTTER_NOTIFICATION_CLICK' },
-        );
-        console.log(
-          '[NotificationsService] Successfully sent topic notification.',
-        );
-      } catch (error) {
-        console.error(
-          `[NotificationsService] Error sending topic notification:`,
-          error,
-        );
-        throw new Error('Failed to send topic notification.');
-      }
-      return { message: 'Notification sent to all users via topic' };
-    }
-
-    // 🔹 Qolgan barcha turlar uchun userId majburiy.
-    if (!dto.userId) {
-      throw new BadRequestException(
-        'userId is required for this notification type',
-      );
-    }
-
+  async saveNotification(dto: SendNotificationDto): Promise<Notification> {
+    // faqat Notification qaytaradi
     if (dto.type === NotificationType.CHAT_MESSAGE) {
-      console.log(
-        `[NotificationsService] CHAT_MESSAGE type, not saving to DB.`,
+      throw new BadRequestException(
+        'CHAT_MESSAGE notifications are not saved to DB',
       );
-      return { message: 'Notification only sent, not saved in DB' };
     }
 
     let entityId: string | undefined = dto.entityId;
@@ -88,7 +41,6 @@ export class NotificationsService {
         relations: ['profile', 'profile.user'],
         select: ['id'],
       });
-
       entityId = unpublishedProducts.length
         ? unpublishedProducts.map((p) => p.id).join(',')
         : undefined;
@@ -103,9 +55,6 @@ export class NotificationsService {
       user: { id: dto.userId },
     });
 
-    console.log(
-      `[NotificationsService] Saving notification of type ${dto.type} to DB for user ID: ${dto.userId}`,
-    );
     return this.notificationRepo.save(notification);
   }
 
