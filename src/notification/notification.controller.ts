@@ -62,17 +62,12 @@ export class NotificationController {
     };
     if (body.entityId) fcmData.entityId = String(body.entityId);
 
-    // 🔹 Firebase notification yuborish
-
     const user = await this.userRepo.findOne({
       where: { id: body.userId },
     });
     if (!user) {
       throw new NotFoundException('User not found');
     }
-
-    console.log('user', user);
-    console.log('token', user?.token);
 
     const messageId = await this.firebaseService.sendNotification(
       user?.token ??
