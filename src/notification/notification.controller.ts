@@ -57,7 +57,6 @@ export class NotificationController {
     if (!body.userId) throw new BadRequestException('userId is required');
     if (!body.type) throw new BadRequestException('type is required');
 
-    // 🔹 FCM data: type va entityId string bo‘lishi kerak
     const fcmData: Record<string, string> = {
       type: String(body.type),
     };
@@ -80,7 +79,6 @@ export class NotificationController {
       fcmData,
     );
 
-    // 🔹 DB saqlash
     await this.notificationService.saveNotification({
       ...body,
     });

@@ -50,4 +50,26 @@ export class FirebaseService implements OnModuleInit {
       throw new Error(`Notification failed: ${(error as Error).message}`);
     }
   }
+  // 🔹 Topic orqali push notification yuborish
+  async sendNotificationToTopic(
+    topic: string,
+    title: string,
+    body: string,
+    data?: Record<string, string>,
+  ): Promise<string> {
+    const message: admin.messaging.Message = {
+      topic,
+      notification: { title, body },
+      data,
+    };
+
+    try {
+      const response = await admin.messaging().send(message);
+      console.log('✅ Notification sent to topic:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Topic notification error:', error);
+      throw new Error(`Topic notification failed: ${(error as Error).message}`);
+    }
+  }
 }

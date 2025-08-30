@@ -12,6 +12,7 @@ import {
 import { Notification } from './entities/notification.entity';
 import { Product } from 'src/product/entities/product.entity';
 import { User } from 'src/auth/entities/user.entity';
+import { FirebaseService } from 'firebase.service';
 
 interface NotificationResult {
   message: string;
@@ -24,51 +25,62 @@ export class NotificationsService {
     private readonly notificationRepo: Repository<Notification>,
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
-    @InjectRepository(User) // 🔹 userRepo qo'shildi
+    @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    // 🔹 FirebaseService endi NotificationsService konstruktoriga to'g'ri ulandi
+    private readonly firebaseService: FirebaseService,
   ) {}
 
   async saveNotification(
     dto: SendNotificationDto,
-  ): Promise<Notification | Notification[] | NotificationResult> {
+  ): Promise<Notification | NotificationResult> {
     if (!dto.type) {
       throw new BadRequestException('Notification type is required');
     }
 
+    // 1️⃣ UPDATE_APP uchun barcha userlar uchun topic orqali yuborish
+    if (dto.type === NotificationType.UPDATE_APP) {
+      // 🔹 Faqatgina Firebase orqali yuboriladi, DBga saqlanmaydi
+      await this.firebaseService.sendNotificationToTopic(
+        '/topics/all',
+        dto.title,
+        dto.body,
+        { click_action: 'FLUTTER_NOTIFICATION_CLICK' },
+      );
+      return { message: 'Notification sent to all users via topic' };
+    }
+
+    // 2️⃣ CHAT_MESSAGE uchun DB ga saqlamaymiz
     if (dto.type === NotificationType.CHAT_MESSAGE) {
       return { message: 'Notification only sent, not saved in DB' };
     }
 
-    if (dto.type === NotificationType.UPDATE_APP) {
-      const users = await this.userRepo.find();
-      const notifications: Notification[] = [];
+    let entityId: string | undefined = dto.entityId;
 
-      for (const user of users) {
-        const notification = this.notificationRepo.create({
-          title: dto.title,
-          body: dto.body,
-          type: dto.type,
-          chatId: dto.entityId,
-          isRead: false,
-          user: { id: user.id },
-        });
-        notifications.push(notification);
-      }
+    // 3️⃣ PRODUCT_PUBLISHED uchun maxsus userga
+    if (dto.type === NotificationType.PRODUCT_PUBLISHED) {
+      const unpublishedProducts = await this.productRepo.find({
+        where: { profile: { user: { id: dto.userId } }, isPublish: false },
+        relations: ['profile', 'profile.user'],
+        select: ['id'],
+      });
 
-      return this.notificationRepo.save(notifications);
+      entityId = unpublishedProducts.length
+        ? unpublishedProducts.map((p) => p.id).join(',')
+        : undefined;
     }
 
-    // Bitta user uchun notification
+    // 4️⃣ Qolgan barcha turlar (individual userga)
     const notification = this.notificationRepo.create({
       title: dto.title,
       body: dto.body,
       type: dto.type,
-      chatId: dto.entityId,
+      chatId: entityId,
       isRead: false,
       user: { id: dto.userId },
     });
 
-    return this.notificationRepo.save(notification); // ✅ Endi type mos
+    return this.notificationRepo.save(notification);
   }
 
   async getUserNotifications(userId: number) {
