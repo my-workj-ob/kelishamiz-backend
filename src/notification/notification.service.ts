@@ -11,6 +11,7 @@ import {
 } from './dto/send-notification.dto';
 import { Notification } from './entities/notification.entity';
 import { Product } from 'src/product/entities/product.entity';
+import { User } from 'src/auth/entities/user.entity';
 
 interface NotificationResult {
   message: string;
@@ -23,46 +24,51 @@ export class NotificationsService {
     private readonly notificationRepo: Repository<Notification>,
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
+    @InjectRepository(User) // 🔹 userRepo qo'shildi
+    private readonly userRepo: Repository<User>,
   ) {}
 
   async saveNotification(
     dto: SendNotificationDto,
-  ): Promise<Notification | NotificationResult> {
+  ): Promise<Notification | Notification[] | NotificationResult> {
     if (!dto.type) {
       throw new BadRequestException('Notification type is required');
     }
 
     if (dto.type === NotificationType.CHAT_MESSAGE) {
-      const result: NotificationResult = {
-        message: 'Notification only sent, not saved in DB',
-      };
-      return result;
+      return { message: 'Notification only sent, not saved in DB' };
     }
 
-    let entityId: string | undefined = dto.entityId;
+    if (dto.type === NotificationType.UPDATE_APP) {
+      const users = await this.userRepo.find();
+      const notifications: Notification[] = [];
 
-    if (dto.type === NotificationType.PRODUCT_PUBLISHED) {
-      const unpublishedProducts = await this.productRepo.find({
-        where: { profile: { user: { id: dto.userId } }, isPublish: false },
-        relations: ['profile', 'profile.user'],
-        select: ['id'],
-      });
+      for (const user of users) {
+        const notification = this.notificationRepo.create({
+          title: dto.title,
+          body: dto.body,
+          type: dto.type,
+          chatId: dto.entityId,
+          isRead: false,
+          user: { id: user.id },
+        });
+        notifications.push(notification);
+      }
 
-      entityId = unpublishedProducts.length
-        ? unpublishedProducts.map((p) => p.id).join(',')
-        : undefined;
+      return this.notificationRepo.save(notifications);
     }
 
+    // Bitta user uchun notification
     const notification = this.notificationRepo.create({
       title: dto.title,
       body: dto.body,
       type: dto.type,
-      chatId: entityId,
+      chatId: dto.entityId,
       isRead: false,
       user: { id: dto.userId },
     });
 
-    return this.notificationRepo.save(notification);
+    return this.notificationRepo.save(notification); // ✅ Endi type mos
   }
 
   async getUserNotifications(userId: number) {

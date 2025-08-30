@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 export enum NotificationType {
   PRODUCT_PUBLISHED = 'PRODUCT_PUBLISHED',
   CHAT_MESSAGE = 'CHAT_MESSAGE',
-  CHAT_ROOM = 'CHAT_ROOM',
+  UPDATE_APP = 'UPDATE_APP',
   NEW_AD = 'NEW_AD', // elonlar sayti uchun
   AD_EXPIRED = 'AD_EXPIRED', // elonlar sayti uchun
   PROMOTION = 'PROMOTION', // reklama yoki promo uchun
