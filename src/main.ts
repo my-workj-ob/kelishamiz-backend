@@ -6,7 +6,6 @@ import express from 'express';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
-import { IoAdapter } from '@nestjs/platform-socket.io';
 
 dotenv.config();
 
