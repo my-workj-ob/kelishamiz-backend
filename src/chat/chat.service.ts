@@ -24,6 +24,11 @@ export class ChatService {
     private productRepository: Repository<Product>,
   ) {}
 
+  // --- 1. CHAT XONASI OPERATSIYALARI ---
+
+  /**
+   * Foydalanuvchi ishtirok etgan barcha chat xonalarini topadi.
+   */
   async getUserChatRooms(userId: number) {
     const allChatRooms = await this.chatRoomRepository
       .createQueryBuilder('chatRoom')
@@ -41,12 +46,14 @@ export class ChatService {
       .getMany();
 
     const mapChatRoom = async (room: ChatRoom) => {
+      // Faqat o'chirilmagan oxirgi xabarni oladi
       const lastMessage = await this.messageRepository.findOne({
-        where: { chatRoomId: room.id, isDeleted: false }, // Faqat o'chirilmagan oxirgi xabarni oladi
+        where: { chatRoomId: room.id, isDeleted: false },
         order: { createdAt: 'DESC' },
         relations: ['sender'],
       });
 
+      // Faqat sizga yuborilgan va o'qilmagan xabarlarni sanaydi
       const unreadCount = await this.messageRepository.count({
         where: { chatRoomId: room.id, read: false, senderId: Not(userId) },
       });
@@ -78,11 +85,12 @@ export class ChatService {
           : null,
         updatedAt: room.updatedAt,
         unreadCount,
+        // Chat ro'yxatida xabarni belgilash uchun INDEX
         index: (() => {
           if (!lastMessage) return 0;
-          if (!lastMessage.read && lastMessage.sender.id !== userId) return 3;
-          if (lastMessage.sender.id === userId) return 1;
-          if (lastMessage.sender.id !== userId) return 2;
+          if (!lastMessage.read && lastMessage.sender.id !== userId) return 3; // O'qilmagan kiruvchi xabar
+          if (lastMessage.sender.id === userId) return 1; // Siz yuborgan xabar
+          if (lastMessage.sender.id !== userId) return 2; // O'qilgan kiruvchi xabar
           return 0;
         })(),
       };
@@ -92,86 +100,15 @@ export class ChatService {
     return mappedRooms;
   }
 
-  async getChatRoomMessages(
-    chatRoomId: number,
-    userId: number,
-    skip: number = 0,
-    take: number = 50,
-  ) {
-    const chatRoom = await this.chatRoomRepository.findOne({
-      where: { id: chatRoomId },
-    });
-
-    if (!chatRoom) {
-      throw new NotFoundException('Chat xonasi topilmadi.');
-    }
-
-    const messages = await this.messageRepository.find({
-      where: { chatRoom: { id: chatRoomId }, isDeleted: false }, // Faqat o'chirilmagan xabarlarni oladi
-      relations: ['sender'],
-      order: { createdAt: 'ASC' },
-      skip,
-      take,
-    });
-
-    return messages.map((msg) => ({
-      id: msg.id,
-      content: msg.content,
-      isDeleted: msg.isDeleted,
-      createdAt: msg.createdAt,
-      senderId: msg.sender.id,
-      senderUsername: msg.sender.username,
-      read: msg.read,
-      index: chatRoom.isDeleted
-        ? 4
-        : !msg.read && msg.sender.id !== userId
-          ? 3
-          : msg.sender.id === userId
-            ? 1
-            : 2,
-    }));
-  }
-
-  async softDeleteChatRoom(chatRoomId: number, userId: number): Promise<void> {
-    const chatRoom = await this.chatRoomRepository.findOne({
+  /**
+   * YANGI FUNKSIYA: Chat xonasi ishtirokchilarini olish.
+   * ChatGateway da 'deleteChatRoom' va 'sendMessage' uchun kerak.
+   */
+  async getChatRoomParticipants(chatRoomId: number): Promise<ChatRoom | null> {
+    return this.chatRoomRepository.findOne({
       where: { id: chatRoomId },
       relations: ['participants'],
     });
-
-    if (!chatRoom) {
-      throw new NotFoundException('Chat xonasi topilmadi.');
-    }
-
-    const isParticipant = chatRoom.participants.some((p) => p.id === userId);
-    if (!isParticipant) {
-      throw new BadRequestException(
-        'Siz bu chat xonasini oʻchirish huquqiga ega emassiz.',
-      );
-    }
-
-    await this.chatRoomRepository.update(
-      { id: chatRoomId },
-      { isDeleted: true },
-    );
-  }
-
-  /**
-   * Xabarni yumshoq o'chirish (isDeleted: true).
-   */
-  async softDeleteMessage(messageId: string, userId: number): Promise<void> {
-    const message = await this.messageRepository.findOne({
-      where: { id: messageId },
-      relations: ['sender'],
-    });
-
-    if (!message) throw new NotFoundException('Xabar topilmadi.');
-
-    if (message.sender.id !== userId)
-      throw new BadRequestException(
-        'Siz bu xabarni oʻchirish huquqiga ega emassiz.',
-      );
-
-    await this.messageRepository.update({ id: messageId }, { isDeleted: true });
   }
 
   /**
@@ -205,6 +142,7 @@ export class ChatService {
       throw new NotFoundException('Mahsulot topilmadi.');
     }
 
+    // Mavjud chatni qidirish logikasi
     const existingChatRoom = await this.chatRoomRepository
       .createQueryBuilder('chatRoom')
       .innerJoin('chatRoom.participants', 'participant1')
@@ -215,11 +153,7 @@ export class ChatService {
       .getOne();
 
     if (existingChatRoom) {
-      await this.messageRepository.update(
-        { chatRoom: { id: existingChatRoom.id } },
-        { isDeleted: true },
-      );
-
+      // Agar topilsa, uning o'chirilgan holatini bekor qilish
       existingChatRoom.isDeleted = false;
       await this.chatRoomRepository.save(existingChatRoom);
       return existingChatRoom;
@@ -234,7 +168,197 @@ export class ChatService {
   }
 
   /**
-   * Muayyan chatdagi xabarlarni o'qilgan deb belgilash.
+   * Chat xonasini yumshoq o'chirish (isDeleted: true).
+   */
+  async softDeleteChatRoom(chatRoomId: number, userId: number): Promise<void> {
+    const chatRoom = await this.chatRoomRepository.findOne({
+      where: { id: chatRoomId },
+      relations: ['participants'],
+    });
+
+    if (!chatRoom) {
+      throw new NotFoundException('Chat xonasi topilmadi.');
+    }
+
+    const isParticipant = chatRoom.participants.some((p) => p.id === userId);
+    if (!isParticipant) {
+      throw new BadRequestException(
+        'Siz bu chat xonasini oʻchirish huquqiga ega emassiz.',
+      );
+    }
+
+    await this.chatRoomRepository.update(
+      { id: chatRoomId },
+      { isDeleted: true },
+    );
+  }
+
+  // --- 2. XABAR OPERATSIYALARI ---
+
+  /**
+   * Muayyan chatdagi xabarlarni sahifalash bilan olish.
+   */
+  async getChatRoomMessages(
+    chatRoomId: number,
+    userId: number,
+    skip: number = 0,
+    take: number = 50,
+  ) {
+    const chatRoom = await this.chatRoomRepository.findOne({
+      where: { id: chatRoomId },
+    });
+
+    if (!chatRoom) {
+      throw new NotFoundException('Chat xonasi topilmadi.');
+    }
+
+    const messages = await this.messageRepository.find({
+      where: { chatRoom: { id: chatRoomId }, isDeleted: false }, // Faqat o'chirilmagan xabarlarni oladi
+      relations: ['sender'],
+      order: { createdAt: 'ASC' },
+      skip,
+      take,
+    });
+
+    return messages.map((msg) => ({
+      id: msg.id,
+      content: msg.content,
+      isDeleted: msg.isDeleted,
+      createdAt: msg.createdAt,
+      senderId: msg.sender.id,
+      senderUsername: msg.sender.username,
+      read: msg.read,
+      // Xabar ko'rsatish holatini belgilash uchun INDEX
+      index: chatRoom.isDeleted
+        ? 4 // Chat o'chirilgan
+        : !msg.read && msg.sender.id !== userId
+        ? 3 // O'qilmagan kiruvchi xabar
+        : msg.sender.id === userId
+        ? 1 // Siz yuborgan xabar
+        : 2, // Boshqa ishtirokchi yuborgan o'qilgan xabar
+    }));
+  }
+
+  /**
+   * Xabarni saqlash va chat xonasining yangilanish vaqtini yangilash.
+   */
+  async saveMessage(
+    chatRoomId: number,
+    senderId: number,
+    messageContent: string,
+  ): Promise<Message> {
+    if (typeof messageContent !== 'string' || messageContent.length > 10000) {
+      throw new BadRequestException('Xabar formati noto‘g‘ri yoki juda uzun.');
+    }
+
+    const chatRoom = await this.chatRoomRepository.findOneBy({
+      id: chatRoomId,
+    });
+    if (!chatRoom) {
+      throw new NotFoundException('Chat xonasi topilmadi.');
+    }
+
+    const sender = await this.userRepository.findOneBy({ id: senderId });
+    if (!sender) {
+      throw new NotFoundException('Yuboruvchi foydalanuvchi topilmadi.');
+    }
+
+    const newMessage = this.messageRepository.create({
+      chatRoom: chatRoom,
+      sender: sender,
+      content: messageContent,
+      read: false, // Yangi xabar avvaliga o'qilmagan bo'ladi
+    });
+
+    const savedMessage = await this.messageRepository.save(newMessage);
+
+    // Chat xonasining updated at vaqtini yangilash (chat ro'yxatini sort qilish uchun muhim)
+    chatRoom.updatedAt = new Date();
+    await this.chatRoomRepository.save(chatRoom);
+
+    return savedMessage;
+  }
+
+  /**
+   * Xabarni ID orqali topish.
+   */
+  async getMessageById(messageId: string): Promise<Message | null> {
+    return this.messageRepository.findOne({
+      where: { id: messageId, isDeleted: false }, // Faqat o'chirilmagan xabarni oladi
+      relations: ['sender'],
+    });
+  }
+
+  /**
+   * YANGI FUNKSIYA: Xabarni ID orqali Chat xonasi ma'lumotlari bilan topish.
+   * ChatGateway da 'deleteMessage' uchun kerak.
+   */
+  async getMessageWithRoom(messageId: string): Promise<Message | null> {
+    return this.messageRepository.findOne({
+      where: { id: messageId },
+      relations: ['chatRoom', 'sender'],
+    });
+  }
+
+  /**
+   * YANGI FUNKSIYA: Xabarni o'chirilgan holatda ID orqali topish.
+   * ChatGateway da 'deleteMessage' eventidan keyin xona ID sini topish uchun kerak.
+   */
+  async getDeletedMessageById(messageId: string): Promise<Message | null> {
+    return this.messageRepository.findOne({
+      where: { id: messageId },
+      relations: ['chatRoom', 'sender'],
+    });
+  }
+
+  /**
+   * Xabarni yumshoq o'chirish (isDeleted: true).
+   */
+  async softDeleteMessage(messageId: string, userId: number): Promise<void> {
+    const message = await this.messageRepository.findOne({
+      where: { id: messageId },
+      relations: ['sender'],
+    });
+
+    if (!message) throw new NotFoundException('Xabar topilmadi.');
+
+    if (message.sender.id !== userId)
+      throw new BadRequestException(
+        'Siz bu xabarni oʻchirish huquqiga ega emassiz.',
+      );
+
+    await this.messageRepository.update({ id: messageId }, { isDeleted: true });
+  }
+
+  // --- 3. O'QILGANLIK HOLATI OPERATSIYALARI ---
+
+  /**
+   * Muayyan xabarni o'qilgan deb belgilash.
+   */
+  async markMessageAsRead(messageId: string, readerId: number): Promise<void> {
+    const message = await this.messageRepository.findOne({
+      where: { id: messageId },
+      relations: ['sender'],
+    });
+
+    if (!message) {
+      throw new NotFoundException('Xabar topilmadi.');
+    }
+
+    // Faqat xabar yuboruvchisi bo'lmagan foydalanuvchi uni o'qiganida o'zgartirish
+    if (message.sender.id === readerId) {
+      // O'z xabarini o'qishga urinish xato hisoblanmaydi, shunchaki o'tkazib yuboriladi
+      return; 
+    }
+
+    await this.messageRepository.update(
+      { id: messageId, read: false },
+      { read: true },
+    );
+  }
+
+  /**
+   * Muayyan chatdagi barcha kiruvchi xabarlarni o'qilgan deb belgilash.
    */
   async markMessagesAsRead(chatRoomId: number, userId: number): Promise<void> {
     const chatRoom = await this.chatRoomRepository.findOne({
@@ -257,7 +381,7 @@ export class ChatService {
       {
         chatRoomId: chatRoomId,
         read: false,
-        senderId: Not(userId),
+        senderId: Not(userId), // Faqat boshqa foydalanuvchi yuborgan xabarlar
       },
       { read: true },
     );
@@ -286,76 +410,5 @@ export class ChatService {
         senderId: Not(userId),
       },
     });
-  }
-  /**
-   * Xabarni ID orqali topish.
-   */
-  async getMessageById(messageId: string): Promise<Message | null> {
-    return this.messageRepository.findOne({
-      where: { id: messageId },
-      relations: ['chatRoom', 'sender'],
-    });
-  }
-
-  async markMessageAsRead(messageId: string, readerId: number): Promise<void> {
-    const message = await this.messageRepository.findOne({
-      where: { id: messageId },
-      relations: ['sender'],
-    });
-
-    if (!message) {
-      throw new NotFoundException('Xabar topilmadi.');
-    }
-
-    // Faqat xabar yuboruvchisi bo'lmagan foydalanuvchi uni o'qiganida o'zgartirish
-    if (message.sender.id === readerId) {
-      throw new BadRequestException(
-        'Siz o‘z xabaringizni o‘qilgan deb belgilay olmaysiz.',
-      );
-    }
-
-    await this.messageRepository.update(
-      { id: messageId, read: false },
-      { read: true },
-    );
-  }
-
-  /**
-   * Xabarni saqlash. Bu funksiyani ChatGateway ham ishlatadi.
-   */
-  async saveMessage(
-    chatRoomId: number,
-    senderId: number,
-    messageContent: string,
-  ): Promise<Message> {
-    if (typeof messageContent !== 'string' || messageContent.length > 10000) {
-      throw new BadRequestException('Xabar formati noto‘g‘ri yoki juda uzun.');
-    }
-
-    const chatRoom = await this.chatRoomRepository.findOneBy({
-      id: chatRoomId,
-    });
-    if (!chatRoom) {
-      throw new NotFoundException('Chat xonasi topilmadi.');
-    }
-
-    const sender = await this.userRepository.findOneBy({ id: senderId });
-    if (!sender) {
-      throw new NotFoundException('Yuboruvchi foydalanuvchi topilmadi.');
-    }
-
-    const newMessage = this.messageRepository.create({
-      chatRoom: chatRoom,
-      sender: sender,
-      content: messageContent,
-      read: false,
-    });
-
-    const savedMessage = await this.messageRepository.save(newMessage);
-
-    chatRoom.updatedAt = new Date();
-    await this.chatRoomRepository.save(chatRoom);
-
-    return savedMessage;
   }
 }
