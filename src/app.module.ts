@@ -45,27 +45,27 @@ import { PaymeModule } from './payme/payme.module';
       },
     ]),
 
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost', // yoki 127.0.0.1
-      port: 5432,
-      username: 'postgres', // bu sizning lokal PostgreSQL foydalanuvchingiz
-      password: '1234', // bu yerga sizning lokal postgres parolingiz
-      database: 'kelishamiz', // bu yerga lokal bazangiz nomini yozing
-      synchronize: true, // true faqat dev uchun, prod-da false bo'lishi kerak
-      autoLoadEntities: true,
-    }),
     // TypeOrmModule.forRoot({
     //   type: 'postgres',
-    //   host: '45.92.173.136',
-    //   port: parseInt(process.env.DATABASE_PORT || '5432', 10),
-    //   username: 'postgres',
-    //   password: '0GzjPHd6pBn1jH83',
-    //   database: 'kelishamiz',
-    //   synchronize: true,
+    //   host: 'localhost', // yoki 127.0.0.1
+    //   port: 5432,
+    //   username: 'postgres', // bu sizning lokal PostgreSQL foydalanuvchingiz
+    //   password: '1234', // bu yerga sizning lokal postgres parolingiz
+    //   database: 'kelishamiz', // bu yerga lokal bazangiz nomini yozing
+    //   synchronize: true, // true faqat dev uchun, prod-da false bo'lishi kerak
     //   autoLoadEntities: true,
-    //   entities: [__dirname + '/**/*.entity{.ts,.js}'],
     // }),
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: '45.92.173.136',
+      port: parseInt(process.env.DATABASE_PORT || '5432', 10),
+      username: 'postgres',
+      password: '0GzjPHd6pBn1jH83',
+      database: 'kelishamiz',
+      synchronize: true,
+      autoLoadEntities: true,
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+    }),
     // s
 
     CacheModule.registerAsync({

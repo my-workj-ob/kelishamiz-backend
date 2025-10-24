@@ -183,7 +183,6 @@ export class ChatService {
 
     return chatRoom;
   }
-
   async findOrCreateChatRoom(
     productId: number,
     participantIds: number[],
