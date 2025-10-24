@@ -28,9 +28,9 @@ export class ChatGateway {
   constructor(
     private readonly chatService: ChatService,
     private readonly userService: ProfileService,
-  ) {}
+  ) { }
 
-  /** Mijoz ulanishi */
+
   handleConnection(@ConnectedSocket() client: Socket) {
     const userId = Number(client.handshake.query.userId);
 
@@ -48,7 +48,6 @@ export class ChatGateway {
     client.broadcast.emit('userStatusChange', { userId, isOnline: true });
   }
 
-  /** Mijoz uzilishi */
   handleDisconnect(@ConnectedSocket() client: Socket) {
     const userId = client.data.userId;
 
@@ -66,14 +65,11 @@ export class ChatGateway {
     @ConnectedSocket() client: Socket,
   ): Promise<void> {
     try {
-      // 1. O'qilganlik holatini o'zgartirish
       await this.chatService.markMessageAsRead(data.messageId, data.readerId);
 
-      // 2. Xabar haqida ma'lumot olish
       const message = await this.chatService.getMessageById(data.messageId);
 
       if (message) {
-        // 3. Xabarning yuboruvchisiga xabar o'qilgani haqida ma'lumot yuborish
         const senderSocketId = this.onlineUsers.get(message.sender.id);
         if (senderSocketId) {
           this.server.to(senderSocketId).emit('messageRead', {
@@ -88,7 +84,6 @@ export class ChatGateway {
     }
   }
 
-  /** Xabar yuborish */
   @SubscribeMessage('sendMessage')
   async handleSendMessage(
     @MessageBody()
@@ -168,17 +163,14 @@ export class ChatGateway {
     }
   }
 
-  /** Xonadan chiqish */
   @SubscribeMessage('leaveRoom')
   handleLeaveRoom(
     @MessageBody() chatRoomId: string,
     @ConnectedSocket() client: Socket,
   ): void {
-    console.log(`Client ${client.id} leaving room: ${chatRoomId}`);
     client.leave(chatRoomId);
   }
 
-  /** Online statusni qo‘lda o‘rnatish */
   @SubscribeMessage('setOnlineStatus')
   handleSetOnlineStatus(
     @MessageBody() userId: number,
@@ -187,20 +179,15 @@ export class ChatGateway {
     client.data.userId = userId;
     this.onlineUsers.set(userId, client.id);
 
-    console.log(
-      `User ${userId} manually set online status. Socket: ${client.id}`,
-    );
 
     this.server.emit('userStatusChange', { userId, isOnline: true });
   }
 
-  /** Online foydalanuvchilarni olish */
   @SubscribeMessage('getOnlineUsers')
   handleGetOnlineUsers(@ConnectedSocket() client: Socket): void {
     client.emit('onlineUsersList', Array.from(this.onlineUsers.keys()));
   }
 
-  /** Foydalanuvchi yozishni boshladi */
   @SubscribeMessage('typingStarted')
   handleTypingStarted(
     @MessageBody()
@@ -215,7 +202,6 @@ export class ChatGateway {
     });
   }
 
-  /** Foydalanuvchi yozishni to‘xtatdi */
   @SubscribeMessage('typingStopped')
   handleTypingStopped(
     @MessageBody() data: { chatRoomId: string; userId: number },
@@ -237,14 +223,11 @@ export class ChatGateway {
     @ConnectedSocket() client: Socket,
   ) {
     try {
-      // 1. Xabarni yumshoq o'chirish funksiyasini chaqirish
       await this.chatService.softDeleteMessage(data.messageId, data.userId);
 
-      // 2. Xabarni topish uchun ChatService ichidagi funksiyadan foydalanish
       const message = await this.chatService.getMessageById(data.messageId);
 
       if (message && message.chatRoom) {
-        // 3. Xabar o'chirilgani haqida xona ishtirokchilariga ma'lumot yuborish
         this.server
           .to(message.chatRoom.id.toString())
           .emit('messageDeleted', { messageId: data.messageId });
@@ -263,17 +246,38 @@ export class ChatGateway {
     }
   }
 
+
+
   @SubscribeMessage('deleteChatRoom')
   async handleDeleteChatRoom(
     @MessageBody() data: { chatRoomId: number; userId: number },
     @ConnectedSocket() client: Socket,
   ) {
     try {
+      const chatRoom = await this.chatService.getChatRoomById(data.chatRoomId);
+      const participantUserIds: number[] = chatRoom
+        ? chatRoom.participants.map(p => p.id)
+        : [];
+
       await this.chatService.softDeleteChatRoom(data.chatRoomId, data.userId);
+
 
       this.server
         .to(data.chatRoomId.toString())
         .emit('chatRoomDeleted', { chatRoomId: data.chatRoomId });
+
+      participantUserIds.forEach(pId => {
+        if (pId !== data.userId) {
+          const participantSocketId = this.onlineUsers.get(pId);
+          if (participantSocketId) {
+            this.server.to(participantSocketId).emit('chatRoomDeletedForUser', {
+              chatRoomId: data.chatRoomId,
+              deletedByUserId: data.userId
+            });
+          }
+        }
+      });
+
 
       client.emit('chatRoomDeleteStatus', {
         status: 'success',
@@ -283,8 +287,9 @@ export class ChatGateway {
       console.error('Error deleting chat room:', error);
       client.emit('chatRoomDeleteStatus', {
         status: 'error',
-        message: 'error.message',
+        message: error.message || 'Xato yuz berdi.',
       });
     }
   }
+
 }

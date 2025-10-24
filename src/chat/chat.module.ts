@@ -1,6 +1,6 @@
-    
+
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm'; // TypeORM modulini import qiling
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatController } from './chat.controller';
 import { ChatService } from './chat.service';
 import { ChatRoom } from './entities/chat-room.entity';
@@ -12,7 +12,7 @@ import { ProfileService } from './../profile/profile.service';
 import { Profile } from './../profile/enities/profile.entity';
 import { Like } from './../like/entities/like.entity';
 import { UserSearch } from './../search-filter/entities/user-search.entity';
-    
+
 
 @Module({
   imports: [
@@ -24,9 +24,9 @@ import { UserSearch } from './../search-filter/entities/user-search.entity';
       Profile,
       Like,
       UserSearch,
-    ]), // Repository-larni ta'minlaydi
+    ]),
   ],
   controllers: [ChatController],
   providers: [ChatService, ChatGateway, ProfileService],
 })
-export class ChatModule {}
+export class ChatModule { }

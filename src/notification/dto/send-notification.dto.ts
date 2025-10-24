@@ -5,9 +5,9 @@ export enum NotificationType {
   PRODUCT_PUBLISHED = 'PRODUCT_PUBLISHED',
   CHAT_MESSAGE = 'CHAT_MESSAGE',
   UPDATE_APP = 'UPDATE_APP',
-  NEW_AD = 'NEW_AD', // elonlar sayti uchun
-  AD_EXPIRED = 'AD_EXPIRED', // elonlar sayti uchun
-  PROMOTION = 'PROMOTION', // reklama yoki promo uchun
+  NEW_AD = 'NEW_AD',
+  AD_EXPIRED = 'AD_EXPIRED',
+  PROMOTION = 'PROMOTION',
 }
 
 export class SendNotificationDto {
@@ -16,7 +16,7 @@ export class SendNotificationDto {
     description: 'User ID to whom the notification will be sent',
     required: false,
   })
-  userId: number; // optionalni olib tashladik, JWT orqali ham beriladi
+  userId: number;
 
   @ApiProperty({ description: 'Title of the notification' })
   title: string;
@@ -34,5 +34,5 @@ export class SendNotificationDto {
     description: 'Related entity ID (ProductId, ChatId, AdId etc.)',
     required: false,
   })
-  entityId?: string; // optional, FCM data uchun
+  entityId?: string;
 }

@@ -22,7 +22,7 @@ export class ChatService {
     private userRepository: Repository<User>,
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
-  ) {}
+  ) { }
 
   async getUserChatRooms(userId: number) {
     const allChatRooms = await this.chatRoomRepository
@@ -42,7 +42,7 @@ export class ChatService {
 
     const mapChatRoom = async (room: ChatRoom) => {
       const lastMessage = await this.messageRepository.findOne({
-        where: { chatRoomId: room.id, isDeleted: false }, // Faqat o'chirilmagan oxirgi xabarni oladi
+        where: { chatRoomId: room.id, isDeleted: false },
         order: { createdAt: 'DESC' },
         relations: ['sender'],
       });
@@ -59,8 +59,8 @@ export class ChatService {
         productName: room.product?.title || 'Mahsulot topilmadi',
         imageUrl:
           Array.isArray(room.product?.images) &&
-          room.product?.imageIndex !== undefined &&
-          room.product.images[room.product.imageIndex]
+            room.product?.imageIndex !== undefined &&
+            room.product.images[room.product.imageIndex]
             ? room.product.images[room.product.imageIndex].url
             : null,
         otherParticipant: otherParticipant
@@ -68,13 +68,13 @@ export class ChatService {
           : null,
         lastMessage: lastMessage
           ? {
-              content: lastMessage.content,
-              createdAt: lastMessage.createdAt,
-              senderId: lastMessage.sender.id,
-              senderUsername: lastMessage.sender.username,
-              read: lastMessage.read,
-              isDeleted: lastMessage.isDeleted,
-            }
+            content: lastMessage.content,
+            createdAt: lastMessage.createdAt,
+            senderId: lastMessage.sender.id,
+            senderUsername: lastMessage.sender.username,
+            read: lastMessage.read,
+            isDeleted: lastMessage.isDeleted,
+          }
           : null,
         updatedAt: room.updatedAt,
         unreadCount,
@@ -155,9 +155,6 @@ export class ChatService {
     );
   }
 
-  /**
-   * Xabarni yumshoq o'chirish (isDeleted: true).
-   */
   async softDeleteMessage(messageId: string, userId: number): Promise<void> {
     const message = await this.messageRepository.findOne({
       where: { id: messageId },
@@ -174,9 +171,19 @@ export class ChatService {
     await this.messageRepository.update({ id: messageId }, { isDeleted: true });
   }
 
-  /**
-   * Yangi chat xonasini yaratish yoki mavjudini topish.
-   */
+  async getChatRoomById(chatRoomId: number): Promise<ChatRoom> {
+    const chatRoom = await this.chatRoomRepository.findOne({
+      where: { id: chatRoomId },
+      relations: ['participants'],
+    });
+
+    if (!chatRoom) {
+      throw new NotFoundException(`Chat xonasi ID ${chatRoomId} topilmadi.`);
+    }
+
+    return chatRoom;
+  }
+
   async findOrCreateChatRoom(
     productId: number,
     participantIds: number[],

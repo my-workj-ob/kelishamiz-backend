@@ -19,7 +19,7 @@ import { AuthGuard } from '@nestjs/passport';
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(private readonly chatService: ChatService) { }
 
   @Get('my-chats')
   async getUserChatRooms(@Req() req: { user: { userId: number } }) {
@@ -53,9 +53,6 @@ export class ChatController {
     return messages;
   }
 
-  /**
-   * Muayyan chat xonasidagi barcha xabarlarni o'qilgan deb belgilash.
-   */
   @Post(':chatRoomId/mark-as-read')
   async markMessagesAsRead(
     @Param('chatRoomId') chatRoomId: number,
@@ -65,9 +62,6 @@ export class ChatController {
     await this.chatService.markMessagesAsRead(chatRoomId, userId);
     return { success: true };
   }
-  /**
-   * Yangi chat xonasini yaratish yoki mavjudini topish.
-   */
   @Post('create-or-get')
   async createOrGetChatRoom(
     @Body('productId') productId: number,
@@ -91,9 +85,6 @@ export class ChatController {
     return { success: true, message: 'Chat xonasi oʻchirildi.' };
   }
 
-  /**
-   * Xabarni yumshoq o'chirish.
-   */
   @Delete('message/:id')
   async softDeleteMessage(
     @Param('id') messageId: string,

@@ -22,6 +22,7 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'http://localhost:5173', // local dev
+      'http://localhost:5174',
       'https://kelishamiz.uz', // production frontend
       'https://kelishamiz-admin-panels.vercel.app',
     ],
