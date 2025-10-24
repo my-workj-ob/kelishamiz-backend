@@ -130,9 +130,7 @@ export class ChatGateway {
       return;
     }
 
-    console.log(
-      `Client ${client.id} (User: ${userId}) joining room: ${chatRoomId}`,
-    );
+
     client.join(chatRoomId);
 
     try {
