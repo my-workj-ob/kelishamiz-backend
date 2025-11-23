@@ -42,7 +42,7 @@ export class ProfileController {
     private readonly searchService: SearchService,
     private readonly fileService: FileService,
     private readonly uploadService: UploadService,
-  ) {}
+  ) { }
 
   @Post()
   @ApiCreatedResponse({ description: 'Profil yaratildi', type: Profile })

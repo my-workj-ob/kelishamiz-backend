@@ -52,7 +52,7 @@ export class ProductService {
     @InjectRepository(ProductImage)
     private productImageRepository: Repository<ProductImage>,
     private dataSource: DataSource,
-  ) {}
+  ) { }
 
   /**
    * Barcha mahsulotlarni pagination, like holati, admin huquqlari
