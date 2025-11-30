@@ -23,6 +23,7 @@ import { ConfigModule } from '@nestjs/config';
 import { UserModule } from './user/user.module';
 import { BannerModule } from './banner/banner.module';
 import { PaymeModule } from './payme/payme.module';
+import { SecurityModule } from './security/security.module';
 
 @Module({
   imports: [
@@ -50,7 +51,7 @@ import { PaymeModule } from './payme/payme.module';
     //   host: 'localhost', // yoki 127.0.0.1
     //   port: 5432,
     //   username: 'postgres', // bu sizning lokal PostgreSQL foydalanuvchingiz
-    //   password: '1234', // bu yerga sizning lokal postgres parolingiz
+    //   password: '12345', // bu yerga sizning lokal postgres parolingiz
     //   database: 'kelishamiz', // bu yerga lokal bazangiz nomini yozing
     //   synchronize: true, // true faqat dev uchun, prod-da false bo'lishi kerak
     //   autoLoadEntities: true,
@@ -91,6 +92,7 @@ import { PaymeModule } from './payme/payme.module';
     UserModule,
     BannerModule,
     PaymeModule,
+    SecurityModule,
   ],
 
   controllers: [

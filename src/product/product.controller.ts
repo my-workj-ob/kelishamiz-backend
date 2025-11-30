@@ -649,7 +649,6 @@ export class ProductController {
     if (body.isPublish !== undefined)
       body.isPublish = parseBoolean(body.isPublish);
 
-    // 4. Sanani Parse qilish
     if (
       body.topExpiresAt !== undefined &&
       typeof body.topExpiresAt === 'string'
@@ -657,18 +656,16 @@ export class ProductController {
       try {
         const date = new Date(body.topExpiresAt);
         if (!isNaN(date.getTime())) {
-          // Valid date
           body.topExpiresAt = date;
         } else {
-          body.topExpiresAt = undefined; // Invalid date string
+          body.topExpiresAt = undefined; 
         }
       } catch (dateParseError) {
-        body.topExpiresAt = undefined; // Catch any parsing errors
+        body.topExpiresAt = undefined; 
       }
     }
 
-    // Servisga to'g'ri turdagi ma'lumotlar bilan murojaat qilish
     return this.productService.updateProduct(id, body, files);
   }
-  // ... constructor va service injection
+ 
 }

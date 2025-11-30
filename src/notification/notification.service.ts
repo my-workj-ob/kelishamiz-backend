@@ -12,7 +12,6 @@ import {
 import { Notification } from './entities/notification.entity';
 import { Product } from 'src/product/entities/product.entity';
 import { User } from 'src/auth/entities/user.entity';
-import { FirebaseService } from 'firebase.service';
 
 @Injectable()
 export class NotificationsService {
@@ -23,7 +22,7 @@ export class NotificationsService {
     private readonly productRepo: Repository<Product>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-    private readonly firebaseService: FirebaseService,
+    // private readonly firebaseService: FirebaseService,
   ) {}
   async saveNotification(dto: SendNotificationDto): Promise<Notification> {
     // faqat Notification qaytaradi

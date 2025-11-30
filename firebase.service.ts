@@ -12,7 +12,7 @@ export class FirebaseService implements OnModuleInit {
       try {
         const serviceAccountPath = path.resolve(
           process.cwd(),
-          'src/firebase-service-account.json',
+          'firebase-service-account.json',
         );
 
         const serviceAccount = JSON.parse(

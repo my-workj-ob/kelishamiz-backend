@@ -54,7 +54,7 @@ interface SendNotificationResponse {
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class NotificationController {
   constructor(
-    private readonly firebaseService: FirebaseService,
+    // private readonly firebaseService: FirebaseService,
     private readonly notificationService: NotificationsService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
@@ -75,12 +75,12 @@ export class NotificationController {
     let resultMessage: string;
 
     if (body.type === NotificationType.UPDATE_APP) {
-      await this.firebaseService.sendNotificationToTopic(
-        'all',
-        body.title,
-        body.body,
-        { click_action: 'FLUTTER_NOTIFICATION_CLICK' },
-      );
+      // await this.firebaseService.sendNotificationToTopic(
+      //   'all',
+      //   body.title,
+      //   body.body,
+      //   { click_action: 'FLUTTER_NOTIFICATION_CLICK' },
+      // );
       resultMessage = 'Notification sent to all users via topic';
     } else {
       if (!body.userId) throw new BadRequestException('userId is required');
@@ -88,12 +88,12 @@ export class NotificationController {
       const user = await this.userRepo.findOne({ where: { id: body.userId } });
       if (!user) throw new NotFoundException('User not found');
 
-      messageId = await this.firebaseService.sendNotification(
-        user.token!,
-        body.title,
-        body.body,
-        fcmData,
-      );
+      // messageId = await this.firebaseService.sendNotification(
+      //   user.token!,
+      //   body.title,
+      //   body.body,
+      //   fcmData,
+      // );
 
       await this.notificationService.saveNotification(body);
       resultMessage = 'Notification saved and sent to user';
