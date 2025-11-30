@@ -76,6 +76,7 @@
     "@nestjs/testing": "^11.0.1",
     "@swc/cli": "^0.6.0",
     "@swc/core": "^1.10.7",
+    "@types/adm-zip": "^0.5.7",
     "@types/base-64": "^1.0.2",
     "@types/cache-manager-redis-store": "^2.0.4",
     "@types/cors": "^2.8.17",
