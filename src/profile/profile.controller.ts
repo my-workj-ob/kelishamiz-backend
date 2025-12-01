@@ -42,7 +42,7 @@ export class ProfileController {
     private readonly searchService: SearchService,
     private readonly fileService: FileService,
     private readonly uploadService: UploadService,
-  ) { }
+  ) {}
 
   @Post()
   @ApiCreatedResponse({ description: 'Profil yaratildi', type: Profile })
@@ -114,6 +114,18 @@ export class ProfileController {
       }
       case 'xabarlarim':
         break;
+      case 'kutilmoqda': {
+        const savedProducts =
+          await this.productService.getUserProductsByPublishedStatus(
+            userId,
+            false,
+          );
+
+        if (!savedProducts) {
+          throw new NotFoundException('Foydalanuvchi mahsulotlari topilmadi');
+        }
+        return savedProducts;
+      }
       case 'saqlanganlar': {
         const savedProducts =
           await this.productService.syncLikesFromLocal(userId);

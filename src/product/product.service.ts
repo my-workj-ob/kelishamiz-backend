@@ -52,7 +52,7 @@ export class ProductService {
     @InjectRepository(ProductImage)
     private productImageRepository: Repository<ProductImage>,
     private dataSource: DataSource,
-  ) { }
+  ) {}
 
   /**
    * Barcha mahsulotlarni pagination, like holati, admin huquqlari
@@ -490,6 +490,18 @@ export class ProductService {
       .filter((p): p is Product => !!p);
 
     return orderedProducts;
+  }
+
+  // Service metod
+  async getUserProductsByPublishedStatus(userId: number, unPublished: boolean) {
+    return this.productRepository.find({
+      where: {
+        profileId: userId,
+        isPublish: !unPublished,
+      },
+      relations: ['images', 'likes', 'category', 'region', 'district'],
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async toggleLike(projectId: number, userId: number): Promise<boolean> {
