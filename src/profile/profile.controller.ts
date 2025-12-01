@@ -116,10 +116,7 @@ export class ProfileController {
         break;
       case 'kutilmoqda': {
         const savedProducts =
-          await this.productService.getUserProductsByPublishedStatus(
-            userId,
-            false,
-          );
+          await this.productService.getUserProductsByPublishedStatus(userId);
 
         if (!savedProducts) {
           throw new NotFoundException('Foydalanuvchi mahsulotlari topilmadi');
