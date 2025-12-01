@@ -92,15 +92,14 @@ export class ProductService {
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('category.parent', 'parentCategory')
       .leftJoinAndSelect('product.profile', 'profile')
-      .leftJoinAndSelect('profile.user', 'user') // <--- Bu yangi qator
+      .leftJoinAndSelect('profile.user', 'user')
       .leftJoinAndSelect('product.district', 'district')
       .leftJoinAndSelect('product.region', 'region')
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('product.likes', 'likes')
       .orderBy('product.isTop', 'DESC')
-      .addOrderBy('product.createdAt', 'DESC');
-
-    // ... (boshqa shartlar va pagination qismi o'zgarishsiz qoladi) ...
+      .addOrderBy('product.createdAt', 'DESC')
+      .addOrderBy('images.order', 'ASC'); 
 
     const whereConditions: string[] = [];
     const parameters: { [key: string]: any } = {};
