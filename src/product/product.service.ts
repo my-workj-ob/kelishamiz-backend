@@ -396,6 +396,7 @@ export class ProductService {
       .leftJoinAndSelect('category.parent', 'parentCategory')
       .leftJoinAndSelect('product.images', 'image') // alias: image
       .where('profile.userId = :userId', { userId: id })
+      .andWhere('product.isPublish = :isPublish', { isPublish: true })
       .orderBy('product.updatedAt', 'DESC') // 1. updatedAt bo‘yicha yangi mahsulotlar
       .addOrderBy('product.createdAt', 'DESC') // 2. createdAt bo‘yicha
       .addOrderBy('image.order', 'ASC') // 3. rasmlar tartibi (to‘g‘ri alias ishlatildi)
