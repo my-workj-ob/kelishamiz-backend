@@ -22,7 +22,9 @@ export class ChatRoom {
   @Column({ name: 'productId' })
   productId: number;
 
-  @ManyToOne(() => Product, (product) => product.chatRooms)
+  @ManyToOne(() => Product, (product) => product.chatRooms, {
+    onDelete: 'CASCADE',
+  })
   product: Product;
 
   @ManyToMany(() => User, (user) => user.chatRooms, { cascade: true })
