@@ -493,10 +493,10 @@ export class ProductService {
   }
 
   // Service metod
-  async getUserProductsByPublishedStatus(userId: number ) {
+  async getUserProductsByPublishedStatus(userId: number) {
     return this.productRepository.find({
       where: {
-        profileId: userId,
+        profile: { user: { id: userId } },
         isPublish: false,
       },
       relations: ['images', 'likes', 'category', 'region', 'district'],
