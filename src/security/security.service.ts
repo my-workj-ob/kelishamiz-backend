@@ -1,50 +1,67 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Security } from './entities/security.entity';
 import AdmZip from 'adm-zip';
+import * as fs from 'fs';
 import * as path from 'path';
 
 @Injectable()
 export class SecurityService {
-  constructor(
-    @InjectRepository(Security)
-    private readonly securityRepo: Repository<Security>,
-  ) {}
-
-  // ODT fayldan matn olish
+  // ODT matnini o‘qish
   private readOdtFile(filePath: string): string {
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundException(`${filePath} topilmadi`);
+    }
+
     const zip = new AdmZip(filePath);
-    const contentXml = zip.readAsText('content.xml');
-    const textMatches = contentXml.match(/<text:p[^>]*>(.*?)<\/text:p>/g);
-    if (!textMatches) return '';
-    return textMatches.map((m) => m.replace(/<[^>]+>/g, '')).join('\n');
+    const xml = zip.readAsText('content.xml');
+
+    const matches = xml.match(/<text:p[^>]*>(.*?)<\/text:p>/g);
+    if (!matches) return '';
+
+    return matches.map((m) => m.replace(/<[^>]+>/g, '')).join('\n');
   }
 
-  // DB-ga saqlash yoki yangilash
-  async upsertSecurityFiles(
-    privacyOdtPath: string,
-    termsOdtPath: string,
-  ): Promise<Security> {
-    const privacyPolicy = this.readOdtFile(privacyOdtPath);
-    const terms = this.readOdtFile(termsOdtPath);
+  // JSON tozalash va parse qilish
+  private parseSecurityJson(raw: string) {
+    if (!raw) throw new NotFoundException('ODT dan matn olinmadi');
 
-    let record = await this.securityRepo.findOne({ where: { id: 1 } });
-    if (!record) {
-      record = this.securityRepo.create({ privacyPolicy, terms });
-    } else {
-      record.privacyPolicy = privacyPolicy;
-      record.terms = terms;
+    let cleaned = raw
+      .replace(/&quot;/g, '"')
+      .replace(/\[cite_start\]/g, '')
+      .replace(/\[cite:[^\]]+\]/g, '')
+      .replace(/\n/g, ' ')
+      .trim();
+
+    try {
+      return JSON.parse(cleaned);
+    } catch (e) {
+      console.error('JSON Parse Error:', e);
+      throw new NotFoundException('ODT ichidagi JSON noto‘g‘ri formatda');
     }
-    return this.securityRepo.save(record);
   }
 
-  // DB-dan olish
-  async getSecurityContent(): Promise<Security> {
-    const record = await this.securityRepo.findOne({ where: { id: 1 } });
-    if (!record) {
-      throw new NotFoundException('Security content not found');
+  // PRIVACY LIST
+  async getPrivacyPolicyList() {
+    const filePath = path.join(process.cwd(), 'files/privacy.odt');
+    const rawText = this.readOdtFile(filePath);
+    const parsed = this.parseSecurityJson(rawText);
+
+    if (!parsed?.data?.privacy_policy) {
+      throw new NotFoundException('privacy_policy list topilmadi');
     }
-    return record;
+
+    return parsed.data.privacy_policy;
+  }
+
+  // TERMS LIST
+  async getTermsList() {
+    const filePath = path.join(process.cwd(), 'files/terms.odt');
+    const rawText = this.readOdtFile(filePath);
+    const parsed = this.parseSecurityJson(rawText);
+
+    if (!parsed?.data?.terms) {
+      throw new NotFoundException('terms list topilmadi');
+    }
+
+    return parsed.data.terms;
   }
 }

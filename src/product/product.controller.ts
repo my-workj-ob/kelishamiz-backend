@@ -181,8 +181,8 @@ export class ProductController {
       pageSize,
       likedIds,
       isAdmin,
-      regionId, // Yangi parametr
-      districtIds, // Yangi parametr
+      regionId, 
+      districtIds, 
     );
   }
   @Get('top')
