@@ -581,10 +581,8 @@ export class ProductService {
       sortOrder = 'DESC',
       paymentType,
       currencyType,
-      // negotiable,
       regionId,
-      // Change districtId to potentially be an array of numbers
-      districtId, // This can now be a number or an array of numbers
+      districtId, 
       page = 1,
       pageSize = 10,
       ...otherFilters
@@ -603,19 +601,16 @@ export class ProductService {
       .addOrderBy('images.order', 'ASC')
       .addOrderBy('images.images.id', 'DESC');
     if (categoryId) {
-      // 1) Parentni va childlarni olib kelish
       const parentCategory = await this.categoryRepository.findOne({
         where: { id: categoryId },
         relations: ['children'],
       });
 
-      // 2) Hamma child id larini yig‘ib olish
       const categoryIds = [categoryId];
       if (parentCategory?.children?.length) {
         categoryIds.push(...parentCategory.children.map((c) => c.id));
       }
 
-      // 3) QueryBuilderga qo‘shish
       queryBuilder.andWhere('product.categoryId IN (:...categoryIds)', {
         categoryIds,
       });
@@ -647,11 +642,6 @@ export class ProductService {
       });
     }
 
-    // if (negotiable !== null && negotiable !== undefined) {
-    //   queryBuilder.andWhere('product.negotiable = :negotiable', { negotiable });
-    // }
-
-    // --- MODIFICATION START ---
     if (districtId) {
       if (
         Array.isArray(districtId) &&
@@ -659,8 +649,7 @@ export class ProductService {
         districtId.length <= 3
       ) {
         queryBuilder.andWhere('product.districtId IN (:...districtIds)', {
-          // Parametr nomi ':...districtIds' bilan mos kelishi kerak
-          districtIds: districtId, // <<<<<<<< Shu yerda `districtIds` bo'lishi kerak
+          districtIds: districtId, 
         });
       } else if (typeof districtId === 'number') {
         queryBuilder.andWhere('product.districtId = :districtId', {
@@ -668,15 +657,11 @@ export class ProductService {
         });
       }
     }
-    // --- MODIFICATION END ---
 
-    // ADMIN bo'lmasa, faqat o'z mahsulotlarini ko'rsatish shartini qo'shamiz
     if (ownProduct && userId) {
-      queryBuilder.andWhere('product.profile.user.id = :userId', { userId }); // Foydalanuvchining ID'si bo'yicha
     }
 
     if (!isAdmin) {
-      // Faqat ADMIN bo'lmaganda publish qilinganlarni ko'rsatish
       queryBuilder.andWhere('product.isPublish = :isPublish', {
         isPublish: true,
       });

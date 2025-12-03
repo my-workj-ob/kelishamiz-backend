@@ -58,9 +58,7 @@ export class GetProductsDto {
     example: { Color: 'Qora', Memory: '128 GB' },
   })
   @IsOptional()
-  @IsObject()
-  @ValidateNested()
-  properties?: Record<string, object | object[]>; // to'g'ri strukturaga keltirish
+  properties?: Record<string, any>; 
 
   @ApiProperty({
     required: false,
