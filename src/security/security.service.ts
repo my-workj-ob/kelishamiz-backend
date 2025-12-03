@@ -39,7 +39,6 @@ export class SecurityService {
     }
   }
 
-  // PRIVACY LIST
   async getPrivacyPolicyList() {
     const filePath = path.join(process.cwd(), 'files/privacy.odt');
     const rawText = this.readOdtFile(filePath);
@@ -52,16 +51,15 @@ export class SecurityService {
     return parsed.data.privacy_policy;
   }
 
-  // TERMS LIST
   async getTermsList() {
     const filePath = path.join(process.cwd(), 'files/terms.odt');
     const rawText = this.readOdtFile(filePath);
     const parsed = this.parseSecurityJson(rawText);
 
-    if (!parsed?.data?.terms) {
+    if (!parsed?.data?.terms_of_use) {
       throw new NotFoundException('terms list topilmadi');
     }
 
-    return parsed.data.terms;
+    return parsed.data.terms_of_use;
   }
 }
