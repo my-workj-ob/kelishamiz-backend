@@ -13,7 +13,7 @@ export class PropertyService {
     @InjectRepository(Category) // Category uchun repositoryni inyeksiya qilish
     private categoryRepository: Repository<Category>,
   ) {}
-    
+
   async create(createPropertyDto: CreatePropertyDto): Promise<Property> {
     const { categoryId, options, ...propertyData } = createPropertyDto;
 
@@ -36,12 +36,42 @@ export class PropertyService {
   async findAll(): Promise<Property[]> {
     return await this.propertyRepository.find({ relations: ['category'] });
   }
+  async updateProperty(id: number, updatePropertyDto: any): Promise<Property> {
+    const property = await this.propertyRepository.findOne({
+      where: { id },
+      relations: ['category'],
+    });
+    if (!property) {
+      throw new NotFoundException(`Property ${id} topilmadi`);
+    }
 
+    const { categoryId, options, ...rest } = updatePropertyDto;
+
+    // agar category yangilanishi kerak bo'lsa
+    if (categoryId) {
+      const category = await this.categoryRepository.findOne({
+        where: { id: categoryId },
+      });
+      if (!category) {
+        throw new NotFoundException(`Kategoriya ${categoryId} topilmadi`);
+      }
+      property.category = category;
+    }
+
+    // Agar SELECT type bo'lsa optionsni yangilash
+    if (rest.type === PropertyType.SELECT) {
+      property.options = options;
+    }
+
+    Object.assign(property, rest);
+
+    return await this.propertyRepository.save(property);
+  }
   async deleteProperty(id: number): Promise<DeleteResult | void> {
     if (!id) {
       throw new NotFoundException('ID berilmagan');
     }
-    
+
     const property = await this.propertyRepository.findOne({
       where: { id },
     });

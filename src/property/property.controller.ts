@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -25,13 +26,20 @@ export class PropertyController {
     return this.propertyService.create(createPropertyDto);
   }
 
+  @Put(':id')
+  @ApiOperation({ summary: 'Propertyni yangilash' })
+  update(@Param('id') id: number, @Body() updatePropertyDto: any) {
+    return this.propertyService.updateProperty(id, updatePropertyDto);
+  }
+
   @Get()
   @ApiOperation({ summary: 'Barcha propertiesni olish' })
   findAll() {
     return this.propertyService.findAll();
   }
+
   @Delete(':id')
-  @ApiOperation({ summary: 'Barcha propertiesni olish' })
+  @ApiOperation({ summary: "Propertyni o'chirish" })
   async deletePropertyById(@Param('id') id: number) {
     return this.propertyService.deleteProperty(id);
   }

@@ -6,6 +6,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import {
@@ -86,6 +87,11 @@ export class CategoryController {
       throw new NotFoundException(`Kategoriya ${id} bilan topilmadi`);
     }
     return existCategory;
+  }
+
+  @Put(':id')
+  async updateCategory(@Param('id') id: number, @Body() body: any) {
+    return await this.categoryService.updateCategory(id, body);
   }
 
   @Delete(':id')

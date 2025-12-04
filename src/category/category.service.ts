@@ -1,5 +1,3 @@
-    
-    
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
@@ -86,6 +84,25 @@ export class CategoryService {
     });
 
     return children;
+  }
+
+  async updateCategory(id: number, body: any) {
+    const category = await this.categoryRepository.findOne({
+      where: { id },
+    });
+
+    if (!category) {
+      throw new NotFoundException('category topilmadi');
+    }
+
+    const updated = Object.assign(category, body);
+
+    await this.categoryRepository.save(updated);
+
+    return {
+      message: 'Kategoriya muvaffaqiyatli yangilandi',
+      data: updated,
+    };
   }
 
   async deleteCategory(id) {

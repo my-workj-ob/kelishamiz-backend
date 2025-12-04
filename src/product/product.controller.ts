@@ -387,11 +387,11 @@ export class ProductController {
   })
   @ApiBadRequestResponse({ description: "Yaroqsiz filtrlash ma'lumotlari" })
   @ApiOperation({ summary: 'filterlash' })
-  @UsePipes(new ValidationPipe({ transform: true })) // ValidationPipe bilan transform: true
+  @UsePipes(new ValidationPipe({ transform: true }))
   async getProducts(
     @Body() filters: GetProductsDto,
     @Req() req: AuthenticatedRequest,
-    @Query('likedIds') likedIdsStr?: string, // localStorage’dan keladi
+    @Query('likedIds') likedIdsStr?: string, 
   ): Promise<{
     data: (Product & { isLike: boolean })[];
     total: number;
@@ -402,7 +402,7 @@ export class ProductController {
       filters.ownProduct && req?.user?.userId ? req.user.userId : undefined;
 
     if (req?.user?.userId && filters.title?.trim()) {
-      const user = req.user as unknown as User; // User tipini to'g'rilash
+      const user = req.user as unknown as User;
       await this.searchService.saveSearch(user, filters.title.trim());
     }
 
@@ -413,9 +413,9 @@ export class ProductController {
           .filter((id) => !isNaN(id))
       : [];
 
-    const isAdmin = req.user?.role === UserRole.ADMIN; // ADMIN rolini tekshirish
+    const isAdmin = req.user?.role === UserRole.ADMIN; 
 
-    return this.productService.filter(filters, userId, likedIds, isAdmin); // isAdmin parametrini uzatish
+    return this.productService.filter(filters, userId, likedIds, isAdmin); 
   }
 
   @UseGuards(AuthGuard('jwt'))
