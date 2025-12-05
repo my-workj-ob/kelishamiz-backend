@@ -376,7 +376,7 @@ export class ProductService {
         ...product.profile,
         userId: product.profile?.user?.id,
       },
-      productProperties: formattedProperties,
+      productProperties: product.productProperties,
     };
 
     delete (result.profile as any).user;
