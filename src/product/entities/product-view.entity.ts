@@ -1,4 +1,3 @@
-// src/product/entities/product-view.entity.ts
 import { User } from './../../auth/entities/user.entity';
 import {
   Column,
@@ -9,7 +8,7 @@ import {
 } from 'typeorm';
 import { Product } from './product.entity';
 
-@Entity()
+@Entity({ name: 'user_viewed_product' })
 export class UserViewedProduct {
   @PrimaryGeneratedColumn()
   id: number;
@@ -20,27 +19,27 @@ export class UserViewedProduct {
   @ManyToOne(() => User, (user) => user.viewedProducts, { nullable: true })
   user: User | null;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true, name: 'ip' })
   ip: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'user_agent' })
   userAgent: string;
 
-  @Column({ type: 'varchar', length: 120, nullable: true })
+  @Column({ type: 'varchar', length: 120, nullable: true, name: 'device' })
   device: string;
 
-  @Column({ type: 'varchar', length: 120, nullable: true })
+  @Column({ type: 'varchar', length: 120, nullable: true, name: 'country' })
   country: string;
 
-  @Column({ type: 'varchar', length: 120, nullable: true })
+  @Column({ type: 'varchar', length: 120, nullable: true, name: 'browser' })
   browser: string;
 
-  @Column({ type: 'varchar', length: 120, nullable: true })
+  @Column({ type: 'varchar', length: 120, nullable: true, name: 'os' })
   os: string;
 
-  @Column({ type: 'varchar', length: 120, nullable: true })
+  @Column({ type: 'varchar', length: 120, nullable: true, name: 'utm' })
   utm: string;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ type: 'timestamptz', name: 'viewed_at' })
   viewedAt: Date;
 }
