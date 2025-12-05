@@ -868,12 +868,14 @@ export class ProductService {
         );
       }
     }
-
     const formattedProperties = (createProductDto.properties || []).map(
       (p: any) => ({
         type: p.type,
-        value: { key: p?.name ?? '', value: p.value ?? '' }, 
-        propertyId: p.propertyId,
+        value: {
+          key: p.key ?? '', // agar key mavjud bo'lmasa bo'sh string
+          value: p.value ?? '', // value ham bo'sh bo'lsa bo'sh string
+        },
+        propertyId: Number(p.propertyId), // propertyId ni raqamga o'tkazish
       }),
     );
 
