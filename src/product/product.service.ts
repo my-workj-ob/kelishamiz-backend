@@ -362,7 +362,7 @@ export class ProductService {
     }
 
     const formattedProperties = product.productProperties.map((p) => ({
-      type: p.type, 
+      type: p.type,
       value: {
         key: p.property?.name || `property_${p.propertyId}`,
         value: p.value,
@@ -869,6 +869,14 @@ export class ProductService {
       }
     }
 
+    const formattedProperties = (createProductDto.properties || []).map(
+      (p: any) => ({
+        type: p.type,
+        value: { key: p.key ?? '', value: p.value ?? '' }, // key mavjud bo‘lmasa bo‘sh string
+        propertyId: p.propertyId,
+      }),
+    );
+
     const product = this.productRepository.create({
       ...productData,
       category,
@@ -877,7 +885,7 @@ export class ProductService {
       regionId: Number(createProductDto.regionId),
       districtId: Number(createProductDto.districtId),
       imageIndex: Number(createProductDto.imageIndex),
-      propertyValues: properties || [],
+      propertyValues: formattedProperties || [],
       isPublish: createProductDto.isPublish ?? false, // isPublish shu yerda keladi
     });
     console.log('Yaratilgan mahsulot obyekti:', product);

@@ -364,12 +364,6 @@ export class ProductController {
     @Body() body: any, // To'g'ridan-to'g'ri ProductDto ni ishlatish maqsadga muvofiq
     @Req() req: AuthenticatedRequest,
   ): Promise<Product> {
-    console.log('BLOB_READ_WRITE_TOKEN:', process.env.BLOB_READ_WRITE_TOKEN);
-    console.log('Qabul qilingan fayllar:', files); // Debugging uchun
-    console.log('Qabul qilingan body:', body); // Debugging uchun
-    console.log('User from request:', req.user); // Debugging uchun
-    console.log('User from request:', body.properties); // Debugging uchun
-
     // Body'dagi barcha qiymatlarni to'g'ri tiplarga o'girish
     const createProductDto: Omit<ProductDto, 'images'> = {
       title: body.title,
@@ -616,9 +610,6 @@ export class ProductController {
     console.log('Received body:', body); // Debugging uchun
     console.log('Received files:', files); // Debugging uchun
 
-    // --- Faylsiz (JSON) maydonlarni to'g'ri turga o'tkazish ---
-
-    // 1. JSON string bo'lib kelgan massivlarni parse qilish
     try {
       if (typeof body.properties === 'string') {
         body.properties = JSON.parse(body.properties);
