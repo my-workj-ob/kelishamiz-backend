@@ -272,32 +272,27 @@ export class ProductService {
     userAgent: string | null,
     utm?: string | null,
   ): Promise<boolean> {
+    if (!userAgent || this.isBot(userAgent)) return false;
+
     const product = await this.productRepository.findOne({
       where: { id: productId },
       relations: ['profile', 'profile.user'],
     });
     if (!product) throw new NotFoundException('Mahsulot topilmadi');
 
-    if (userId && product.profile?.user?.id === userId) {
-      return false;
-    }
-
-    if (!userAgent || this.isBot(userAgent)) return false;
+    if (userId && product.profile?.user?.id === userId) return false;
 
     const lockKey = `product_view_lock:${productId}:${userId ?? ip ?? 'anon'}`;
     const lockAcquired = await this.redisService.acquireLock(lockKey, 2000);
-    if (!lockAcquired) {
-      return false;
-    }
+    if (!lockAcquired) return false;
 
     try {
       const now = new Date();
-      const parsed = this.parseUserAgent(userAgent || '');
+      const parsed = this.parseUserAgent(userAgent);
 
       const where: any = { product: { id: productId } };
-      if (userId) {
-        where.user = { id: userId };
-      } else {
+      if (userId) where.user = { id: userId };
+      else {
         where.ip = ip;
         where.userAgent = userAgent;
       }
@@ -309,17 +304,9 @@ export class ProductService {
 
       if (lastView) {
         const diffMs = now.getTime() - lastView.viewedAt.getTime();
-        if (diffMs < 60 * 60 * 1000) {
-          return false;
-        }
-
-        if (!userId && diffMs < 24 * 60 * 60 * 1000) {
-          return false;
-        }
+        if (diffMs < 60 * 60 * 1000) return false;
+        if (!userId && diffMs < 24 * 60 * 60 * 1000) return false;
       }
-
-      const product = await this.productRepository.findOneBy({ id: productId });
-      if (!product) throw new NotFoundException('Mahsulot topilmadi');
 
       const newView = this.productViewRepository.create({
         product: { id: productId },
@@ -334,9 +321,7 @@ export class ProductService {
         viewedAt: now,
       } as DeepPartial<UserViewedProduct>);
 
-      await this.productViewRepository.save(newView);
-
-      await this.productViewRepository.save(newView);
+      await this.productViewRepository.save(newView); // faqat bir marta
 
       await this.productRepository.increment({ id: productId }, 'viewCount', 1);
 

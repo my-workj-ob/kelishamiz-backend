@@ -24,6 +24,7 @@ import { UserModule } from './user/user.module';
 import { BannerModule } from './banner/banner.module';
 import { PaymeModule } from './payme/payme.module';
 import { SecurityModule } from './security/security.module';
+import { AppDataSource } from './data-source';
 
 @Module({
   imports: [
@@ -56,17 +57,7 @@ import { SecurityModule } from './security/security.module';
     //   synchronize: true, // true faqat dev uchun, prod-da false bo'lishi kerak
     //   autoLoadEntities: true,
     // }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: '45.92.173.136',
-      port: parseInt(process.env.DATABASE_PORT || '5432', 10),
-      username: 'postgres',
-      password: '0GzjPHd6pBn1jH83',
-      database: 'kelishamiz',
-      synchronize: false,
-      autoLoadEntities: true,
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
-    }),
+    TypeOrmModule.forRoot(AppDataSource.options),
     // s
 
     CacheModule.registerAsync({
