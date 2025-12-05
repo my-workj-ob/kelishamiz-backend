@@ -19,6 +19,7 @@ import { Profile } from './../../profile/enities/profile.entity';
 import { ProductProperty } from './product-property.entity';
 import { ProductImage } from './Product-Image.entity';
 import { ChatRoom } from './../../chat/entities/chat-room.entity';
+import { UserViewedProduct } from './product-view.entity';
 
 @Entity()
 export class Product {
@@ -90,8 +91,11 @@ export class Product {
   @Column()
   categoryId: number;
 
-  @Column({ nullable: true })
+  @Column({ type: 'int', default: 0 })
   viewCount: number;
+
+  @OneToMany(() => UserViewedProduct, (view) => view.product)
+  views: UserViewedProduct[];
 
   @OneToMany(
     () => ProductProperty,
@@ -171,5 +175,4 @@ export class Product {
   })
   @CreateDateColumn()
   createdAt: Date;
-  product: { id: any };
 }

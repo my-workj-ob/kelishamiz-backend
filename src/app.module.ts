@@ -103,4 +103,4 @@ import { SecurityModule } from './security/security.module';
   ],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

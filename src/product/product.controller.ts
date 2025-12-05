@@ -56,6 +56,7 @@ import { DeleteResult } from 'typeorm';
 import { RolesGuard } from './../common/interceptors/roles/roles.guard'; // RolesGuard ni import qilish
 import { Roles } from './../common/interceptors/roles/role.decorator'; // Roles decoratorini import qilish
 import { UpdateProductDto } from './dto/update-product.dto';
+import { Request } from 'express';
 
 // Foydalanuvchi obyektining tipini aniqlash (sizning autentifikatsiya tizimingizga mos ravishda)
 // Agar sizning JWT strategiyangiz req.user ga userId, phone, username, role kabi ma'lumotlarni qo'shsa
@@ -181,8 +182,8 @@ export class ProductController {
       pageSize,
       likedIds,
       isAdmin,
-      regionId, 
-      districtIds, 
+      regionId,
+      districtIds,
     );
   }
   @Get('top')
@@ -271,9 +272,34 @@ export class ProductController {
     return { liked };
   }
 
-  // 🔸 POST: Create product
-  // @UseGuards(AuthGuard('jwt')) // Authentication shart
-  @Post() // Ikkita @Post decorator bir xil yo'lda bo'lmasligi kerak
+  @Post(':id/view')
+  async viewProduct(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Body() body: { utm?: string },
+  ) {
+    const productId = parseInt(id, 10);
+    
+    const userId = (req as any).user?.userId ?? null;
+    const ip =
+      (req.headers['x-forwarded-for'] as string)?.split(',')?.[0]?.trim() ||
+      req.socket.remoteAddress ||
+      null;
+    const userAgent = req.headers['user-agent'] || '';
+
+    await this.productService.incrementViewCount(
+      productId,
+      userId,
+      ip,
+      userAgent,
+      body?.utm,
+    );
+
+    return { success: true };
+  }
+
+  @UseGuards(AuthGuard('jwt')) 
+  @Post() 
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -391,7 +417,7 @@ export class ProductController {
   async getProducts(
     @Body() filters: GetProductsDto,
     @Req() req: AuthenticatedRequest,
-    @Query('likedIds') likedIdsStr?: string, 
+    @Query('likedIds') likedIdsStr?: string,
   ): Promise<{
     data: (Product & { isLike: boolean })[];
     total: number;
@@ -413,9 +439,9 @@ export class ProductController {
           .filter((id) => !isNaN(id))
       : [];
 
-    const isAdmin = req.user?.role === UserRole.ADMIN; 
+    const isAdmin = req.user?.role === UserRole.ADMIN;
 
-    return this.productService.filter(filters, userId, likedIds, isAdmin); 
+    return this.productService.filter(filters, userId, likedIds, isAdmin);
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -658,14 +684,13 @@ export class ProductController {
         if (!isNaN(date.getTime())) {
           body.topExpiresAt = date;
         } else {
-          body.topExpiresAt = undefined; 
+          body.topExpiresAt = undefined;
         }
       } catch (dateParseError) {
-        body.topExpiresAt = undefined; 
+        body.topExpiresAt = undefined;
       }
     }
 
     return this.productService.updateProduct(id, body, files);
   }
- 
 }

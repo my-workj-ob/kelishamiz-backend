@@ -10,7 +10,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, DeleteResult, In, MoreThan, Repository } from 'typeorm';
+import {
+  DataSource,
+  DeepPartial,
+  DeleteResult,
+  In,
+  MoreThan,
+  Repository,
+} from 'typeorm';
 import { User } from '../auth/entities/user.entity';
 import { Category } from '../category/entities/category.entity';
 import { Property } from './../category/entities/property.entity';
@@ -29,7 +36,11 @@ import { ProductImage } from './entities/Product-Image.entity';
 import { District } from 'src/location/entities/district.entity';
 import { Region } from 'src/location/entities/region.entity';
 import { instanceToPlain } from 'class-transformer';
+import { UserViewedProduct } from './entities/product-view.entity';
 
+import * as maxmind from 'maxmind';
+import { RedisService } from './redis-service';
+import { GeoIpService } from './geoip.service';
 @Injectable()
 export class ProductService {
   private readonly logger = new Logger(ProductService.name);
@@ -41,10 +52,8 @@ export class ProductService {
     private categoryRepository: Repository<Category>,
     @InjectRepository(Profile)
     private profileRepository: Repository<Profile>,
-    @InjectRepository(ProductProperty)
-    private productPropertyRepository: Repository<ProductProperty>,
-    @InjectRepository(Property)
-    private propertyRepository: Repository<Property>, // ← bu yerda!
+    @InjectRepository(UserViewedProduct)
+    private productViewRepository: Repository<UserViewedProduct>, // ← bu yerda!
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private readonly fileService: FileService,
@@ -52,6 +61,9 @@ export class ProductService {
     @InjectRepository(ProductImage)
     private productImageRepository: Repository<ProductImage>,
     private dataSource: DataSource,
+
+    private redisService: RedisService,
+    private geoIpService: GeoIpService,
   ) {}
 
   /**
@@ -99,7 +111,7 @@ export class ProductService {
       .leftJoinAndSelect('product.likes', 'likes')
       .orderBy('product.isTop', 'DESC')
       .addOrderBy('product.createdAt', 'DESC')
-      .addOrderBy('images.order', 'ASC'); 
+      .addOrderBy('images.order', 'ASC');
 
     const whereConditions: string[] = [];
     const parameters: { [key: string]: any } = {};
@@ -215,36 +227,123 @@ export class ProductService {
     };
   }
 
-  async incrementViewCount(productId: number) {
-    const product = await this.productRepository.findOne({
-      where: { id: productId },
-    });
+  parseUserAgent(ua: string) {
+    const device = /mobile/i.test(ua) ? 'Mobile' : 'Desktop';
+    const browser = /chrome/i.test(ua)
+      ? 'Chrome'
+      : /firefox/i.test(ua)
+        ? 'Firefox'
+        : /safari/i.test(ua)
+          ? 'Safari'
+          : 'Unknown';
+    const os = /windows/i.test(ua)
+      ? 'Windows'
+      : /android/i.test(ua)
+        ? 'Android'
+        : /linux/i.test(ua)
+          ? 'Linux'
+          : /iphone|ios/i.test(ua)
+            ? 'iOS'
+            : 'Unknown';
 
-    if (!product) {
-      throw new NotFoundException('mahsulot topilmadi');
-    }
-
-    product.viewCount += 1;
-    await this.productRepository.save(product);
+    return { device, browser, os };
   }
 
-  async findOne(title: string, categoryId?: number): Promise<Product | null> {
-    const where: any = { title };
+  isBot(userAgent: string): boolean {
+    const bots = [
+      'Googlebot',
+      'Bingbot',
+      'Slurp',
+      'DuckDuckBot',
+      'Baiduspider',
+      'YandexBot',
+      'Sogou',
+      'facebot',
+      'ia_archiver',
+    ];
 
-    if (categoryId) {
-      where.category = { id: categoryId };
+    return bots.some((bot) => userAgent?.includes(bot));
+  }
+
+  async incrementViewCount(
+    productId: number,
+    userId: number | null,
+    ip: string | null,
+    userAgent: string | null,
+    utm?: string | null,
+  ): Promise<boolean> {
+    const product = await this.productRepository.findOne({
+      where: { id: productId },
+      relations: ['profile', 'profile.user'],
+    });
+    if (!product) throw new NotFoundException('Mahsulot topilmadi');
+
+    if (userId && product.profile?.user?.id === userId) {
+      return false;
     }
 
-    return this.productRepository.findOne({
-      where,
-      relations: [
-        'profile',
-        'productProperties',
-        'productProperties.property',
-        'images',
-        'category',
-      ],
-    });
+    if (!userAgent || this.isBot(userAgent)) return false;
+
+    const lockKey = `product_view_lock:${productId}:${userId ?? ip ?? 'anon'}`;
+    const lockAcquired = await this.redisService.acquireLock(lockKey, 2000);
+    if (!lockAcquired) {
+      return false;
+    }
+
+    try {
+      const now = new Date();
+      const parsed = this.parseUserAgent(userAgent || '');
+
+      const where: any = { product: { id: productId } };
+      if (userId) {
+        where.user = { id: userId };
+      } else {
+        where.ip = ip;
+        where.userAgent = userAgent;
+      }
+
+      const lastView = await this.productViewRepository.findOne({
+        where,
+        order: { viewedAt: 'DESC' },
+      });
+
+      if (lastView) {
+        const diffMs = now.getTime() - lastView.viewedAt.getTime();
+        if (diffMs < 60 * 60 * 1000) {
+          return false;
+        }
+
+        if (!userId && diffMs < 24 * 60 * 60 * 1000) {
+          return false;
+        }
+      }
+
+      const product = await this.productRepository.findOneBy({ id: productId });
+      if (!product) throw new NotFoundException('Mahsulot topilmadi');
+
+      const newView = this.productViewRepository.create({
+        product: { id: productId },
+        user: userId ? { id: userId } : null,
+        ip,
+        userAgent,
+        device: parsed.device,
+        browser: parsed.browser,
+        os: parsed.os,
+        country: this.geoIpService.getCountryByIp(ip || undefined),
+        utm: utm || null,
+        viewedAt: now,
+      } as DeepPartial<UserViewedProduct>);
+
+      await this.productViewRepository.save(newView);
+
+      await this.productViewRepository.save(newView);
+
+      await this.productRepository.increment({ id: productId }, 'viewCount', 1);
+
+      return true;
+    } finally {
+      await this.redisService.releaseLock(lockKey);
+    }
   }
 
   async findById(
@@ -294,6 +393,24 @@ export class ProductService {
     delete (result.profile as any).user;
 
     return result as Product;
+  }
+  async findOne(title: string, categoryId?: number): Promise<Product | null> {
+    const where: any = { title };
+
+    if (categoryId) {
+      where.category = { id: categoryId };
+    }
+
+    return this.productRepository.findOne({
+      where,
+      relations: [
+        'profile',
+        'productProperties',
+        'productProperties.property',
+        'images',
+        'category',
+      ],
+    });
   }
 
   async getFullTextSearchByCategory(
@@ -582,7 +699,7 @@ export class ProductService {
       paymentType,
       currencyType,
       regionId,
-      districtId, 
+      districtId,
       page = 1,
       pageSize = 10,
       ...otherFilters
@@ -649,7 +766,7 @@ export class ProductService {
         districtId.length <= 3
       ) {
         queryBuilder.andWhere('product.districtId IN (:...districtIds)', {
-          districtIds: districtId, 
+          districtIds: districtId,
         });
       } else if (typeof districtId === 'number') {
         queryBuilder.andWhere('product.districtId = :districtId', {
