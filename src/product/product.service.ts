@@ -872,7 +872,7 @@ export class ProductService {
     const formattedProperties = (createProductDto.properties || []).map(
       (p: any) => ({
         type: p.type,
-        value: { key: p.key ?? '', value: p.value ?? '' }, // key mavjud bo‘lmasa bo‘sh string
+        value: { key: p?.name ?? '', value: p.value ?? '' }, 
         propertyId: p.propertyId,
       }),
     );
