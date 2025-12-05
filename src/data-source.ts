@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
 dotenv.config();
@@ -11,6 +12,6 @@ export const AppDataSource = new DataSource({
   database: process.env.DATABASE_NAME || 'kelishamiz',
   synchronize: false,
   logging: false,
-  entities: [__dirname + '/**/*.entity.{ts,js}'], // <--- entity path
-  migrations: [__dirname + '/migrations/*.{ts,js}'],
+  entities: [__dirname + '/**/*.entity{.ts,.js}'],
+  migrations: [__dirname + '/migrations/*{.ts,.js}'],
 });
