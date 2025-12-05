@@ -63,7 +63,7 @@ import { SecurityModule } from './security/security.module';
       username: 'postgres',
       password: '0GzjPHd6pBn1jH83',
       database: 'kelishamiz',
-      synchronize: true,
+      synchronize: false,
       autoLoadEntities: true,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
     }),
