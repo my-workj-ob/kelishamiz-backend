@@ -290,11 +290,12 @@ export class ProductService {
       const now = new Date();
       const parsed = this.parseUserAgent(userAgent);
 
-      const where: any = { product: { id: productId } };
-      if (userId) where.user = { id: userId };
-      else {
-        where.ip = ip;
-        where.userAgent = userAgent;
+      let where: any = { product: { id: productId } };
+      if (userId) {
+        where.user = { id: userId };
+      } else {
+        if (ip) where.ip = ip;
+        if (userAgent) where.userAgent = userAgent;
       }
 
       const lastView = await this.productViewRepository.findOne({
@@ -307,21 +308,18 @@ export class ProductService {
         if (diffMs < 60 * 60 * 1000) return false;
         if (!userId && diffMs < 24 * 60 * 60 * 1000) return false;
       }
-
-      const newView = this.productViewRepository.create({
-        product: { id: productId },
+      await this.productViewRepository.insert({
+        product: { id: productId } as any, // tip uchun `as any` qo‘yish
         user: userId ? { id: userId } : null,
-        ip,
-        userAgent,
+        ip: ip ?? undefined,
+        userAgent: userAgent ?? undefined,
         device: parsed.device,
         browser: parsed.browser,
         os: parsed.os,
-        country: this.geoIpService.getCountryByIp(ip || undefined),
-        utm: utm || null,
+        country: this.geoIpService.getCountryByIp(ip ?? undefined),
+        utm: utm ?? null,
         viewedAt: now,
-      } as DeepPartial<UserViewedProduct>);
-
-      await this.productViewRepository.save(newView); // faqat bir marta
+      });
 
       await this.productRepository.increment({ id: productId }, 'viewCount', 1);
 

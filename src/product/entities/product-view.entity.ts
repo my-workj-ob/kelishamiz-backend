@@ -29,7 +29,7 @@ export class UserViewedProduct {
   device: string;
 
   @Column({ type: 'varchar', length: 120, nullable: true, name: 'country' })
-  country: string;
+  country: string | null;
 
   @Column({ type: 'varchar', length: 120, nullable: true, name: 'browser' })
   browser: string;
@@ -38,7 +38,7 @@ export class UserViewedProduct {
   os: string;
 
   @Column({ type: 'varchar', length: 120, nullable: true, name: 'utm' })
-  utm: string;
+  utm: string | null;
 
   @Column({ type: 'timestamptz', name: 'viewed_at' })
   viewedAt: Date;
