@@ -871,18 +871,16 @@ export class ProductService {
     const formattedProperties = (createProductDto.properties || []).map(
       (p: any) => ({
         type: p.type,
-        value: {
-          key: p.key ?? '', // agar key mavjud bo'lmasa bo'sh string
-          value: p.value ?? '', // value ham bo'sh bo'lsa bo'sh string
-        },
-        propertyId: Number(p.propertyId), // propertyId ni raqamga o'tkazish
+        key: p.key ?? '', 
+        value: p.value ?? '', 
+        propertyId: Number(p.propertyId), 
       }),
     );
 
     const product = this.productRepository.create({
       ...productData,
       category,
-      profile: profile, // User emas, Profile obyektini bog'laymiz
+      profile: profile,
       images: productImages,
       regionId: Number(createProductDto.regionId),
       districtId: Number(createProductDto.districtId),
