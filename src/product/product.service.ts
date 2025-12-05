@@ -290,16 +290,11 @@ export class ProductService {
       const now = new Date();
       const parsed = this.parseUserAgent(userAgent);
 
-      let where: any = { product: { id: productId } };
-      if (userId) {
-        where.user = { id: userId };
-      } else {
-        if (ip) where.ip = ip;
-        if (userAgent) where.userAgent = userAgent;
-      }
-
+      // Tekshirish: oxirgi view
       const lastView = await this.productViewRepository.findOne({
-        where,
+        where: userId
+          ? { product: { id: productId }, user: { id: userId } }
+          : { product: { id: productId }, ip: ip ?? undefined, userAgent },
         order: { viewedAt: 'DESC' },
       });
 
@@ -308,18 +303,26 @@ export class ProductService {
         if (diffMs < 60 * 60 * 1000) return false;
         if (!userId && diffMs < 24 * 60 * 60 * 1000) return false;
       }
-      await this.productViewRepository.insert({
-        product: { id: productId } as any, // tip uchun `as any` qo‘yish
-        user: userId ? { id: userId } : null,
-        ip: ip ?? undefined,
-        userAgent: userAgent ?? undefined,
-        device: parsed.device,
-        browser: parsed.browser,
-        os: parsed.os,
-        country: this.geoIpService.getCountryByIp(ip ?? undefined),
-        utm: utm ?? null,
-        viewedAt: now,
-      });
+
+      // QueryBuilder bilan insert
+      await this.productViewRepository
+        .createQueryBuilder()
+        .insert()
+        .into('user_viewed_product')
+        .values({
+          product: { id: productId } as any, // relation uchun as any
+          user: userId ? { id: userId } : null,
+          ip: ip ?? undefined,
+          userAgent: userAgent ?? undefined,
+          device: parsed.device,
+          browser: parsed.browser,
+          os: parsed.os,
+          country:
+            this.geoIpService.getCountryByIp(ip ?? undefined) ?? undefined,
+          utm: utm ?? undefined,
+          viewedAt: now,
+        })
+        .execute();
 
       await this.productRepository.increment({ id: productId }, 'viewCount', 1);
 
