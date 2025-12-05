@@ -279,7 +279,7 @@ export class ProductController {
     @Body() body: { utm?: string },
   ) {
     const productId = parseInt(id, 10);
-    
+
     const userId = (req as any).user?.userId ?? null;
     const ip =
       (req.headers['x-forwarded-for'] as string)?.split(',')?.[0]?.trim() ||
@@ -298,8 +298,8 @@ export class ProductController {
     return { success: true };
   }
 
-  @UseGuards(AuthGuard('jwt')) 
-  @Post() 
+  @UseGuards(AuthGuard('jwt'))
+  @Post()
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {

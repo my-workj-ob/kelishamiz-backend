@@ -341,45 +341,49 @@ export class ProductService {
       where.isPublish = true;
     }
 
-    // Mahsulotni barcha kerakli relations bilan topish
     const product = await this.productRepository.findOne({
       where,
       relations: [
         'profile',
+        'profile.user',
         'productProperties',
         'productProperties.property',
         'images',
         'category',
-        'profile.user', // User ma'lumotlarini olish uchun muhim
       ],
     });
 
-    // Agar mahsulot topilmasa, null qaytarish
     if (!product) {
       return null;
     }
 
-    // Mahsulot topilsa, profile ob'ektiga userId qo'shish
     if (product.profile && product.profile.user) {
-      // product obyektini o'zgartiramiz, chunki
-      // TypeORM ning findOne metodi ob'ekt reference'ni qaytaradi
       (product.profile as any).userId = product.profile.user.id;
     }
 
-    // Yangi ob'ekt yaratish
+    const formattedProperties = product.productProperties.map((p) => ({
+      type: p.type, 
+      value: {
+        key: p.property?.name || `property_${p.propertyId}`,
+        value: p.value,
+      },
+      propertyId: p.propertyId,
+    }));
+
     const result = {
       ...product,
       profile: {
         ...product.profile,
         userId: product.profile?.user?.id,
       },
+      productProperties: formattedProperties,
     };
 
-    // Natijani qaytarish, lekin user ma'lumotini yashirish
     delete (result.profile as any).user;
 
-    return result as Product;
+    return result as any;
   }
+
   async findOne(title: string, categoryId?: number): Promise<Product | null> {
     const where: any = { title };
 
