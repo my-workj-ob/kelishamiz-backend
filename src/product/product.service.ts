@@ -20,7 +20,6 @@ import {
 } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
 import { Category } from '../category/entities/category.entity';
-import { Property } from './../category/entities/property.entity';
 import { Profile } from './../profile/enities/profile.entity';
 import {
   ProductDto,
@@ -38,7 +37,6 @@ import { Region } from 'src/location/entities/region.entity';
 import { instanceToPlain } from 'class-transformer';
 import { UserViewedProduct } from './entities/product-view.entity';
 
-import * as maxmind from 'maxmind';
 import { RedisService } from './redis-service';
 import { GeoIpService } from './geoip.service';
 @Injectable()
@@ -388,7 +386,7 @@ export class ProductService {
     const where: any = { title };
 
     if (categoryId) {
-      where.category = { id: categoryId };
+      where.categoryId = categoryId;
     }
 
     return this.productRepository.findOne({
@@ -469,20 +467,18 @@ export class ProductService {
   async getSmartSearchByIdAndCategory(
     title: string,
     categoryId: number,
-    isAdmin: boolean = false, // <-- Yangi parametr
+    isAdmin: boolean = false,
   ): Promise<Product[]> {
     if (!title || !categoryId) {
       throw new NotFoundException('title va categoryId talab qilinadi');
     }
 
-    const product = await this.findOne(title, categoryId); // findOne metodi isPublish ni tekshirmaydi
+    const product = await this.findOne(title, categoryId);
 
     if (!product) {
       throw new NotFoundException('Mahsulot topilmadi');
     }
 
-    // Agar product topilsa, lekin u publish qilinmagan bo'lsa va bu admin bo'lmasa, uni qaytarmaymiz.
-    // getFullTextSearchByCategory ichida isPublish tekshiruvi bor.
     const combinedQuery = `${product.title} ${product.description || ''}`;
 
     return this.getFullTextSearchByCategory(
@@ -871,9 +867,9 @@ export class ProductService {
     const formattedProperties = (createProductDto.properties || []).map(
       (p: any) => ({
         type: p.type,
-        key: p.key ?? '', 
-        value: p.value ?? '', 
-        propertyId: Number(p.propertyId), 
+        key: p.key ?? '',
+        value: p.value ?? '',
+        propertyId: Number(p.propertyId),
       }),
     );
 

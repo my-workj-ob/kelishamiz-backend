@@ -466,7 +466,7 @@ export class ProductController {
   }
 
   @Get('search-by-id-and-category/:title')
-  @UseGuards(JwtOptionalAuthGuard) // Agar isAdmin tekshiruvi bo'lsa, JWT optional
+  @UseGuards(JwtOptionalAuthGuard) 
   @ApiOperation({
     summary:
       'Mahsulotni title va categoryId bo`yicha aqlli qidirish (Adminlar unpublished ni ham ko`ra oladi)',
@@ -481,7 +481,7 @@ export class ProductController {
       title,
       categoryId,
       isAdmin,
-    ); // isAdmin parametrini uzatish
+    ); 
   }
 
   @Get('by-id/:id') // universal route emas!
