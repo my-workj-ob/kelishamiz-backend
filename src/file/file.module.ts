@@ -6,7 +6,7 @@ import { FileService } from './file.service';
 import { UploadService } from './uploadService';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([FileEntity])], // <-- SHU YERDA IMPORT QILINADI
+  imports: [TypeOrmModule.forFeature([FileEntity])], 
   controllers: [FileController],
   providers: [FileService, UploadService],
   exports: [FileService, UploadService],

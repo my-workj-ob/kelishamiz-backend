@@ -47,7 +47,6 @@ export class PropertyService {
 
     const { categoryId, options, ...rest } = updatePropertyDto;
 
-    // agar category yangilanishi kerak bo'lsa
     if (categoryId) {
       const category = await this.categoryRepository.findOne({
         where: { id: categoryId },
@@ -58,7 +57,6 @@ export class PropertyService {
       property.category = category;
     }
 
-    // Agar SELECT type bo'lsa optionsni yangilash
     if (rest.type === PropertyType.SELECT) {
       property.options = options;
     }

@@ -22,7 +22,7 @@ export interface RequestWithUser extends Request {
 }
 
 @Controller('comments')
-@ApiBearerAuth() // Swaggerda token qo'shish uchun
+@ApiBearerAuth() 
 export class CommentController {
   constructor(private commentService: CommentService) {}
 

@@ -44,7 +44,7 @@ async function bootstrap(): Promise<any> {
   SwaggerModule.setup('api/docs', app, document);
 
   await app.init();
-  return createServer({ app: expressApp }); // Bu server obyektini qaytaradi (proxy funktsiyasi ham shu obyektda)
+  return createServer({ app: expressApp }); 
 }
 
 export const handler: Handler = async (event, context) => {
@@ -52,5 +52,5 @@ export const handler: Handler = async (event, context) => {
     cachedServer = await bootstrap();
   }
 
-  return cachedServer(event, context); // Faqat shunchaki serverni chaqirasiz — proxy bu yerda
+  return cachedServer(event, context); 
 };

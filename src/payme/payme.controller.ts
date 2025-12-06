@@ -35,7 +35,7 @@ export class PaymeController {
       case 'CancelTransaction':
         response = await this.paymeService.cancelTransaction(params, id);
         break;
-      case 'CheckTransaction': // bu metodni ham qo'shing
+      case 'CheckTransaction':
         return this.paymeService.checkTransaction(params, id);
       default:
         response = {

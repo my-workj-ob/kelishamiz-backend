@@ -1,4 +1,3 @@
-// src/common/utils/user-agent.util.ts
 import * as UAParser from 'ua-parser-js';
 
 export function parseUserAgent(ua: string) {

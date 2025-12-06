@@ -80,7 +80,7 @@ export class ProductDto {
   @ApiProperty({ type: [ProductImageDto], description: 'Mahsulot rasmlari' })
   @ValidateNested({ each: true })
   @Type(() => ProductImageDto)
-  images: ProductImageDto[]; // `mainImage` o'rniga rasmlar massivi
+  images: ProductImageDto[];
 
   @ApiProperty({ type: [ProductPropertyDto], required: false })
   @ValidateNested({ each: true })

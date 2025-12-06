@@ -10,6 +10,6 @@ export class Like {
   @ManyToOne(() => User, (user) => user.likes, { onDelete: 'CASCADE' })
   user: User;
 
-  @ManyToOne(() => Comment, (comment) => comment.likes, { onDelete: 'CASCADE' }) // ❌ `likesCount` emas!
+  @ManyToOne(() => Comment, (comment) => comment.likes, { onDelete: 'CASCADE' }) 
   comment: Comment;
 }

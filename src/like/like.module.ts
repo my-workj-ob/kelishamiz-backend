@@ -9,6 +9,6 @@ import { LikeService } from './like.service';
   imports: [TypeOrmModule.forFeature([Like, Comment])],
   controllers: [LikeController],
   providers: [LikeService],
-  exports: [LikeService], // ❗️ Boshqa joylarda ishlatish uchun
+  exports: [LikeService],
 })
 export class LikeModule {}

@@ -15,7 +15,7 @@ export class SearchService {
 
   async saveSearch(user: any, query: string): Promise<UserSearch> {
     const search = this.userSearchRepository.create({
-      user: { id: user.userId }, // faqat id bo'lsa ham yetarli
+      user: { id: user.userId }, 
       query,
     });
     return await this.userSearchRepository.save(search);

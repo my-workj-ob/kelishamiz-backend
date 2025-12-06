@@ -9,7 +9,7 @@ import { Repository } from 'typeorm';
 import { Banner } from './entities/banner.entity';
 import { CreateBannerDto } from './dto/create-banner.dto';
 import { UpdateBannerDto } from './dto/update-banner.dto';
-import { del } from '@vercel/blob'; // Rasmni o'chirish uchun Vercel Blob dan del funksiyasini import qilish
+import { del } from '@vercel/blob';
 import { UploadService } from './../file/uploadService';
 import { FileService } from './../file/file.service';
 
@@ -18,8 +18,8 @@ export class BannerService {
   constructor(
     @InjectRepository(Banner)
     private bannerRepository: Repository<Banner>,
-    private uploadService: UploadService, // CloudinaryService o'rniga UploadService ni inject qilish
-    private fileService: FileService, // CloudinaryService o'rniga UploadService ni inject qilish
+    private uploadService: UploadService, 
+    private fileService: FileService, 
   ) {}
 
   async create(
@@ -30,9 +30,9 @@ export class BannerService {
       throw new BadRequestException('Rasm fayli yuklanmagan.');
     }
     
-    const imageUrl = await this.uploadService.uploadFile(file); // Faqat URL ni qaytaradi
+    const imageUrl = await this.uploadService.uploadFile(file);
 
-    await this.fileService.saveFile(imageUrl); // Fayl URL'ini bazaga saqlash
+    await this.fileService.saveFile(imageUrl); 
     if (!imageUrl) {
       throw new BadRequestException('Rasmni yuklashda xatolik yuz berdi.');
     }
@@ -40,7 +40,7 @@ export class BannerService {
 
     const banner = this.bannerRepository.create({
       ...createBannerDto,
-      imageUrl: imageUrl, // Yuklangan rasmni URLini saqlaymiz
+      imageUrl: imageUrl, 
     });
     return this.bannerRepository.save(banner);
   }
@@ -73,7 +73,7 @@ export class BannerService {
     
       if (banner.imageUrl) {
         try {
-          await del(banner.imageUrl); // Eski rasmni o'chirish
+          await del(banner.imageUrl);
         } catch (deleteError) {
           console.warn(
             `Eski rasmni o'chirishda xatolik yuz berdi: ${banner.imageUrl}`,
@@ -94,7 +94,7 @@ export class BannerService {
     const banner = await this.findOne(id);
     if (banner.imageUrl) {
       try {
-        await del(banner.imageUrl); // Vercel Blob-dan rasmni o'chirish
+        await del(banner.imageUrl);
       } catch (deleteError) {
         console.error(
           `Rasmni o'chirishda xatolik yuz berdi: ${banner.imageUrl}`,

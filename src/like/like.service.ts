@@ -49,7 +49,7 @@ export class LikeService {
         });
         await this.likeRepository.save(newLike);
         comment.likesCount += 1;
-        likedByCurrentUser = true; // Foydalanuvchi like bosgan
+        likedByCurrentUser = true; 
       }
 
     
@@ -60,7 +60,7 @@ export class LikeService {
       return {
         message: existingLike ? 'Like removed' : 'Liked',
         likes: comment.likesCount,
-        likedByCurrentUser, // ✅ Frontendga qaytaramiz
+        likedByCurrentUser, 
       };
     } catch (error) {
       throw new InternalServerErrorException(

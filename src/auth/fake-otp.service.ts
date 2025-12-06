@@ -18,9 +18,7 @@ export class OtpService {
     private readonly configService: ConfigService,
   ) {}
 
-  /**
-   * Eskiz API dan yangi token olish
-   */
+
   private async fetchToken(): Promise<TokenData> {
     const email = 'yuldoshovich@mail.ru';
     const password = '0GzjPHd6pBn1jH83';
@@ -41,16 +39,12 @@ export class OtpService {
       throw new Error('Eskiz.uz API tokenini olishda xatolik yuz berdi.');
     }
 
-    // Token muddati (24 soat - 1 daqiqa)
     const expiresIn = 24 * 60 * 60 * 1000;
     const expiresAt = Date.now() + expiresIn - 60_000;
 
     return { token: data.data.token, expiresAt };
   }
 
-  /**
-   * Token olish yoki yangilash
-   */
   private async getToken(): Promise<string> {
     if (!OtpService.tokenData || Date.now() >= OtpService.tokenData.expiresAt) {
       OtpService.tokenData = await this.fetchToken();
@@ -58,9 +52,6 @@ export class OtpService {
     return OtpService.tokenData.token;
   }
 
-  /**
-   * Tasodifiy 6 xonali OTP yaratish
-   */
   private generateOtp(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
@@ -71,7 +62,7 @@ export class OtpService {
     const isDevelopment = false;
 
     if (isDevelopment) {
-      console.log(`[DEV] OTP: ${otp} -> ${phone}`);
+      console.log(`development OTP: ${otp}:  ${phone}`);
       return otp;
     }
 

@@ -14,5 +14,5 @@ export class CreateCategoryDto {
     required: false,
   })
   @IsOptional()
-  parentId?: number; // Agar parent bo‘lsa, shu ID orqali kategoriya bog‘lanadi
+  parentId?: number;
 }

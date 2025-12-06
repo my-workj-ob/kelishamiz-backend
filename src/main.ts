@@ -12,21 +12,18 @@ dotenv.config();
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Serve static files
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
 
-  // Set up Socket.IO adapter
   // app.useWebSocketAdapter(new IoAdapter(app));
 
-  // Remove global CORS (handled by WebSocketGateway)
   app.enableCors({
     origin: [
-      'http://localhost:5173', // local dev
+      'http://localhost:5173',
       'http://localhost:5174',
-      'https://kelishamiz.uz', // production frontend
+      'https://kelishamiz.uz', 
       'https://kelishamiz-admin-panels.vercel.app',
     ],
-    credentials: true, // agar cookie yoki auth token yuborilsa
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
@@ -53,7 +50,7 @@ async function bootstrap() {
     express.static(join(__dirname, '../node_modules/swagger-ui-dist')),
   );
 
-  await app.listen(3030, '0.0.0.0'); // Use consistent port with PM2
+  await app.listen(3030, '0.0.0.0');
 }
 
 bootstrap();

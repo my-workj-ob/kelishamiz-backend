@@ -15,7 +15,7 @@ export class CreatePropertyDto {
   @ApiProperty({ example: 'Electronics' })
   @IsString()
   @IsOptional()
-  categoryId: number; // Qo'shimcha ravishda kategoriya ID
+  categoryId: number;
   @ApiProperty({ example: 'For property Select ' })
   @IsOptional()
   @IsArray()

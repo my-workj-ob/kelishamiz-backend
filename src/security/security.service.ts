@@ -5,7 +5,6 @@ import * as path from 'path';
 
 @Injectable()
 export class SecurityService {
-  // ODT matnini o‘qish
   private readOdtFile(filePath: string): string {
     if (!fs.existsSync(filePath)) {
       throw new NotFoundException(`${filePath} topilmadi`);
@@ -20,7 +19,6 @@ export class SecurityService {
     return matches.map((m) => m.replace(/<[^>]+>/g, '')).join('\n');
   }
 
-  // JSON tozalash va parse qilish
   private parseSecurityJson(raw: string) {
     if (!raw) throw new NotFoundException('ODT dan matn olinmadi');
 

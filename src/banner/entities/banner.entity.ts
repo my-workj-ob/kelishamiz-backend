@@ -19,18 +19,17 @@ export class Banner {
   description: string;
 
   @Column()
-  imageUrl: string; // Cloudinary orqali yuklangan rasm URL
-
+  imageUrl: string;
   @Column({ nullable: true })
   linkUrl: string;
 
   @Column({ default: 0 })
-  order: number; // Ko'rsatilish tartibi
+  order: number; 
 
   @Column({ default: true })
-  isActive: boolean; // Faol/nofaollik
+  isActive: boolean; 
 
-  @Column({ default: 'home_hero' }) // Banner joylashuvi (masalan: home_hero, category_sidebar)
+  @Column({ default: 'home_hero' }) 
   placement: string;
 
   @CreateDateColumn()

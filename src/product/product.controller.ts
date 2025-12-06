@@ -1,6 +1,3 @@
-// src/product/product.controller.ts
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   BadRequestException,
   Body,
@@ -46,33 +43,27 @@ import {
 import { GetProductsDto } from './dto/filter-product.dto';
 import { Product } from './entities/product.entity';
 import { ProductService } from './product.service';
-import {
-  FileFieldsInterceptor,
-  FilesInterceptor,
-} from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
-import { DeleteResult } from 'typeorm';
-import { RolesGuard } from './../common/interceptors/roles/roles.guard'; // RolesGuard ni import qilish
-import { Roles } from './../common/interceptors/roles/role.decorator'; // Roles decoratorini import qilish
+import { RolesGuard } from './../common/interceptors/roles/roles.guard';
+import { Roles } from './../common/interceptors/roles/role.decorator';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Request } from 'express';
 
-// Foydalanuvchi obyektining tipini aniqlash (sizning autentifikatsiya tizimingizga mos ravishda)
-// Agar sizning JWT strategiyangiz req.user ga userId, phone, username, role kabi ma'lumotlarni qo'shsa
 interface AuthenticatedRequest extends Request {
   user?: {
-    userId: number; // Sizning JWT payloadingizdagi user ID
+    userId: number;
     phone: string;
     username: string;
-    role: UserRole; // Foydalanuvchi rolini bu yerda kutamiz
+    role: UserRole;
   };
 }
 
 @ApiTags('Products')
 @ApiBearerAuth()
 @Controller('products')
-@UseInterceptors(ClassSerializerInterceptor) // Shu yerda interceptor qo‘shildi
+@UseInterceptors(ClassSerializerInterceptor)
 export class ProductController {
   constructor(
     private readonly productService: ProductService,
@@ -80,15 +71,12 @@ export class ProductController {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  // 🔹 GET: All products
   @Get()
   @ApiOkResponse({
     description: "Barcha mahsulotlar ro'yxati (pagination, filtrlar bilan)",
     schema: {
       example: {
-        data: [
-          /* array of products */
-        ],
+        data: [],
         total: 123,
         page: 1,
         pageSize: 10,
@@ -123,7 +111,6 @@ export class ProductController {
     example: '1,5,10',
   })
   @ApiQuery({
-    // Yangi: regionId uchun Swagger hujjati
     name: 'regionId',
     required: false,
     type: Number,
@@ -131,10 +118,9 @@ export class ProductController {
     example: 1,
   })
   @ApiQuery({
-    // Yangi: districtIds uchun Swagger hujjati
     name: 'districtIds',
     required: false,
-    type: String, // String sifatida qabul qilinadi va keyin massivga parse qilinadi
+    type: String,
     description:
       "Mahsulotlarni ma'lum tuman IDlari bo'yicha filtrlash. Vergul bilan ajratilgan string bo'lishi kerak (maksimal 3 ta, masalan: \"101,102,103\").",
     example: '101,102',
@@ -146,8 +132,8 @@ export class ProductController {
     @Query('pageSize', new ParseIntPipe({ optional: true }))
     pageSize: number = 10,
     @Query('likedIds') likedIdsStr?: string,
-    @Query('regionId', new ParseIntPipe({ optional: true })) regionId?: number, // Yangi: regionId ni number qilib parse qilish
-    @Query('districtIds') districtIdsStr?: string, // Yangi: districtIds ni string sifatida qabul qilish
+    @Query('regionId', new ParseIntPipe({ optional: true })) regionId?: number,
+    @Query('districtIds') districtIdsStr?: string,
   ): Promise<{
     data: (Product & { isLike: boolean })[];
     total: number;
@@ -168,7 +154,6 @@ export class ProductController {
           .filter((id) => !isNaN(id))
       : [];
 
-    // Yangi: districtIds stringini raqamlar massiviga aylantirish
     const districtIds = districtIdsStr
       ? districtIdsStr
           .split(',')
@@ -203,7 +188,7 @@ export class ProductController {
     type: Number,
     example: 10,
   })
-  @UseGuards(JwtOptionalAuthGuard) // Bu yerda ham ixtiyoriy autentifikatsiya
+  @UseGuards(JwtOptionalAuthGuard)
   async findAllTop(
     @Req() req: AuthenticatedRequest,
     @Query('page', new ParseIntPipe({ optional: true })) page = 1,
@@ -215,14 +200,14 @@ export class ProductController {
     pageSize: number;
   }> {
     const userId = req.user?.userId ?? null;
-    const isAdmin = req.user?.role === UserRole.ADMIN; // ADMIN rolini tekshirish
+    const isAdmin = req.user?.role === UserRole.ADMIN;
 
     return this.productService.findAllTopPaginated(
       userId,
       page,
       pageSize,
       isAdmin,
-    ); // isAdmin parametrini uzatish
+    );
   }
 
   @UseGuards(JwtOptionalAuthGuard)
@@ -357,14 +342,13 @@ export class ProductController {
   })
   @ApiBadRequestResponse({ description: "Yaroqsiz ma'lumotlar kiritildi" })
   @ApiOperation({ summary: "Mahsulot qo'shish" })
-  @UseInterceptors(FilesInterceptor('files')) // files o'rniga images bo'lishi kerak, chunki ApiBody da images deb ko'rsatilgan
-  @UseGuards(AuthGuard('jwt')) // Post create metodi Authenticated bo'lishi kerak
+  @UseInterceptors(FilesInterceptor('files'))
+  @UseGuards(AuthGuard('jwt'))
   async create(
     @UploadedFiles() files: Express.Multer.File[],
-    @Body() body: any, // To'g'ridan-to'g'ri ProductDto ni ishlatish maqsadga muvofiq
+    @Body() body: any,
     @Req() req: AuthenticatedRequest,
   ): Promise<Product> {
-    // Body'dagi barcha qiymatlarni to'g'ri tiplarga o'girish
     const createProductDto: Omit<ProductDto, 'images'> = {
       title: body.title,
       description: body.description,
@@ -384,8 +368,8 @@ export class ProductController {
       imageIndex: Number(body.imageIndex || 0),
     };
 
-    console.log('Qabul qilingan body:', body); // Debugging uchun
-    console.log('Parsed createProductDto:', createProductDto); // Debugging uchun
+    console.log('Qabul qilingan body:', body);
+    console.log('Parsed createProductDto:', createProductDto);
 
     if (!req.user) {
       throw new BadRequestException('User not authenticated.');
@@ -451,13 +435,13 @@ export class ProductController {
     @Param('id', ParseIntPipe) id: number,
     @Req() req: AuthenticatedRequest,
   ): Promise<{ liked: boolean; likesCount: number }> {
-    const userId = req.user?.userId; // Optional bo'lishi mumkin, chunki req.user ba'zida bo'lmasligi mumkin
+    const userId = req.user?.userId;
     if (!userId) {
       throw new BadRequestException('User not authenticated.');
     }
     const isLiked = await this.productService.toggleLike(id, userId);
 
-    const product = await this.productService.findById(id); // findById endi isAdmin ni ham qabul qiladi.
+    const product = await this.productService.findById(id);
     if (!product) {
       throw new NotFoundException('Product not found');
     }
@@ -466,7 +450,7 @@ export class ProductController {
   }
 
   @Get('search-by-id-and-category/:title')
-  @UseGuards(JwtOptionalAuthGuard) 
+  @UseGuards(JwtOptionalAuthGuard)
   @ApiOperation({
     summary:
       'Mahsulotni title va categoryId bo`yicha aqlli qidirish (Adminlar unpublished ni ham ko`ra oladi)',
@@ -476,16 +460,16 @@ export class ProductController {
     @Query('categoryId', ParseIntPipe) categoryId: number,
     @Req() req: AuthenticatedRequest,
   ) {
-    const isAdmin = req.user?.role === UserRole.ADMIN; // ADMIN rolini tekshirish
+    const isAdmin = req.user?.role === UserRole.ADMIN;
     return this.productService.getSmartSearchByIdAndCategory(
       title,
       categoryId,
       isAdmin,
-    ); 
+    );
   }
 
-  @Get('by-id/:id') // universal route emas!
-  @UseGuards(JwtOptionalAuthGuard) // Agar isAdmin tekshiruvi bo'lsa, JWT optional
+  @Get('by-id/:id')
+  @UseGuards(JwtOptionalAuthGuard)
   @ApiOperation({
     summary:
       'Mahsulotni ID bo`yicha olish (Adminlar unpublished ni ham ko`ra oladi)',
@@ -494,15 +478,15 @@ export class ProductController {
     @Param('id', ParseIntPipe) id: number,
     @Req() req: AuthenticatedRequest,
   ) {
-    const isAdmin = req.user?.role === UserRole.ADMIN; // ADMIN rolini tekshirish
-    const product = await this.productService.findById(id, isAdmin); // isAdmin parametrini uzatish
+    const isAdmin = req.user?.role === UserRole.ADMIN;
+    const product = await this.productService.findById(id, isAdmin);
     if (!product) throw new NotFoundException('topilmadi');
     return product;
   }
 
   @Patch(':id/top')
-  @UseGuards(AuthGuard('jwt'), RolesGuard) // Faqat authenticated va role tekshiruvi bo'lsin
-  @Roles(UserRole.ADMIN) // Faqat ADMINlarga ruxsat
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary:
       'Mahsulotning TOP statusini va Publish statusini yangilash (faqat admin)',
@@ -512,17 +496,17 @@ export class ProductController {
     description: 'TOP statusini yangilash ma`lumotlari',
   })
   async updateTopStatus(
-    @Param('id', ParseIntPipe) id: number, // Paramni ParseIntPipe bilan to'g'ri o'girish
+    @Param('id', ParseIntPipe) id: number,
     @Body() topData: TopProductDto,
-    @Req() req: AuthenticatedRequest, // isAdmin uchun req.user ni olish
+    @Req() req: AuthenticatedRequest,
   ) {
     const isAdmin = req.user?.role === UserRole.ADMIN;
-    return this.productService.updateTopStatus(id, topData, isAdmin); // isAdmin parametrini uzatish
+    return this.productService.updateTopStatus(id, topData, isAdmin); 
   }
 
   @Patch(':id/publish')
-  @UseGuards(AuthGuard('jwt'), RolesGuard) // Faqat authenticated va role tekshiruvi bo'lsin
-  @Roles(UserRole.ADMIN) // Faqat ADMINlarga ruxsat
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN) 
   @ApiOperation({
     summary:
       'Mahsulotning TOP statusini va Publish statusini yangilash (faqat admin)',
@@ -532,17 +516,17 @@ export class ProductController {
     description: 'TOP statusini yangilash ma`lumotlari',
   })
   async updatePublish(
-    @Param('id', ParseIntPipe) id: number, // Paramni ParseIntPipe bilan to'g'ri o'girish
+    @Param('id', ParseIntPipe) id: number,
     @Body() isPublish: PublishProductDto,
-    @Req() req: AuthenticatedRequest, // isAdmin uchun req.user ni olish
+    @Req() req: AuthenticatedRequest, 
   ) {
     const isAdmin = req.user?.role === UserRole.ADMIN;
-    return this.productService.updatePublish(id, isPublish, isAdmin); // isAdmin parametrini uzatish
+    return this.productService.updatePublish(id, isPublish, isAdmin);
   }
 
-  @Delete('by-id/:id') // universal route emas!
-  @UseGuards(AuthGuard('jwt'), RolesGuard) // O'chirish ham faqat adminlarga ruxsat berish
-  @Roles(UserRole.ADMIN) // Faqat ADMINlarga ruxsat
+  @Delete('by-id/:id') 
+  @UseGuards(AuthGuard('jwt'), RolesGuard) 
+  @Roles(UserRole.ADMIN) 
   @ApiOperation({ summary: 'Mahsulotni ID bo`yicha o`chirish (faqat admin)' })
   async deleteOneById(
     @Param('id', ParseIntPipe) id: number,
@@ -604,11 +588,11 @@ export class ProductController {
   })
   async updateProduct(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: any, // Barcha form-data maydonlari shu body ichida string sifatida keladi
-    @UploadedFiles() files: Array<Express.Multer.File>, // Yuklangan fayllar
+    @Body() body: any, 
+    @UploadedFiles() files: Array<Express.Multer.File>,
   ) {
-    console.log('Received body:', body); // Debugging uchun
-    console.log('Received files:', files); // Debugging uchun
+    console.log('Received body:', body); 
+    console.log('Received files:', files);
 
     try {
       if (typeof body.properties === 'string') {
@@ -624,8 +608,6 @@ export class ProductController {
       );
     }
 
-    // 2. Raqamli maydonlarni Parse qilish
-    // NaN bo'lsa, undefined ga o'tkazish, shunda servis uni e'tiborsiz qoldiradi
     const parseNumber = (value: any) => {
       const num = parseFloat(value);
       return isNaN(num) ? undefined : num;
@@ -650,8 +632,6 @@ export class ProductController {
     if (body.imageIndex !== undefined)
       body.imageIndex = parseIntSafe(body.imageIndex);
 
-    // 3. Boolean maydonlarni Parse qilish
-    // 'true' stringidan true, 'false' stringidan false, boshqalardan undefined
     const parseBoolean = (value: any) => {
       if (value === 'true') return true;
       if (value === 'false') return false;

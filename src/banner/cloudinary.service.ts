@@ -20,7 +20,7 @@ export class CloudinaryService {
   ): Promise<CloudinaryResponse> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: `your_app_name/${folder}` }, // Masalan, 'your_app_name/banners'
+        { folder: `your_app_name/${folder}` },
         (error, result) => {
           if (error) return reject(error);
           if (result) {
@@ -28,7 +28,7 @@ export class CloudinaryService {
               asset_id: result.asset_id,
               version_id: result.version_id,
               ...result,
-              created_at: new Date(result.created_at), // Convert created_at to Date
+              created_at: new Date(result.created_at),
             } as CloudinaryResponse);
           } else {
             reject(new Error('Upload result is undefined'));
@@ -41,7 +41,7 @@ export class CloudinaryService {
 
   async deleteFile(imageUrl: string): Promise<any> {
     
-    const publicId = (imageUrl.split('/').pop() ?? '').split('.')[0]; // Bu oddiy usul, aniqroq parser kerak bo'lishi mumkin
+    const publicId = (imageUrl.split('/').pop() ?? '').split('.')[0]; 
     if (!publicId) return;
 
     try {

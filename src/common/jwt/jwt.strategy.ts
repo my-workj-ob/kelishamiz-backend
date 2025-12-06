@@ -8,9 +8,9 @@ dotenv.config();
 export interface JwtPayload {
   [x: string]: any;
 
-  sub: number; // yoki string
+  sub: number; 
   phone: string;
-  role?: string; // Added explicit type for role
+  role?: string; 
   iat?: number;
   exp?: number;
 }
@@ -28,7 +28,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!payload || !payload.sub || !payload.phone) {
       throw new Error('Invalid JWT payload');
     }
-    let role: string = typeof payload.role === 'string' ? payload.role : 'USER'; // Default role if not provided
+    let role: string = typeof payload.role === 'string' ? payload.role : 'USER';
     if (!payload.role || !role || typeof role !== 'string') {
       console.warn(
         'Invalid or missing role in JWT payload, defaulting to USER',

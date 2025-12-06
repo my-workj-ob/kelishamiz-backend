@@ -30,7 +30,7 @@ export class CommentService {
   async getComments(
     entityId: number,
     entityType: string,
-    userId: number, // Foydalanuvchi ID si
+    userId: number, 
     page = 1,
     limit = 10,
   ) {
@@ -43,8 +43,8 @@ export class CommentService {
           'replies',
           'replies.user',
           'replies.user.profile',
-          'replies.likes', // ✅ Replies uchun like-larni qo‘shamiz
-          'replies.likes.user', // ✅ Replies uchun like bosgan userlar ham kerak
+          'replies.likes', 
+          'replies.likes.user', 
           'likes',
           'likes.user',
         ],
@@ -63,7 +63,7 @@ export class CommentService {
           ...reply,
           likedByCurrentUser: reply.likes.some(
             (like) => like.user.id === userId,
-          ), // ✅ Replies uchun like bor yoki yo‘qligini tekshiramiz
+          ), 
         })),
       }));
 
@@ -183,7 +183,7 @@ export class CommentService {
         });
         await this.likeRepository.save(newLike);
         comment.likesCount += 1;
-        likedByCurrentUser = true; // Foydalanuvchi like bosgan
+        likedByCurrentUser = true;
       }
 
     
@@ -194,7 +194,7 @@ export class CommentService {
       return {
         message: existingLike ? 'Like removed' : 'Liked',
         likes: comment.likesCount,
-        likedByCurrentUser, // ✅ Frontendga qaytaramiz
+        likedByCurrentUser, 
       };
     } catch (error) {
       throw new InternalServerErrorException(

@@ -9,7 +9,7 @@ import { FileEntity } from './../file/entities/file.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Banner, FileEntity]), // <-- Buni qo'shing. Banner entitysini shu modulga ta'minlaydi.
+    TypeOrmModule.forFeature([Banner, FileEntity]), 
   ],
   controllers: [BannerController],
   providers: [BannerService, UploadService, FileService],

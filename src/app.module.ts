@@ -12,7 +12,6 @@ import { ProductModule } from './product/product.module';
 import { ProfileModule } from './profile/profile.module';
 import { PropertyController } from './property/property.controller';
 import { PropertyModule } from './property/property.module';
-// import { UserSearch } from './search-filter/entities/user-search.entity';
 import { SearchFilterController } from './search-filter/search-filter.controller';
 import { SearchModule } from './search-filter/search-filter.module';
 import { ThrottlerModule } from '@nestjs/throttler';

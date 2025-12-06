@@ -107,7 +107,7 @@ export class ChatService {
     }
 
     const messages = await this.messageRepository.find({
-      where: { chatRoom: { id: chatRoomId }, isDeleted: false }, // Faqat o'chirilmagan xabarlarni oladi
+      where: { chatRoom: { id: chatRoomId }, isDeleted: false },
       relations: ['sender'],
       order: { createdAt: 'ASC' },
       skip,
@@ -239,9 +239,7 @@ export class ChatService {
     return this.chatRoomRepository.save(newChatRoom);
   }
 
-  /**
-   * Muayyan chatdagi xabarlarni o'qilgan deb belgilash.
-   */
+  
   async markMessagesAsRead(chatRoomId: number, userId: number): Promise<void> {
     const chatRoom = await this.chatRoomRepository.findOne({
       where: { id: chatRoomId },
@@ -269,9 +267,7 @@ export class ChatService {
     );
   }
 
-  /**
-   * Foydalanuvchining umumiy o'qilmagan xabarlar sonini olish.
-   */
+  
   async getUnreadMessageCount(userId: number): Promise<number> {
     const chatRooms = await this.chatRoomRepository
       .createQueryBuilder('chatRoom')
@@ -293,9 +289,7 @@ export class ChatService {
       },
     });
   }
-  /**
-   * Xabarni ID orqali topish.
-   */
+ 
   async getMessageById(messageId: string): Promise<Message | null> {
     return this.messageRepository.findOne({
       where: { id: messageId },
@@ -313,7 +307,6 @@ export class ChatService {
       throw new NotFoundException('Xabar topilmadi.');
     }
 
-    // Faqat xabar yuboruvchisi bo'lmagan foydalanuvchi uni o'qiganida o'zgartirish
     if (message.sender.id === readerId) {
       throw new BadRequestException(
         'Siz o‘z xabaringizni o‘qilgan deb belgilay olmaysiz.',
@@ -326,9 +319,7 @@ export class ChatService {
     );
   }
 
-  /**
-   * Xabarni saqlash. Bu funksiyani ChatGateway ham ishlatadi.
-   */
+ 
   async saveMessage(
     chatRoomId: number,
     senderId: number,

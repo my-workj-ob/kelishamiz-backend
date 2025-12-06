@@ -72,7 +72,7 @@ export class Product {
     eager: true,
     cascade: true,
   })
-  images: ProductImage[]; // Rasmlar uchun yangi relation
+  images: ProductImage[]; 
 
   @ApiProperty({
     type: () => Category,
@@ -101,8 +101,8 @@ export class Product {
     () => ProductProperty,
     (productProperty) => productProperty.product,
     {
-      cascade: ['insert', 'update', 'remove'], // YOKI cascade: true
-      eager: true, // Ma'lumotlarni o'qiyotganda ham olib kelish uchun foydali
+      cascade: ['insert', 'update', 'remove'], 
+      eager: true,
     },
   )
   productProperties: ProductProperty[];

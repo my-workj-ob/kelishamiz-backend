@@ -45,11 +45,11 @@ export class Comment {
   @CreateDateColumn()
   createdAt: string;
 
-  @Column({ default: 0 }) // 🔹 Like sonini saqlash uchun
+  @Column({ default: 0 })
   likesCount: number;
 
-  @OneToMany(() => Like, (like) => like.comment, { cascade: true }) // ✅ Like bilan bog'lash
-  likes: Like[]; // ✅
+  @OneToMany(() => Like, (like) => like.comment, { cascade: true }) 
+  likes: Like[]; 
 
   likedByCurrentUser?: boolean;
 }

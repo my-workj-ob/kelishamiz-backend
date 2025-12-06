@@ -7,7 +7,6 @@ import { FileService } from './../file/file.service';
 import { UploadService } from './../file/uploadService';
 import { ProductModule } from './../product/product.module';
 
-// Entities
 import { Profile } from './enities/profile.entity';
 import { UserSearch } from './../search-filter/entities/user-search.entity';
 import { Product } from './../product/entities/product.entity';

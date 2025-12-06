@@ -9,10 +9,10 @@ import {
   Get,
   Query,
   DefaultValuePipe,
-  Delete, // <-- Delete dekoratorini import qiling
-  HttpCode, // <-- HttpCode dekoratorini import qiling
+  Delete,
+  HttpCode,
   HttpStatus,
-  Req, // <-- HttpStatus ni import qiling
+  Req,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -41,7 +41,7 @@ export class UserController {
 
   @Patch(':id/role')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN) // FAQAT ADMINLAR rolini yangilashi mumkin
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: 'Foydalanuvchining rolini yangilash (faqat admin uchun)',
   })
@@ -52,7 +52,7 @@ export class UserController {
       properties: {
         role: {
           type: 'string',
-          enum: [UserRole.USER, UserRole.ADMIN], // SUPER_ADMIN ni ham qo'shing agar mavjud bo'lsa
+          enum: [UserRole.USER, UserRole.ADMIN],
           example: UserRole.ADMIN,
         },
       },
@@ -81,7 +81,7 @@ export class UserController {
 
   @Patch('token/notification')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.USER) // ADMIN va USER ikkalasi ham tokenni yangilashi mumkin
+  @Roles(UserRole.ADMIN, UserRole.USER) 
   @ApiOperation({
     summary: 'Foydalanuvchi tokenini yangilash (admin va user uchun)',
     description:
@@ -118,7 +118,7 @@ export class UserController {
 
   @Get()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN) // FAQAT ADMINLAR barcha foydalanuvchilarni ko'rishi mumkin
+  @Roles(UserRole.ADMIN) 
   @ApiOperation({
     summary: 'Barcha foydalanuvchilar roʻyxatini olish (faqat admin uchun)',
   })
@@ -144,10 +144,10 @@ export class UserController {
       properties: {
         users: { type: 'array', items: { $ref: '#/components/schemas/User' } },
         total: { type: 'number' },
-        page: { type: 'number' }, // Qo'shildi
-        pageSize: { type: 'number' }, // Qo'shildi
-        totalPages: { type: 'number' }, // Qo'shildi
-        message: { type: 'string' }, // Qo'shildi
+        page: { type: 'number' }, 
+        pageSize: { type: 'number' }, 
+        totalPages: { type: 'number' }, 
+        message: { type: 'string' }, 
       },
     },
   })
@@ -181,7 +181,7 @@ export class UserController {
     };
   }
 
-  @Delete(':id') // <-- Yangi DELETE endpoint
+  @Delete(':id') 
   @ApiOperation({
     summary: 'Foydalanuvchini oʻchirish (faqat admin uchun)',
     description: 'Berilgan ID boʻyicha foydalanuvchini oʻchiradi.',
@@ -201,7 +201,7 @@ export class UserController {
     status: 403,
     description: 'Ruxsat yoʻq (faqat adminlar uchun).',
   })
-  @HttpCode(HttpStatus.NO_CONTENT) // Muvaffaqiyatli o'chirilganda 204 No Content statusini qaytaradi
+  @HttpCode(HttpStatus.NO_CONTENT)
   async deleteUser(@Param('id', ParseIntPipe) userId: number): Promise<void> {
     await this.userService.deleteUser(userId);
   }

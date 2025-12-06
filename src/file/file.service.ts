@@ -40,8 +40,8 @@ export class FileService {
   }
 
   private getFilePathFromUrl(fileUrl: string): string {
-    const basePath = path.resolve(__dirname, '../../public'); // public papka yo'li
-    const urlPath = new URL(fileUrl).pathname; // /uploads/file.jpg
+    const basePath = path.resolve(__dirname, '../../public'); 
+    const urlPath = new URL(fileUrl).pathname;
 
     return path.join(basePath, urlPath);
   }

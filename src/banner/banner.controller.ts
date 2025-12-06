@@ -1,4 +1,3 @@
-    
 import {
   Controller,
   Get,
@@ -22,10 +21,6 @@ import {
   ApiBody,
   ApiQuery,
 } from '@nestjs/swagger';
-import { AuthGuard } from '@nestjs/passport';
-import { RolesGuard } from './../common/interceptors/roles/roles.guard';
-import { Roles } from './../common/interceptors/roles/role.decorator';
-import { UserRole } from './../auth/entities/user.entity';
 import { BannerService } from './banner.service';
 import { CreateBannerDto } from './dto/create-banner.dto';
 import { UpdateBannerDto } from './dto/update-banner.dto';
@@ -54,10 +49,10 @@ export class BannerController {
         placement: { type: 'string', default: 'home_hero' },
         file: { type: 'string', format: 'binary', description: 'Banner rasmi' },
       },
-      required: ['placement', 'file'], // Rasm majburiy
+      required: ['placement', 'file'],
     },
   })
-  @UseInterceptors(FileInterceptor('file')) // 'file' nomi bilan faylni kutamiz
+  @UseInterceptors(FileInterceptor('file'))
   async create(
     @UploadedFile() file: Express.Multer.File,
     @Body() body: Omit<CreateBannerDto, 'imageUrl'>,
@@ -137,7 +132,6 @@ export class BannerController {
     return this.bannerService.remove(id);
   }
 
-    
   @Get('public/active')
   @ApiOperation({
     summary: 'Faol bannerlarni joylashuv bo`yicha olish (hamma uchun)',
@@ -147,7 +141,7 @@ export class BannerController {
     required: true,
     description: 'Banner joylashuvi',
   })
-  @UseGuards(JwtOptionalAuthGuard) // Autentifikatsiya shart emas
+  @UseGuards(JwtOptionalAuthGuard) 
   async getActiveBannersPublic(
     @Query('placement') placement: string,
   ): Promise<Banner[]> {

@@ -19,7 +19,7 @@ export class Notification {
   body: string;
 
   @Column()
-  type: string; // masalan: "chat", "order", "promo"
+  type: string; 
 
   @Column({ nullable: true })
   chatId?: string;

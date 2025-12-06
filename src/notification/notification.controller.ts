@@ -41,11 +41,11 @@ export interface NotificationResult {
   message: string;
 }
 interface SendNotificationResponse {
-  to?: string; // FCM topic yoki user token
+  to?: string; 
   notification: { title: string; body: string };
   data: Record<string, string>;
   messageId?: string;
-  resultMessage: string; // NotificationResult uchun
+  resultMessage: string;
 }
 
 @ApiTags('Notifications')
@@ -54,7 +54,6 @@ interface SendNotificationResponse {
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class NotificationController {
   constructor(
-    // private readonly firebaseService: FirebaseService,
     private readonly notificationService: NotificationsService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
@@ -108,34 +107,29 @@ export class NotificationController {
     };
   }
 
-  // 🔹 Userning barcha notificationlari
   @Get()
   async getNotifications(@Req() req: AuthRequest) {
     if (!req.user?.userId) throw new ForbiddenException('User not found');
     return this.notificationService.getUserNotifications(req.user.userId);
   }
 
-  // 🔹 O‘qilmagan notificationlar soni
   @Get('unread-count')
   async getUnreadCount(@Req() req: AuthRequest) {
     if (!req.user?.userId) throw new ForbiddenException('User not found');
     return this.notificationService.getUnreadCount(req.user.userId);
   }
 
-  // 🔹 Barcha notificationlarni o‘qilgan qilish
   @Patch('mark-all')
   async markAllAsRead(@Req() req: AuthRequest) {
     if (!req.user?.userId) throw new ForbiddenException('User not found');
     return this.notificationService.markAllAsRead(req.user.userId);
   }
 
-  // 🔹 Bitta notificationni o‘qilgan qilish
   @Patch('read/:id')
   async markAsRead(@Param('id') id: number, @Req() req: AuthRequest) {
     if (!req.user?.userId) throw new ForbiddenException('User not found');
     return this.notificationService.markAsRead(id, req.user.userId);
   }
-  // 🔹 Bitta notificationni o'chirish
   @Delete('delete/:id')
   async deleteNotification(@Param('id') id: number, @Req() req: AuthRequest) {
     if (!req.user?.userId) throw new ForbiddenException('User not found');

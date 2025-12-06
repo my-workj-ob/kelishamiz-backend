@@ -1,4 +1,3 @@
-// src/notification/dto/update-notification.dto.ts
 
 import { IsBoolean, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';

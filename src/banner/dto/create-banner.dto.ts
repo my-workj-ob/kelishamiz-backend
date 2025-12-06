@@ -28,9 +28,9 @@ export class CreateBannerDto {
   })
     
     
-  @IsOptional() // Frontendda fayl yuklash mutationi alohida bo'ladi
+  @IsOptional() 
   @IsString()
-  imageUrl?: string; // Bu yerda fayl emas, balki URL bo'lishi kerak
+  imageUrl?: string;
 
   @ApiProperty({
     description: 'Banner bosilganda yo`naltiriladigan URL',

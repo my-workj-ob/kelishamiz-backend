@@ -39,7 +39,7 @@ export class SearchFilterController {
   @ApiOkResponse({
     description: 'Foydalanuvchining barcha qidiruvlari',
     type: [String],
-    isArray: true, // Javob massiv ekanligini bildiradi
+    isArray: true, 
   })
   @ApiQuery({
     name: 'page',

@@ -22,10 +22,8 @@ export class NotificationsService {
     private readonly productRepo: Repository<Product>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-    // private readonly firebaseService: FirebaseService,
   ) {}
   async saveNotification(dto: SendNotificationDto): Promise<Notification> {
-    // faqat Notification qaytaradi
     if (dto.type === NotificationType.CHAT_MESSAGE) {
       throw new BadRequestException(
         'CHAT_MESSAGE notifications are not saved to DB',

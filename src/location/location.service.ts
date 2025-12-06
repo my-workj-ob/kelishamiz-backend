@@ -63,10 +63,8 @@ export class LocationService {
       throw new NotFoundException(`Region ${id} topilmadi`);
     }
 
-    // 1) Avval product jadvalidagi shu regionId bilan bog'liq yozuvlarni o'chirish
     await this.productRepo.delete({ regionId: id });
 
-    // 2) Endi regionni o'chirish
     await this.regionRepo.delete(id);
   }
 }

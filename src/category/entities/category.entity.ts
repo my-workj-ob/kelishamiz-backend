@@ -26,7 +26,7 @@ export class Category {
   @OneToMany(() => Category, (category) => category.parent)
   children: Category[];
   @OneToMany(() => Property, (property) => property.category)
-  properties: Property[]; // Bir nechta propertylarni ulash
+  properties: Property[]; 
 
   @OneToMany(() => Product, (product) => product.category)
   products: Product[];

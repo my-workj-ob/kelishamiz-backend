@@ -24,15 +24,9 @@ export class UserService {
     private readonly commentRepository: Repository<Comment>,
     @InjectRepository(Like) private readonly likeRepository: Repository<Like>,
     @InjectRepository(UserSearch)
-    private readonly searchRepository: Repository<UserSearch>, // agar bor bo‘lsa
+    private readonly searchRepository: Repository<UserSearch>,
   ) {}
 
-  /**
-   * Foydalanuvchining rolini ID bo'yicha yangilaydi.
-   * @param userId Yangilanadigan foydalanuvchining ID'si.
-   * @param newRole Foydalanuvchiga beriladigan yangi rol (UserRole.ADMIN yoki UserRole.USER).
-   * @returns Yangilangan foydalanuvchi obyekti.
-   */
   async updateUserRole(userId: number, newRole: UserRole): Promise<User> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
 
@@ -44,11 +38,6 @@ export class UserService {
     return this.userRepository.save(user);
   }
 
-  /**
-   * Foydalanuvchini ID bo'yicha qaytaradi.
-   * @param userId Qidirilayotgan foydalanuvchining ID'si.
-   * @returns Foydalanuvchi obyekti.
-   */
   async findUserById(userId: number): Promise<User> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
@@ -57,12 +46,6 @@ export class UserService {
     return user;
   }
 
-  /**
-   * Barcha foydalanuvchilarni sahifalash bilan oladi.
-   * @param page Sahifa raqami (default: 1).
-   * @param pageSize Sahifadagi elementlar soni (default: 10).
-   * @returns Foydalanuvchilar ro'yxati va umumiy soni.
-   */
   async findAllUsers(
     page: number = 1,
     pageSize: number = 10,
@@ -91,10 +74,7 @@ export class UserService {
     return this.userRepository.save(user);
   }
 
-  /**
-   * Foydalanuvchini ID bo'yicha o'chiradi.
-   * @param userId O'chiriladigan foydalanuvchining ID'si.
-   */
+ 
   async deleteUser(id: number): Promise<void> {
     console.log('Deleting user with ID:', id);
 
@@ -125,7 +105,7 @@ export class UserService {
       .createQueryBuilder()
       .delete()
       .from('chat_room_participants_user')
-      .where('userId = :userId', { userId: id }) // ✅ to‘g‘ri id ishlatildi
+      .where('userId = :userId', { userId: id })
       .execute();
 
     await this.searchRepository.delete({ user: { id } });

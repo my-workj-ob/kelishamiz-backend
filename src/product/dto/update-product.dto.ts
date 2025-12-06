@@ -4,10 +4,10 @@ import {
   IsNumber,
   IsBoolean,
   IsArray,
-  ValidateNested, // <--- Qo'shish kerak
+  ValidateNested, 
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type, Transform } from 'class-transformer'; // <--- Qo'shish kerak
+import { Type } from 'class-transformer'; 
 
     
 import { ProductPropertyUpdateItemDto } from './product-update.dto';

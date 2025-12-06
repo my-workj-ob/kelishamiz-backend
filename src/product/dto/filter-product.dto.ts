@@ -121,18 +121,14 @@ export class GetProductsDto {
   @Type(() => Number)
   regionId?: number;
 
-  //districtId uchun o'zgarishlar:
-  @ValidateIf((o) => o.districtId !== undefined) // Agar mavjud bo'lsa tekshir
+  @ValidateIf((o) => o.districtId !== undefined) 
   @IsOptional()
-  @IsArray() // Massiv bo'lishi mumkin
-  @IsNumber({}, { each: true }) // Har bir element raqam bo'lishi kerak
-  @ArrayMaxSize(3) // Maksimal 3 ta element bo'lishi kerak
-  @ArrayMinSize(1) // Kamida 1 ta element bo'lishi kerak (agar massiv bo'lsa)
-  @Type(() => Number) // Massiv ichidagi har bir elementni raqamga o'tkazishga yordam beradi
-  districtId?: number | number[]; // <<<<< ASOSIY O'ZGARISH BU YERDA
-  // Biror raqam yoki raqamlar massivi bo'lishi mumkin
-  // Agar faqat massiv bo'lsa, 'number[]' yozing
-  // Agar ham raqam, ham massiv bo'lsa, 'number | number[]'
+  @IsArray() 
+  @IsNumber({}, { each: true })
+  @ArrayMaxSize(3) 
+  @ArrayMinSize(1) 
+  @Type(() => Number) 
+  districtId?: number | number[]; 
   @ApiProperty({
     required: false,
     description: "Sahifalashda ko'rsatiladigan elementlar soni",
@@ -140,5 +136,5 @@ export class GetProductsDto {
   @IsOptional()
   @IsNumber()
   @Min(1)
-  limit?: number; // limitni qayta qo'shdim
+  limit?: number; 
 }

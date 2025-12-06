@@ -24,5 +24,5 @@ export class Property {
   category: Category;
 
   @Column({ type: 'simple-array', nullable: true })
-  options?: string[]; // faqat SELECT uchun
+  options?: string[]; 
 }

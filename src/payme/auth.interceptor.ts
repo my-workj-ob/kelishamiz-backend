@@ -49,7 +49,7 @@ export class PaymeAuthInterceptor implements NestInterceptor {
 
       const res = context.switchToHttp().getResponse();
       res.status(200).json(jsonRpcError);
-      return throwError(() => null); // ✅ Interceptor ni to‘xtatish
+      return throwError(() => null); 
     }
 
     return next.handle();

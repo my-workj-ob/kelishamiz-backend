@@ -1,4 +1,3 @@
-// src/common/redis/redis.service.ts
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import Redis from 'ioredis';
 
@@ -11,7 +10,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async acquireLock(key: string, ttl = 2000): Promise<boolean> {
-    // NX + PX ensures lock with TTL
     const res = await this.client.set(key, 'locked', 'PX', ttl, 'NX');
     return res === 'OK';
   }
@@ -20,7 +18,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     try {
       await this.client.del(key);
     } catch (e) {
-      // ignore
     }
   }
 

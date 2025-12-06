@@ -1,8 +1,8 @@
     
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { UserRole } from './../../../auth/entities/user.entity'; // UserRole yo'lini tekshiring!
-import { ROLES_KEY } from './role.decorator'; // role.decorator dagi kalitni import qiling
+import { UserRole } from './../../../auth/entities/user.entity'; 
+import { ROLES_KEY } from './role.decorator'; 
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -25,8 +25,8 @@ export class RolesGuard implements CanActivate {
 
     
     console.log('RolesGuard: Required Roles:', requiredRoles);
-    console.log('RolesGuard: User from request:', user); // `user` obyekti to'g'ri kelayotganini tekshiring
-    console.log('RolesGuard: User Role:', user?.role); // User roli mavjudligini tekshiring
+    console.log('RolesGuard: User from request:', user); 
+    console.log('RolesGuard: User Role:', user?.role);
 
     
     
